@@ -20,4 +20,3 @@
 # ToyNLP
 
 Some nlp models with clean implementation and easy-to-use API.
-
