@@ -1,4 +1,6 @@
 import torch
+from datasets import load_dataset
+from torch.utils.data import DataLoader
 
 
 class NNLM(torch.nn.Module):
@@ -39,6 +41,7 @@ class NNLM(torch.nn.Module):
 
 
 if __name__ == '__main__':
+    # simple test
     n = 6
     vocab_size = 17964
     m = 100
@@ -51,3 +54,13 @@ if __name__ == '__main__':
     )
     tokens = torch.randint(0, vocab_size, (2, 5))
     print(model(tokens).shape)
+    
+    # load dataset
+    def load_text_dataset():
+        """
+        https://huggingface.co/datasets/Salesforce/wikitext
+        https://huggingface.co/docs/transformers/perplexity#example-calculating-perplexity-with-gpt-2-in--transformers
+        """
+        ds = load_dataset("Salesforce/wikitext", "wikitext-2-v1")
+        dataloader = DataLoader(ds['train'], batch_size=32)
+        pass

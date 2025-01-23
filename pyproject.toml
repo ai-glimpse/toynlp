@@ -27,6 +27,7 @@ classifiers=[
 ]
 requires-python = ">= 3.10"
 dependencies = [
+    "datasets>=3.2.0",
     "numpy>=2.2.2",
     "torch>=2.5.1",
 ]
