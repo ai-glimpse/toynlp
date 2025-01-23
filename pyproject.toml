@@ -26,7 +26,11 @@ classifiers=[
     "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">= 3.10"
-dependencies = []
+dependencies = [
+    "datasets>=3.2.0",
+    "numpy>=2.2.2",
+    "torch>=2.5.1",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -82,3 +86,11 @@ changelog_incremental = true
 
 [tool.isort]
 profile = "black"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
