@@ -39,16 +39,18 @@ class NNLM(torch.nn.Module):
 
 
 if __name__ == '__main__':
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # simple test
     n = 6
     vocab_size = 17964
     m = 100
     h = 60
     model = NNLM(seq_len=n, vocab_size=vocab_size, embedding_dim=m, hidden_dim=h)
+    model.to(device)
     # |V |(1 + nm + h) + h(1 + (n − 1)m)
     print(
         sum(p.numel() for p in model.parameters()), 
         vocab_size * (1 + n * m + h) + h * (1 + (n - 1) * m)
     )
-    tokens = torch.randint(0, vocab_size, (2, 5))
+    tokens = torch.randint(0, vocab_size, (2, 5)).to(device)
     print(model(tokens).shape)
