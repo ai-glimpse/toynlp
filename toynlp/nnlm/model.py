@@ -8,6 +8,7 @@ class NNLM(torch.nn.Module):
         vocab_size: int = 17964,
         embedding_dim: int = 100,
         hidden_dim: int = 60,
+        dropout_rate: float = 0.2,
     ):
         """
         Args:
@@ -15,6 +16,7 @@ class NNLM(torch.nn.Module):
             vocab_size: vocabulary size, the |V| in the paper
             embedding_dim: embedding dimension, the m in the paper
             hidden_dim: hidden layer dimension, the h in the paper
+            dropout_rate: dropout rate
         """
         super(NNLM, self).__init__()
         # Embedding layer: |V| x m
@@ -27,12 +29,15 @@ class NNLM(torch.nn.Module):
         self.b = torch.nn.Parameter(torch.zeros(vocab_size))
         self.W = torch.nn.Linear(embedding_dim * (seq_len - 1), vocab_size, bias=False)
 
+        self.dropout = torch.nn.Dropout(dropout_rate)
+
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         # tokens: (batch_size, seq_len-1) -> x: (batch_size, seq_len-1, embedding_dim)
         x = self.C(tokens)
         b, _, _ = x.shape
         # (batch_size, seq_len-1, embedding_dim) -> (batch_size, embedding_dim * (seq_len-1))
         x = x.reshape(b, -1)  # (batch_size, embedding_dim * (seq_len-1))
+        x = self.dropout(x)
         # (batch_size, embedding_dim * (seq_len-1)) -> (batch_size, vocab_size)
         x = self.b + self.W(x) + self.U(self.activation(self.H(x) + self.d))
         # return logits

@@ -11,6 +11,7 @@ from toynlp.nnlm.config import (
     NNLMConfig,
     OptimizerConfig,
     TrainingConfig,
+    WanDbConfig,
 )
 from toynlp.nnlm.model import NNLM
 from toynlp.nnlm.tokenizer import nnlm_tokenizer
@@ -49,6 +50,7 @@ class NNLMTrainer:
         val_dataloader: DataLoader,
         test_dataloader: DataLoader,
     ):
+        best_val_loss = float("inf")
         for epoch in range(self.config.training.epochs):
             self.model.train()
             for i, batch in enumerate(train_dataloader):
@@ -83,6 +85,10 @@ class NNLMTrainer:
                     }
                 )
 
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    torch.save(self.model.state_dict(), "best_val_nnlm.pth")
+
     def calc_loss_batch(self, input_batch, target_batch):
         logits = self.model(input_batch)
         loss = torch.nn.functional.cross_entropy(logits, target_batch)
@@ -106,7 +112,8 @@ class NNLMTrainer:
 def run(config: NNLMConfig):
     wandb.init(
         # set the wandb project where this run will be logged
-        project="NNLM",
+        project=config.wandb.project,
+        name=config.wandb.name,
         # track hyperparameters and run metadata
         config=asdict(config),
     )
@@ -135,6 +142,20 @@ def run(config: NNLMConfig):
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
+def evaluate_prompt(text: str):
+    token_ids = nnlm_tokenizer.encode(text).ids
+    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0)
+    model = NNLM(
+            vocab_size=config.model.vocab_size, seq_len=config.model.context_size
+        )
+    model.load_state_dict(torch.load("best_val_nnlm.pth", weights_only=True))
+    model.eval()
+    with torch.no_grad():
+        logits = model(token_ids_tensor)
+        pred = torch.argmax(logits, dim=1)
+        print(nnlm_tokenizer.decode(pred.tolist()))
+
+
 if __name__ == "__main__":
     config = NNLMConfig(
         model=ModelConfig(
@@ -151,5 +172,7 @@ if __name__ == "__main__":
             batch_size=128,
         ),
         training=TrainingConfig(epochs=10, device="cuda:0"),
+        wandb=WanDbConfig(name="dropout(0.2)-after-embedding"),
     )
-    run(config)
+    # run(config)
+    evaluate_prompt("they both returned from previous")

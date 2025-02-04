@@ -1,3 +1,6 @@
+# torch
+*.pth
+
 # wandb
 wandb/
 

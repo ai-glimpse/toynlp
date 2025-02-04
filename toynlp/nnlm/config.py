@@ -42,11 +42,18 @@ class TrainingConfig:
 
 
 @dataclass
+class WanDbConfig:
+    name: str
+    project: str = "NNLM"
+
+
+@dataclass
 class NNLMConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
+    wandb: WanDbConfig = field(default_factory=WanDbConfig)
 
     def __post_init__(self):
         """Basic validation"""
