@@ -4,6 +4,6 @@
 
 Salesforce/wikitext
 
-## Tokenizer训练
+## Tokenizer 训练
 
 ## 模型训练

@@ -8,7 +8,10 @@ class NNLM(torch.nn.Module):
         vocab_size: int = 17964,
         embedding_dim: int = 100,
         hidden_dim: int = 60,
+        with_direct_connection: bool = False,
+        with_dropout: bool = True,
         dropout_rate: float = 0.2,
+
     ):
         """
         Args:
@@ -16,6 +19,8 @@ class NNLM(torch.nn.Module):
             vocab_size: vocabulary size, the |V| in the paper
             embedding_dim: embedding dimension, the m in the paper
             hidden_dim: hidden layer dimension, the h in the paper
+            with_direct_connection: whether to use direct connection
+            with_dropout: whether to use dropout
             dropout_rate: dropout rate
         """
         super(NNLM, self).__init__()

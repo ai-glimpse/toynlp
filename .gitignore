@@ -1,5 +1,6 @@
-# torch
+# model
 *.pth
+*.json
 
 # wandb
 wandb/

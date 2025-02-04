@@ -3,25 +3,19 @@ from dataclasses import dataclass, field
 
 @dataclass
 class OptimizerConfig:
-    # name: str = "adam"
     learning_rate: float = 1e-4
     weight_decay: float = 1e-4
-    # momentum: float = 0.9
-    # beta1: float = 0.9
-    # beta2: float = 0.999
-    # eps: float = 1e-8
-    # warmup_steps: Optional[int] = None
 
 
 @dataclass
 class ModelConfig:
     context_size: int = 6
-    vocab_size: int = 17964
+    vocab_size: int = 20000
     embedding_dim: int = 100
     hidden_dim: int = 60
-    # dropout_rate: float = 0.2
-    # hidden_sizes: List[int] = field(default_factory=lambda: [512, 256, 128])
-    # activation: str = "relu"
+    dropout_rate: float = 0.2
+    with_dropout: bool = True
+    with_direct_connection: bool = False
 
 
 @dataclass

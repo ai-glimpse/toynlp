@@ -17,19 +17,6 @@ from toynlp.nnlm.model import NNLM
 from toynlp.nnlm.tokenizer import nnlm_tokenizer
 
 
-def get_split_dataloader(
-    dataset: Dataset,
-    split: str,
-    context_size: int = 6,
-    batch_size: int = 32,
-) -> DataLoader:
-    text = " ".join(dataset[split]["text"])
-    token_ids = nnlm_tokenizer.encode(text).ids
-    token_ids_tensor = torch.tensor(token_ids).unfold(0, context_size, 1)
-    dataloader = DataLoader(token_ids_tensor, batch_size=batch_size, shuffle=True)
-    return dataloader
-
-
 class NNLMTrainer:
     def __init__(self, config: NNLMConfig):
         self.config = config
@@ -87,7 +74,8 @@ class NNLMTrainer:
 
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
-                    torch.save(self.model.state_dict(), "best_val_nnlm.pth")
+                    # torch.save(self.model.state_dict(), "nnlm.pth")
+                    torch.save(self.model, f"nnlm.pth")
 
     def calc_loss_batch(self, input_batch, target_batch):
         logits = self.model(input_batch)
@@ -107,6 +95,19 @@ class NNLMTrainer:
             total_loss += loss.item() * input_batch.size(0)  # Multiply by batch size
             total_samples += input_batch.size(0)
         return total_loss / total_samples  # Correct average
+
+
+def get_split_dataloader(
+    dataset: Dataset,
+    split: str,
+    context_size: int = 6,
+    batch_size: int = 32,
+) -> DataLoader:
+    text = " ".join(dataset[split]["text"])
+    token_ids = nnlm_tokenizer.encode(text).ids
+    token_ids_tensor = torch.tensor(token_ids).unfold(0, context_size, 1)
+    dataloader = DataLoader(token_ids_tensor, batch_size=batch_size, shuffle=True)
+    return dataloader
 
 
 def run(config: NNLMConfig):
@@ -142,20 +143,6 @@ def run(config: NNLMConfig):
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
-def evaluate_prompt(text: str):
-    token_ids = nnlm_tokenizer.encode(text).ids
-    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0)
-    model = NNLM(
-            vocab_size=config.model.vocab_size, seq_len=config.model.context_size
-        )
-    model.load_state_dict(torch.load("best_val_nnlm.pth", weights_only=True))
-    model.eval()
-    with torch.no_grad():
-        logits = model(token_ids_tensor)
-        pred = torch.argmax(logits, dim=1)
-        print(nnlm_tokenizer.decode(pred.tolist()))
-
-
 if __name__ == "__main__":
     config = NNLMConfig(
         model=ModelConfig(
@@ -163,6 +150,9 @@ if __name__ == "__main__":
             vocab_size=20000,
             embedding_dim=100,
             hidden_dim=30,
+            with_direct_connection=False,
+            with_dropout=True,
+            dropout_rate=0.2,
         ),
         optimizer=OptimizerConfig(
             learning_rate=1e-4,
@@ -172,7 +162,6 @@ if __name__ == "__main__":
             batch_size=128,
         ),
         training=TrainingConfig(epochs=100, device="cuda:0"),
-        wandb=WanDbConfig(name="dropout(0.2)-no-direct-connection-batch-128"),
+        wandb=WanDbConfig(name="dropout:0.2;with_direct_connection:False"),
     )
     run(config)
-    # evaluate_prompt("they both returned from previous")
