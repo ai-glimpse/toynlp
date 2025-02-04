@@ -124,7 +124,12 @@ def run(config: NNLMConfig):
         context_size=config.model.context_size,
         batch_size=config.data.batch_size,
     )
-    test_dataloader = get_split_dataloader(dataset, "test")
+    test_dataloader = get_split_dataloader(
+        dataset,
+        "test",
+        context_size=config.model.context_size,
+        batch_size=config.data.batch_size,
+    )
 
     trainer = NNLMTrainer(config)
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
@@ -143,7 +148,7 @@ if __name__ == "__main__":
             weight_decay=1e-4,
         ),
         data=DataConfig(
-            batch_size=320,
+            batch_size=128,
         ),
         training=TrainingConfig(epochs=10, device="cuda:0"),
     )
