@@ -2,12 +2,13 @@ import torch
 
 
 class NNLM(torch.nn.Module):
-    def __init__(self,
-                 seq_len: int = 6,
-                 vocab_size: int = 17964,
-                 embedding_dim: int = 100,
-                 hidden_dim: int = 60,
-                 ):
+    def __init__(
+        self,
+        seq_len: int = 6,
+        vocab_size: int = 17964,
+        embedding_dim: int = 100,
+        hidden_dim: int = 60,
+    ):
         """
         Args:
             seq_len: the length of the input sequence, the n in the paper
@@ -34,11 +35,11 @@ class NNLM(torch.nn.Module):
         x = x.reshape(b, -1)  # (batch_size, embedding_dim * (seq_len-1))
         # (batch_size, embedding_dim * (seq_len-1)) -> (batch_size, vocab_size)
         x = self.b + self.W(x) + self.U(self.activation(self.H(x) + self.d))
-        x = x.softmax(dim=-1)
+        # return logits
         return x
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # simple test
     n = 6
@@ -49,8 +50,8 @@ if __name__ == '__main__':
     model.to(device)
     # |V |(1 + nm + h) + h(1 + (n − 1)m)
     print(
-        sum(p.numel() for p in model.parameters()), 
-        vocab_size * (1 + n * m + h) + h * (1 + (n - 1) * m)
+        sum(p.numel() for p in model.parameters()),
+        vocab_size * (1 + n * m + h) + h * (1 + (n - 1) * m),
     )
     tokens = torch.randint(0, vocab_size, (2, 5)).to(device)
     print(model(tokens).shape)

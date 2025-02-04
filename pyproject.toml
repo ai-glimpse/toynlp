@@ -31,6 +31,7 @@ dependencies = [
     "numpy>=2.2.2",
     "tokenizers>=0.21.0",
     "torch>=2.5.1",
+    "wandb>=0.19.5",
 ]
 
 [project.optional-dependencies]
