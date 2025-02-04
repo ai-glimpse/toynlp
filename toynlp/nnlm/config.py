@@ -28,16 +28,11 @@ class DataConfig:
 @dataclass
 class TrainingConfig:
     epochs: int = 10
-    device: str = "cuda:0"
-    checkpoint_dir: str = "checkpoints"
-    log_dir: str = "logs"
-    early_stopping_patience: int = 5
-    # grad_clip: Optional[float] = 1.0
 
 
 @dataclass
 class WanDbConfig:
-    name: str
+    name: str = "unnamed"
     project: str = "NNLM"
 
 
@@ -70,7 +65,7 @@ if __name__ == "__main__":
         data=DataConfig(
             batch_size=64,
         ),
-        training=TrainingConfig(epochs=10, device="cuda:0"),
+        training=TrainingConfig(epochs=10),
     )
 
     print(config)

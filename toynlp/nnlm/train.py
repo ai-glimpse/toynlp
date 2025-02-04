@@ -1,10 +1,13 @@
 from dataclasses import asdict
+from pathlib import Path
 
 import torch
 import wandb
 from datasets import Dataset, load_dataset
+from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
+from toynlp.device import current_device
 from toynlp.nnlm.config import (
     DataConfig,
     ModelConfig,
@@ -14,22 +17,30 @@ from toynlp.nnlm.config import (
     WanDbConfig,
 )
 from toynlp.nnlm.model import NNLM
-from toynlp.nnlm.tokenizer import nnlm_tokenizer
+from toynlp.nnlm.tokenizer import NNLMTokenizer
 
 
 class NNLMTrainer:
     def __init__(self, config: NNLMConfig):
         self.config = config
-        self.model = NNLM(
-            vocab_size=config.model.vocab_size, seq_len=config.model.context_size
-        )
-        self.device = torch.device(config.training.device)
+        self.model = NNLM(config.model)
+        self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=config.optimizer.learning_rate,
             weight_decay=config.optimizer.weight_decay,
         )
+
+        # model directory creation
+        self._model_path = (
+            Path(__file__).parents[2] / "playground" / "nnlm" / "model.pth"
+        )
+        self._model_path.parents[0].mkdir(parents=True, exist_ok=True)
+
+    @property
+    def model_path(self) -> str:
+        return str(self._model_path)
 
     def train(
         self,
@@ -75,7 +86,7 @@ class NNLMTrainer:
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
                     # torch.save(self.model.state_dict(), "nnlm.pth")
-                    torch.save(self.model, f"nnlm.pth")
+                    torch.save(self.model, self.model_path)
 
     def calc_loss_batch(self, input_batch, target_batch):
         logits = self.model(input_batch)
@@ -98,13 +109,14 @@ class NNLMTrainer:
 
 
 def get_split_dataloader(
+    tokenizer: Tokenizer,
     dataset: Dataset,
     split: str,
     context_size: int = 6,
     batch_size: int = 32,
 ) -> DataLoader:
     text = " ".join(dataset[split]["text"])
-    token_ids = nnlm_tokenizer.encode(text).ids
+    token_ids = tokenizer.encode(text).ids
     token_ids_tensor = torch.tensor(token_ids).unfold(0, context_size, 1)
     dataloader = DataLoader(token_ids_tensor, batch_size=batch_size, shuffle=True)
     return dataloader
@@ -120,19 +132,23 @@ def run(config: NNLMConfig):
     )
 
     dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
+    tokenizer = NNLMTokenizer().load()
     train_dataloader = get_split_dataloader(
+        tokenizer,
         dataset,
         "train",
         context_size=config.model.context_size,
         batch_size=config.data.batch_size,
     )
     val_dataloader = get_split_dataloader(
+        tokenizer,
         dataset,
         "validation",
         context_size=config.model.context_size,
         batch_size=config.data.batch_size,
     )
     test_dataloader = get_split_dataloader(
+        tokenizer,
         dataset,
         "test",
         context_size=config.model.context_size,
@@ -149,7 +165,7 @@ if __name__ == "__main__":
             context_size=6,
             vocab_size=20000,
             embedding_dim=100,
-            hidden_dim=30,
+            hidden_dim=60,
             with_direct_connection=False,
             with_dropout=True,
             dropout_rate=0.2,
@@ -161,7 +177,7 @@ if __name__ == "__main__":
         data=DataConfig(
             batch_size=128,
         ),
-        training=TrainingConfig(epochs=100, device="cuda:0"),
-        wandb=WanDbConfig(name="dropout:0.2;with_direct_connection:False"),
+        training=TrainingConfig(epochs=100),
+        wandb=WanDbConfig(name="dropout:0.2;h-dim:60;with_direct_connection:False"),
     )
     run(config)

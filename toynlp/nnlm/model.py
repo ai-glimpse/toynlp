@@ -1,41 +1,35 @@
 import torch
 
+from toynlp.nnlm.config import ModelConfig
+
 
 class NNLM(torch.nn.Module):
     def __init__(
         self,
-        seq_len: int = 6,
-        vocab_size: int = 17964,
-        embedding_dim: int = 100,
-        hidden_dim: int = 60,
-        with_direct_connection: bool = False,
-        with_dropout: bool = True,
-        dropout_rate: float = 0.2,
+        config: ModelConfig,
     ):
-        """
-        Args:
-            seq_len: the length of the input sequence, the n in the paper
-            vocab_size: vocabulary size, the |V| in the paper
-            embedding_dim: embedding dimension, the m in the paper
-            hidden_dim: hidden layer dimension, the h in the paper
-            with_direct_connection: whether to use direct connection
-            with_dropout: whether to use dropout
-            dropout_rate: dropout rate
-        """
         super(NNLM, self).__init__()
-        self.with_direct_connection = with_direct_connection
-        self.with_dropout = with_dropout
+        self.with_direct_connection = config.with_direct_connection
+        self.with_dropout = config.with_dropout
         # Embedding layer: |V| x m
-        self.C = torch.nn.Embedding(vocab_size, embedding_dim)
-        self.H = torch.nn.Linear(embedding_dim * (seq_len - 1), hidden_dim, bias=False)
-        self.d = torch.nn.Parameter(torch.zeros(hidden_dim))
-        self.U = torch.nn.Linear(hidden_dim, vocab_size, bias=False)
+        self.C = torch.nn.Embedding(config.vocab_size, config.embedding_dim)
+        self.H = torch.nn.Linear(
+            config.embedding_dim * (config.context_size - 1),
+            config.hidden_dim,
+            bias=False,
+        )
+        self.d = torch.nn.Parameter(torch.zeros(config.hidden_dim))
+        self.U = torch.nn.Linear(config.hidden_dim, config.vocab_size, bias=False)
         self.activation = torch.nn.Tanh()
 
-        self.b = torch.nn.Parameter(torch.zeros(vocab_size))
-        self.W = torch.nn.Linear(embedding_dim * (seq_len - 1), vocab_size, bias=False)
+        self.b = torch.nn.Parameter(torch.zeros(config.vocab_size))
+        self.W = torch.nn.Linear(
+            config.embedding_dim * (config.context_size - 1),
+            config.vocab_size,
+            bias=False,
+        )
 
-        self.dropout = torch.nn.Dropout(dropout_rate)
+        self.dropout = torch.nn.Dropout(config.dropout_rate)
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
         # tokens: (batch_size, seq_len-1) -> x: (batch_size, seq_len-1, embedding_dim)
@@ -54,18 +48,27 @@ class NNLM(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # simple test
-    n = 6
-    vocab_size = 17964
-    m = 100
-    h = 60
-    model = NNLM(seq_len=n, vocab_size=vocab_size, embedding_dim=m, hidden_dim=h)
-    model.to(device)
-    # |V |(1 + nm + h) + h(1 + (n − 1)m)
+    from toynlp.device import current_device
+
+    config = ModelConfig(
+        context_size=6,
+        vocab_size=20000,
+        embedding_dim=100,
+        hidden_dim=60,
+        dropout_rate=0.2,
+        with_dropout=True,
+        with_direct_connection=False,
+    )
+    model = NNLM(config)
+    model.to(current_device)
+    n = config.context_size
+    m = config.embedding_dim
+    h = config.hidden_dim
+    vocab_size = config.vocab_size
     print(
         sum(p.numel() for p in model.parameters()),
-        vocab_size * (1 + n * m + h) + h * (1 + (n - 1) * m),
+        # |V |(1 + nm + h) + h(1 + (n − 1)m)
+        config.vocab_size * (1 + n * m + h) + h * (1 + (n - 1) * m),
     )
-    tokens = torch.randint(0, vocab_size, (2, 5)).to(device)
+    tokens = torch.randint(0, vocab_size, (2, 5)).to(current_device)
     print(model(tokens).shape)

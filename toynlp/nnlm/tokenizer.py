@@ -8,23 +8,29 @@ from tokenizers.trainers import WordLevelTrainer
 
 
 class NNLMTokenizer:
-    def __init__(self, model_path: str | None = None):
+    def __init__(
+        self,
+        model_path: str | None = None,
+        vocab_size: int = 20000,
+    ):
+        self._model_path = model_path
+        self.vocab_size = vocab_size
+
         self.tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
         self.tokenizer.pre_tokenizer = Whitespace()
-        self._model_path = model_path
 
     @property
     def model_path(self) -> str:
         if self._model_path is not None:
             return self._model_path
         else:
-            p = Path(__file__).parents[2] / "examples" / "nnlm" / "tokenizer-nnlm.json"
+            p = Path(__file__).parents[2] / "playground" / "nnlm" / "tokenizer.json"
             p.parents[0].mkdir(parents=True, exist_ok=True)
             return str(p)
 
     def train(self, dataset: Dataset):
         trainer = WordLevelTrainer(
-            vocab_size=20000, min_frequency=3, special_tokens=["[UNK]"]
+            vocab_size=self.vocab_size, min_frequency=3, special_tokens=["[UNK]"]
         )
         self.tokenizer.train_from_iterator(dataset["text"], trainer=trainer)
         self.tokenizer.save(str(self.model_path))
@@ -34,13 +40,13 @@ class NNLMTokenizer:
         return self.tokenizer
 
 
-nnlm_tokenizer = NNLMTokenizer().load()
-
-
 if __name__ == "__main__":
-    # tokenizer = NNLMTokenizer()
-    # dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
-    # tokenizer.train(dataset['train'])
+    from datasets import load_dataset
 
+    tokenizer = NNLMTokenizer(vocab_size=20000)
+    dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
+    tokenizer.train(dataset["train"])
+
+    nnlm_tokenizer = NNLMTokenizer().load()
     print(nnlm_tokenizer.encode("Hello World"))
     print(nnlm_tokenizer.decode([0, 1, 2, 3, 4, 5]))
