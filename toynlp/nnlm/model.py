@@ -11,7 +11,6 @@ class NNLM(torch.nn.Module):
         with_direct_connection: bool = False,
         with_dropout: bool = True,
         dropout_rate: float = 0.2,
-
     ):
         """
         Args:
@@ -24,6 +23,8 @@ class NNLM(torch.nn.Module):
             dropout_rate: dropout rate
         """
         super(NNLM, self).__init__()
+        self.with_direct_connection = with_direct_connection
+        self.with_dropout = with_dropout
         # Embedding layer: |V| x m
         self.C = torch.nn.Embedding(vocab_size, embedding_dim)
         self.H = torch.nn.Linear(embedding_dim * (seq_len - 1), hidden_dim, bias=False)
@@ -42,10 +43,12 @@ class NNLM(torch.nn.Module):
         b, _, _ = x.shape
         # (batch_size, seq_len-1, embedding_dim) -> (batch_size, embedding_dim * (seq_len-1))
         x = x.reshape(b, -1)  # (batch_size, embedding_dim * (seq_len-1))
-        x = self.dropout(x)
+        if self.with_dropout:
+            x = self.dropout(x)
         # (batch_size, embedding_dim * (seq_len-1)) -> (batch_size, vocab_size)
-        # x = self.b + self.W(x) + self.U(self.activation(self.H(x) + self.d))
         x = self.b + self.U(self.activation(self.H(x) + self.d))  # no direct connection
+        if self.with_direct_connection:
+            x = x + self.W(x)
         # return logits
         return x
 
