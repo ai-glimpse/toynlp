@@ -39,7 +39,8 @@ class NNLM(torch.nn.Module):
         x = x.reshape(b, -1)  # (batch_size, embedding_dim * (seq_len-1))
         x = self.dropout(x)
         # (batch_size, embedding_dim * (seq_len-1)) -> (batch_size, vocab_size)
-        x = self.b + self.W(x) + self.U(self.activation(self.H(x) + self.d))
+        # x = self.b + self.W(x) + self.U(self.activation(self.H(x) + self.d))
+        x = self.b + self.U(self.activation(self.H(x) + self.d))  # no direct connection
         # return logits
         return x
 

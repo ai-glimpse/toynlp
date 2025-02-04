@@ -94,7 +94,7 @@ class NNLMTrainer:
         loss = torch.nn.functional.cross_entropy(logits, target_batch)
         return loss
 
-    def calc_loss_loader(self, data_loader):
+    def calc_loss_loader(self, data_loader: DataLoader):
         total_loss = 0.0
         total_samples = 0  # Track total samples
         for batch in data_loader:
@@ -171,8 +171,8 @@ if __name__ == "__main__":
         data=DataConfig(
             batch_size=128,
         ),
-        training=TrainingConfig(epochs=10, device="cuda:0"),
-        wandb=WanDbConfig(name="dropout(0.2)-after-embedding"),
+        training=TrainingConfig(epochs=100, device="cuda:0"),
+        wandb=WanDbConfig(name="dropout(0.2)-no-direct-connection-batch-128"),
     )
-    # run(config)
-    evaluate_prompt("they both returned from previous")
+    run(config)
+    # evaluate_prompt("they both returned from previous")
