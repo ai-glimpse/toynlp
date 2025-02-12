@@ -14,7 +14,6 @@ from toynlp.nnlm.config import (
     NNLMConfig,
     OptimizerConfig,
     TrainingConfig,
-    WanDbConfig,
 )
 from toynlp.nnlm.model import NNLM
 from toynlp.nnlm.tokenizer import NNLMTokenizer
@@ -178,6 +177,6 @@ if __name__ == "__main__":
             batch_size=128,
         ),
         training=TrainingConfig(epochs=100),
-        wandb=WanDbConfig(name="dropout:0.2;h-dim:60;with_direct_connection:False"),
     )
+    config.wandb.name = str(config.model)
     run(config)

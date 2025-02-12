@@ -32,7 +32,7 @@ class TrainingConfig:
 
 @dataclass
 class WanDbConfig:
-    name: str = "unnamed"
+    name: str | None = None
     project: str = "NNLM"
 
 
@@ -50,6 +50,20 @@ class NNLMConfig:
             raise ValueError("Epochs must be positive")
         if self.optimizer.learning_rate <= 0:
             raise ValueError("Learning rate must be positive")
+
+        if self.wandb.name is None:
+            self.wandb.name = self._get_wandb_name()
+
+    def _get_wandb_name(self) -> str:
+        """
+        Fields: hidden_dim, with_dropout, dropout_rate, with_direct_connection
+        """
+        s = f"hidden_dim:{self.model.hidden_dim};with_direct_connection:{self.model.with_direct_connection}"
+        if self.model.with_dropout:
+            s += f";dropout:{self.model.dropout_rate}"
+        else:
+            s += ";no_dropout"
+        return s
 
 
 if __name__ == "__main__":
