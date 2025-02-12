@@ -40,9 +40,14 @@ class NNLM(torch.nn.Module):
         if self.with_dropout:
             x = self.dropout(x)
         # (batch_size, embedding_dim * (seq_len-1)) -> (batch_size, vocab_size)
-        x = self.b + self.U(self.activation(self.H(x) + self.d))  # no direct connection
-        if self.with_direct_connection:
-            x = x + self.W(x)
+        x1 = self.b + self.U(
+            self.activation(self.H(x) + self.d)
+        )  # no direct connection
+        if not self.with_direct_connection:
+            x = x1
+        else:
+            x2 = self.W(x)
+            x = x1 + x2
         # return logits
         return x
 
@@ -57,7 +62,7 @@ if __name__ == "__main__":
         hidden_dim=60,
         dropout_rate=0.2,
         with_dropout=True,
-        with_direct_connection=False,
+        with_direct_connection=True,
     )
     model = NNLM(config)
     model.to(current_device)
