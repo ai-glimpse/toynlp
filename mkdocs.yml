@@ -8,6 +8,8 @@ copyright: Copyright &copy; 2025 Xiangzhuang Shen
 # Page tree
 nav:
   - Home: index.md
+  - Models:
+    - NNLM: models/nnlm.md
   - Changelog: changelog.md
   - Author's website: https://shenxiangzhuang.github.io/
 
@@ -100,3 +102,31 @@ plugins:
       bib_file: "docs/references.bib"
       csl_file: "docs/ieee.csl"
       cite_inline: false
+  - mkdocstrings:
+      handlers:
+        python:
+          import:
+          - https://docs.python-requests.org/en/master/objects.inv
+          - https://docs.python.org/3/objects.inv
+          - https://mkdocstrings.github.io/objects.inv
+          - https://mkdocstrings.github.io/griffe/objects.inv
+          - https://python-markdown.github.io/objects.inv
+          options:
+            docstring_style: google
+            docstring_options:
+              ignore_init_summary: true
+            docstring_section_style: spacy
+            show_docstring_classes: true
+            show_docstring_attributes: true
+            heading_level: 2
+            members_order: source
+            merge_init_into_class: true
+            separate_signature: true
+            show_root_heading: false
+            show_root_full_path: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            show_root_members_full_path: true
+            show_root_toc_entry: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
