@@ -8,6 +8,12 @@ class NNLM(torch.nn.Module):
         self,
         config: ModelConfig,
     ):
+        """
+        The Neural Network Language Model (NNLM) model.
+
+        Args:
+            config: ModelConfig, the model configuration.
+        """
         super(NNLM, self).__init__()
         self.with_direct_connection = config.with_direct_connection
         self.with_dropout = config.with_dropout
@@ -32,6 +38,16 @@ class NNLM(torch.nn.Module):
         self.dropout = torch.nn.Dropout(config.dropout_rate)
 
     def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the model.
+
+        Args:
+            tokens: torch.Tensor, (batch_size, seq_len-1), the input tokens.
+
+        Returns:
+            torch.Tensor, (batch_size, vocab_size), the logits.
+
+        """
         # tokens: (batch_size, seq_len-1) -> x: (batch_size, seq_len-1, embedding_dim)
         x = self.C(tokens)
         b, _, _ = x.shape
