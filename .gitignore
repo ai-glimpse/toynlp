@@ -1,3 +1,13 @@
+# model
+*.pth
+*.json
+
+# wandb
+wandb/
+
+# uv
+uv.lock
+
 # ide cache
 .vscode
 .idea

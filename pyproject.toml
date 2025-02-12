@@ -26,7 +26,13 @@ classifiers=[
     "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">= 3.10"
-dependencies = []
+dependencies = [
+    "datasets>=3.2.0",
+    "numpy>=2.2.2",
+    "tokenizers>=0.21.0",
+    "torch>=2.5.1",
+    "wandb>=0.19.5",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -42,6 +48,8 @@ dev = [
     "pytest-sugar",
     "hypothesis>=6.112.0",
     "commitizen",
+    "jupyterlab>=4.3.5",
+    "ipywidgets>=8.1.5",
 ]
 docs = [
     "mkdocs",
@@ -82,3 +90,11 @@ changelog_incremental = true
 
 [tool.isort]
 profile = "black"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
