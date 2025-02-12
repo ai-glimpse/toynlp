@@ -166,7 +166,7 @@ if __name__ == "__main__":
             embedding_dim=100,
             hidden_dim=60,
             with_direct_connection=False,
-            with_dropout=True,
+            with_dropout=False,
             dropout_rate=0.2,
         ),
         optimizer=OptimizerConfig(
@@ -178,5 +178,4 @@ if __name__ == "__main__":
         ),
         training=TrainingConfig(epochs=100),
     )
-    config.wandb.name = str(config.model)
     run(config)
