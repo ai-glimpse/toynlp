@@ -166,7 +166,7 @@ if __name__ == "__main__":
             embedding_dim=100,
             hidden_dim=60,
             with_direct_connection=False,
-            with_dropout=False,
+            with_dropout=True,
             dropout_rate=0.2,
         ),
         optimizer=OptimizerConfig(
