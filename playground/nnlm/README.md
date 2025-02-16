@@ -1,9 +1,9 @@
 # NNLM
 
-## 数据集准备
+## 数据集准备 & Tokenizer 训练
 
-Salesforce/wikitext
+详见`prepare.ipynb`.
 
-## Tokenizer 训练
+## 模型训练结果
 
-## 模型训练
+详见训练报告：https://api.wandb.ai/links/mathewshen/xhzp0ruf
