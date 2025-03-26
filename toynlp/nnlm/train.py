@@ -115,7 +115,7 @@ def get_split_dataloader(
     text = " ".join(dataset[split]["text"])
     token_ids = tokenizer.encode(text).ids
     token_ids_tensor = torch.tensor(token_ids).unfold(0, context_size, 1)
-    dataloader = DataLoader(token_ids_tensor, batch_size=batch_size, shuffle=True)
+    dataloader: DataLoader = DataLoader(token_ids_tensor, batch_size=batch_size, shuffle=True)  # type: ignore[arg-type]
     return dataloader
 
 
