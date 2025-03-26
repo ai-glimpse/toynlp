@@ -6,7 +6,7 @@ from toynlp.device import current_device
 from toynlp.nnlm.tokenizer import NNLMTokenizer
 
 
-def evaluate_prompt(text: str):
+def evaluate_prompt(text: str) -> None:
     nnlm_tokenizer = NNLMTokenizer().load()
     token_ids = nnlm_tokenizer.encode(text).ids
     token_ids_tensor = torch.tensor(token_ids).unsqueeze(0).to(current_device)

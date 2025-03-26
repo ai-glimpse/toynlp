@@ -4,7 +4,7 @@ from toynlp.nnlm.config import ModelConfig
 from toynlp.nnlm.model import NNLM
 
 
-def test_nnlm_model_architecture():
+def test_nnlm_model_architecture() -> None:
     n = 6
     vocab_size = 17964
     m = 100
@@ -19,9 +19,7 @@ def test_nnlm_model_architecture():
     )
     model = NNLM(config)
     # |V |(1 + nm + h) + h(1 + (n − 1)m)
-    assert sum(p.numel() for p in model.parameters()) == vocab_size * (
-        1 + n * m + h
-    ) + h * (1 + (n - 1) * m)
+    assert sum(p.numel() for p in model.parameters()) == vocab_size * (1 + n * m + h) + h * (1 + (n - 1) * m)
     assert model(torch.randint(0, vocab_size, (2, 5))).shape == torch.Size(
-        [2, vocab_size]
+        [2, vocab_size],
     )

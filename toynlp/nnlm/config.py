@@ -44,8 +44,8 @@ class NNLMConfig:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     wandb: WanDbConfig = field(default_factory=WanDbConfig)
 
-    def __post_init__(self):
-        """Basic validation"""
+    def __post_init__(self) -> None:
+        """Basic validation."""
         if self.training.epochs <= 0:
             raise ValueError("Epochs must be positive")
         if self.optimizer.learning_rate <= 0:
@@ -55,9 +55,7 @@ class NNLMConfig:
             self.wandb.name = self._get_wandb_name()
 
     def _get_wandb_name(self) -> str:
-        """
-        Fields: hidden_dim, with_dropout, dropout_rate, with_direct_connection
-        """
+        """Fields: hidden_dim, with_dropout, dropout_rate, with_direct_connection."""
         s = f"hidden_dim:{self.model.hidden_dim};with_direct_connection:{self.model.with_direct_connection}"
         if self.model.with_dropout:
             s += f";dropout:{self.model.dropout_rate}"
