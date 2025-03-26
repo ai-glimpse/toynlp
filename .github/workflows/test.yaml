@@ -39,7 +39,7 @@ jobs:
       - name: Lint with Ruff
         run: uv run ruff check
       - name: Run tests and generate coverage report
-        run: uv run pytest --doctest-modules -v --cov=toyml --cov-fail-under 0 --cov-report=term --cov-report=xml --cov-report=html toyml tests
+        run: uv run pytest --doctest-modules -v --cov=toynlp --cov-fail-under 0 --cov-report=term --cov-report=xml --cov-report=html toynlp tests
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
