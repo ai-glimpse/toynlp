@@ -12,7 +12,7 @@ class NNLMTokenizer:
         self,
         model_path: str | None = None,
         vocab_size: int = 20000,
-    ):
+    ) -> None:
         self._model_path = model_path
         self.vocab_size = vocab_size
 
@@ -23,14 +23,15 @@ class NNLMTokenizer:
     def model_path(self) -> str:
         if self._model_path is not None:
             return self._model_path
-        else:
-            p = Path(__file__).parents[2] / "playground" / "nnlm" / "tokenizer.json"
-            p.parents[0].mkdir(parents=True, exist_ok=True)
-            return str(p)
+        p = Path(__file__).parents[2] / "playground" / "nnlm" / "tokenizer.json"
+        p.parents[0].mkdir(parents=True, exist_ok=True)
+        return str(p)
 
-    def train(self, dataset: Dataset):
+    def train(self, dataset: Dataset) -> None:
         trainer = WordLevelTrainer(
-            vocab_size=self.vocab_size, min_frequency=3, special_tokens=["[UNK]"]
+            vocab_size=self.vocab_size,
+            min_frequency=3,
+            special_tokens=["[UNK]"],
         )
         self.tokenizer.train_from_iterator(dataset["text"], trainer=trainer)
         self.tokenizer.save(str(self.model_path))
