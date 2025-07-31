@@ -28,7 +28,8 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
+          cache-dependency-glob: |
+            **/pyproject.toml
 
       - name: Install the project
         run: uv sync --extra dev
