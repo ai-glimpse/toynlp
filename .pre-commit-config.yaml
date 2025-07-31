@@ -12,12 +12,14 @@ repos:
         args: [--fix=lf]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.11.2
+    rev: v0.12.7
     hooks:
       # Run the linter.
-      - id: ruff
+      - id: ruff-check
+        args: ["--config=pyproject.toml", "--fix"]
       # Run the formatter.
       - id: ruff-format
+        args: ["--config=pyproject.toml"]
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.15.0  # Use the sha / tag you want to point at
     hooks:

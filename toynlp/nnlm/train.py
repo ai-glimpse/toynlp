@@ -31,13 +31,9 @@ class NNLMTrainer:
             weight_decay=config.optimizer.weight_decay,
         )
 
-        # model directory creation
-        self._model_path = Path(__file__).parents[2] / "playground" / "nnlm" / "model.pth"
-        self._model_path.parents[0].mkdir(parents=True, exist_ok=True)
-
     @property
-    def model_path(self) -> str:
-        return str(self._model_path)
+    def model_path(self) -> Path:
+        return self.config.paths.model_path
 
     def train(
         self,
@@ -129,24 +125,31 @@ def run(config: NNLMConfig) -> None:
     )
 
     dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
-    tokenizer = NNLMTokenizer().load()
+    tokenizer_model_path = config.paths.tokenizer_path
+    if not Path(tokenizer_model_path).exists():
+        nnlm_tokenizer = NNLMTokenizer(
+            model_path=tokenizer_model_path,
+            vocab_size=config.model.vocab_size,
+        )
+        nnlm_tokenizer.train(dataset["train"])  # type: ignore[unknown-argument]
+    tokenizer = NNLMTokenizer(model_path=tokenizer_model_path).load()
     train_dataloader = get_split_dataloader(
         tokenizer,
-        dataset,
+        dataset,  # type: ignore[unknown-argument]
         "train",
         context_size=config.model.context_size,
         batch_size=config.data.batch_size,
     )
     val_dataloader = get_split_dataloader(
         tokenizer,
-        dataset,
+        dataset,  # type: ignore[unknown-argument]
         "validation",
         context_size=config.model.context_size,
         batch_size=config.data.batch_size,
     )
     test_dataloader = get_split_dataloader(
         tokenizer,
-        dataset,
+        dataset,  # type: ignore[unknown-argument]
         "test",
         context_size=config.model.context_size,
         batch_size=config.data.batch_size,

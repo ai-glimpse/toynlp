@@ -1,6 +1,7 @@
 # model
 *.pth
 *.json
+models/
 
 # wandb
 wandb/
