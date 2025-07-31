@@ -35,7 +35,7 @@ jobs:
       - name: Lint with Mypy
         run: uv run mypy .
       - name: Lint with Ruff
-        run: uv run ruff check
+        run: uv run ruff check --config=pyproject.toml
       - name: Run tests and generate coverage report
         run: uv run pytest --doctest-modules -v --cov=toynlp --cov-fail-under 0 --cov-report=term --cov-report=xml --cov-report=html toynlp tests
 
