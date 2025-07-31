@@ -1,4 +1,7 @@
+import pathlib
 from dataclasses import dataclass, field
+
+from toynlp.paths import MODEL_PATH
 
 
 @dataclass
@@ -37,12 +40,24 @@ class WanDbConfig:
 
 
 @dataclass
+class NNLMPathConfig:
+    model_path: pathlib.Path = MODEL_PATH / "nnlm" / "model.pt"
+    tokenizer_path: pathlib.Path = MODEL_PATH / "nnlm" / "tokenizer.json"
+
+    def __post_init__(self) -> None:
+        """Ensure paths are absolute."""
+        self.model_path.parent.mkdir(parents=True, exist_ok=True)
+        self.tokenizer_path.parent.mkdir(parents=True, exist_ok=True)
+
+
+@dataclass
 class NNLMConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     wandb: WanDbConfig = field(default_factory=WanDbConfig)
+    paths: NNLMPathConfig = field(default_factory=NNLMPathConfig)
 
     def __post_init__(self) -> None:
         """Basic validation."""

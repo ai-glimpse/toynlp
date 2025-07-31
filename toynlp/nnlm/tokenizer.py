@@ -10,7 +10,7 @@ from tokenizers.trainers import WordLevelTrainer
 class NNLMTokenizer:
     def __init__(
         self,
-        model_path: str | None = None,
+        model_path: Path,
         vocab_size: int = 20000,
     ) -> None:
         self._model_path = model_path
@@ -21,11 +21,7 @@ class NNLMTokenizer:
 
     @property
     def model_path(self) -> str:
-        if self._model_path is not None:
-            return self._model_path
-        p = Path(__file__).parents[2] / "playground" / "nnlm" / "tokenizer.json"
-        p.parents[0].mkdir(parents=True, exist_ok=True)
-        return str(p)
+        return self._model_path
 
     def train(self, dataset: Dataset) -> None:
         trainer = WordLevelTrainer(

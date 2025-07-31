@@ -2,11 +2,11 @@ from dataclasses import asdict
 from pathlib import Path
 
 import torch
-import wandb
 from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
+import wandb
 from toynlp.device import current_device
 from toynlp.nnlm.config import (
     DataConfig,
@@ -31,13 +31,9 @@ class NNLMTrainer:
             weight_decay=config.optimizer.weight_decay,
         )
 
-        # model directory creation
-        self._model_path = Path(__file__).parents[2] / "playground" / "nnlm" / "model.pth"
-        self._model_path.parents[0].mkdir(parents=True, exist_ok=True)
-
     @property
     def model_path(self) -> str:
-        return str(self._model_path)
+        return self.config.paths.model_path
 
     def train(
         self,
@@ -129,7 +125,16 @@ def run(config: NNLMConfig) -> None:
     )
 
     dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
-    tokenizer = NNLMTokenizer().load()
+    tokenizer_model_path = config.paths.tokenizer_path
+    if not Path(tokenizer_model_path).exists():
+        tokenizer = NNLMTokenizer(
+            model_path=tokenizer_model_path,
+            vocab_size=config.model.vocab_size,
+        )
+        tokenizer.train(dataset["train"])
+    else:
+        tokenizer = NNLMTokenizer(model_path=tokenizer_model_path)
+        tokenizer.load()
     train_dataloader = get_split_dataloader(
         tokenizer,
         dataset,
