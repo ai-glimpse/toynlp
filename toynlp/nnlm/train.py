@@ -2,11 +2,11 @@ from dataclasses import asdict
 from pathlib import Path
 
 import torch
-import wandb
 from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
+import wandb
 from toynlp.device import current_device
 from toynlp.nnlm.config import (
     DataConfig,

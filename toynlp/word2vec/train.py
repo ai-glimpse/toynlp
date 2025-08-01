@@ -2,8 +2,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 import torch
-from datasets import Dataset, load_dataset
-from tokenizers import Tokenizer
+from datasets import load_dataset
 from torch.utils.data import DataLoader
 
 import wandb
@@ -15,6 +14,7 @@ from toynlp.word2vec.config import (
     TrainingConfig,
     Word2VecConfig,
 )
+from toynlp.word2vec.dataset import get_split_dataloader
 from toynlp.word2vec.model import Word2VecModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
@@ -45,13 +45,12 @@ class Word2VecTrainer:
         for epoch in range(self.config.training.epochs):
             self.model.train()
             self.optimizer.zero_grad()
-            for _, batch in enumerate(train_dataloader):
-                input_batch, target_batch = batch[:, :-1], batch[:, -1]
-                input_batch, target_batch = (
+            for input_batch, target_batch in train_dataloader:
+                input_batch_device, target_batch_device = (
                     input_batch.to(self.device),
                     target_batch.to(self.device),
                 )
-                loss = self.calc_loss_batch(input_batch, target_batch)
+                loss = self.calc_loss_batch(input_batch_device, target_batch_device)
                 loss.backward()
                 self.optimizer.step()
                 # print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item()}")
@@ -89,30 +88,15 @@ class Word2VecTrainer:
     def calc_loss_loader(self, data_loader: DataLoader) -> float:
         total_loss = 0.0
         total_samples = 0  # Track total samples
-        for batch in data_loader:
-            input_batch, target_batch = batch[:, :-1], batch[:, -1]
-            input_batch, target_batch = (
+        for input_batch, target_batch in data_loader:
+            input_batch_device, target_batch_device = (
                 input_batch.to(self.device),
                 target_batch.to(self.device),
             )
-            loss = self.calc_loss_batch(input_batch, target_batch)
+            loss = self.calc_loss_batch(input_batch_device, target_batch_device)
             total_loss += loss.item() * input_batch.size(0)  # Multiply by batch size
             total_samples += input_batch.size(0)
         return total_loss / total_samples  # Correct average
-
-
-def get_split_dataloader(
-    tokenizer: Tokenizer,
-    dataset: Dataset,
-    split: str,
-    context_size: int = 6,
-    batch_size: int = 32,
-) -> DataLoader:
-    text = " ".join(dataset[split]["text"])
-    token_ids = tokenizer.encode(text).ids
-    token_ids_tensor = torch.tensor(token_ids).unfold(0, context_size, 1)
-    dataloader: DataLoader = DataLoader(token_ids_tensor, batch_size=batch_size, shuffle=True)  # type: ignore[arg-type]
-    return dataloader
 
 
 def run(config: Word2VecConfig) -> None:
@@ -134,25 +118,22 @@ def run(config: Word2VecConfig) -> None:
         word2vec_tokenizer.train(dataset["train"])  # type: ignore[unknown-argument]
     tokenizer = Word2VecTokenizer(model_path=tokenizer_model_path).load()
     train_dataloader = get_split_dataloader(
-        tokenizer,
         dataset,  # type: ignore[unknown-argument]
         "train",
-        context_size=config.model.context_size,
-        batch_size=config.data.batch_size,
+        tokenizer=tokenizer,
+        data_config=config.data,
     )
     val_dataloader = get_split_dataloader(
-        tokenizer,
         dataset,  # type: ignore[unknown-argument]
         "validation",
-        context_size=config.model.context_size,
-        batch_size=config.data.batch_size,
+        tokenizer=tokenizer,
+        data_config=config.data,
     )
     test_dataloader = get_split_dataloader(
-        tokenizer,
         dataset,  # type: ignore[unknown-argument]
-        "test",
-        context_size=config.model.context_size,
-        batch_size=config.data.batch_size,
+        "validation",
+        tokenizer=tokenizer,
+        data_config=config.data,
     )
 
     trainer = Word2VecTrainer(config)
@@ -171,7 +152,7 @@ if __name__ == "__main__":
             weight_decay=1e-4,
         ),
         data=DataConfig(
-            batch_size=256,
+            batch_size=1024,
         ),
         training=TrainingConfig(epochs=5),
     )

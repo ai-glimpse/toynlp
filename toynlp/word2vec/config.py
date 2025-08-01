@@ -9,6 +9,18 @@ class DatasetConfig:
     path: str = "Salesforce/wikitext"
     name: str = "wikitext-2-raw-v1"
 
+
+@dataclass
+class DataConfig:
+    # token processing
+    cbow_n_words: int = 2
+
+    # data loader
+    batch_size: int = 32
+    num_workers: int = 4
+    shuffle: bool = True
+
+
 @dataclass
 class OptimizerConfig:
     learning_rate: float = 1e-4
@@ -20,13 +32,6 @@ class ModelConfig:
     context_size: int = 5
     vocab_size: int = 20000
     embedding_dim: int = 100
-
-
-@dataclass
-class DataConfig:
-    batch_size: int = 32
-    num_workers: int = 4
-    shuffle: bool = True
 
 
 @dataclass
