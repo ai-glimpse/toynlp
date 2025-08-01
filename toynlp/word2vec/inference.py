@@ -40,8 +40,28 @@ def vocab_embedding() -> torch.Tensor:
 
 def find_similar_words(word: str, top_k: int = 5) -> list[str]:
     tokenizer, model = load_tokenizer_model()
-    word_vec = word_to_vec(word)
-    similar_words = find_similar_words_by_vec(word_vec, top_k)
+    
+    # Get word vector
+    token_ids = tokenizer.encode(word).ids
+    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0).to(current_device)
+    with torch.no_grad():
+        word_vec = model.embedding(token_ids_tensor)[0, 0, :]
+    
+    # Find similar words using the same tokenizer and model
+    vocab = tokenizer.get_vocab()
+    vocab_ids = list(vocab.values())
+    
+    # Get embeddings for all vocabulary tokens
+    vocab_ids_tensor = torch.tensor(vocab_ids, dtype=torch.long).unsqueeze(0).to(current_device)
+    with torch.no_grad():
+        all_embeddings = model.embedding(vocab_ids_tensor).squeeze(0)
+
+    similarities = torch.nn.functional.cosine_similarity(word_vec.unsqueeze(0), all_embeddings, dim=1)
+    top_k_indices = torch.topk(similarities, k=top_k).indices
+
+    # Map indices back to actual token IDs and decode them
+    similar_token_ids = [vocab_ids[i] for i in top_k_indices]
+    similar_words = [tokenizer.decode([token_id]) for token_id in similar_token_ids]
     return similar_words
 
 
@@ -51,11 +71,20 @@ def calc_vecs_similarity(vec1: torch.Tensor, vec2: torch.Tensor) -> float:
 
 def find_similar_words_by_vec(word_vec: torch.Tensor, top_k: int = 5) -> list[str]:
     tokenizer, model = load_tokenizer_model()
-    all_embeddings = vocab_embedding()
+    vocab = tokenizer.get_vocab()
+    vocab_ids = list(vocab.values())
+
+    # Get embeddings for all vocabulary tokens
+    vocab_ids_tensor = torch.tensor(vocab_ids, dtype=torch.long).unsqueeze(0).to(current_device)
+    with torch.no_grad():
+        all_embeddings = model.embedding(vocab_ids_tensor).squeeze(0)
 
     similarities = torch.nn.functional.cosine_similarity(word_vec.unsqueeze(0), all_embeddings, dim=1)
     top_k_indices = torch.topk(similarities, k=top_k).indices
-    similar_words = [tokenizer.decode([i]) for i in top_k_indices]
+
+    # Map indices back to actual token IDs and decode them
+    similar_token_ids = [vocab_ids[i] for i in top_k_indices]
+    similar_words = [tokenizer.decode([token_id]) for token_id in similar_token_ids]
     return similar_words
 
 
