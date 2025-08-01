@@ -29,40 +29,26 @@ def word_to_vec(word: str) -> torch.Tensor:
     return vec[0, 0, :]
 
 
-def vocab_embedding() -> torch.Tensor:
-    tokenizer, model = load_tokenizer_model()
+def vocab_embedding(
+    tokenizer: Tokenizer | None = None, model: Word2VecModel | None = None,
+) -> tuple[torch.Tensor, list[int]]:
+    """Returns vocabulary embeddings and corresponding token IDs."""
+    if tokenizer is None or model is None:
+        tokenizer, model = load_tokenizer_model()
+
     vocab = tokenizer.get_vocab()
-    x = torch.tensor(list(vocab.values()), dtype=torch.long).unsqueeze(0).to(current_device)
+    vocab_ids = list(vocab.values())
+    vocab_ids_tensor = torch.tensor(vocab_ids, dtype=torch.long).unsqueeze(0).to(current_device)
+
     with torch.no_grad():
-        vec = model.embedding(x)
-    return vec.squeeze(0)
+        embeddings = model.embedding(vocab_ids_tensor).squeeze(0)
+
+    return embeddings, vocab_ids
 
 
 def find_similar_words(word: str, top_k: int = 5) -> list[str]:
-    tokenizer, model = load_tokenizer_model()
-    
-    # Get word vector
-    token_ids = tokenizer.encode(word).ids
-    token_ids_tensor = torch.tensor(token_ids).unsqueeze(0).to(current_device)
-    with torch.no_grad():
-        word_vec = model.embedding(token_ids_tensor)[0, 0, :]
-    
-    # Find similar words using the same tokenizer and model
-    vocab = tokenizer.get_vocab()
-    vocab_ids = list(vocab.values())
-    
-    # Get embeddings for all vocabulary tokens
-    vocab_ids_tensor = torch.tensor(vocab_ids, dtype=torch.long).unsqueeze(0).to(current_device)
-    with torch.no_grad():
-        all_embeddings = model.embedding(vocab_ids_tensor).squeeze(0)
-
-    similarities = torch.nn.functional.cosine_similarity(word_vec.unsqueeze(0), all_embeddings, dim=1)
-    top_k_indices = torch.topk(similarities, k=top_k).indices
-
-    # Map indices back to actual token IDs and decode them
-    similar_token_ids = [vocab_ids[i] for i in top_k_indices]
-    similar_words = [tokenizer.decode([token_id]) for token_id in similar_token_ids]
-    return similar_words
+    word_vec = word_to_vec(word)
+    return find_similar_words_by_vec(word_vec, top_k)
 
 
 def calc_vecs_similarity(vec1: torch.Tensor, vec2: torch.Tensor) -> float:
@@ -71,13 +57,7 @@ def calc_vecs_similarity(vec1: torch.Tensor, vec2: torch.Tensor) -> float:
 
 def find_similar_words_by_vec(word_vec: torch.Tensor, top_k: int = 5) -> list[str]:
     tokenizer, model = load_tokenizer_model()
-    vocab = tokenizer.get_vocab()
-    vocab_ids = list(vocab.values())
-
-    # Get embeddings for all vocabulary tokens
-    vocab_ids_tensor = torch.tensor(vocab_ids, dtype=torch.long).unsqueeze(0).to(current_device)
-    with torch.no_grad():
-        all_embeddings = model.embedding(vocab_ids_tensor).squeeze(0)
+    all_embeddings, vocab_ids = vocab_embedding(tokenizer, model)
 
     similarities = torch.nn.functional.cosine_similarity(word_vec.unsqueeze(0), all_embeddings, dim=1)
     top_k_indices = torch.topk(similarities, k=top_k).indices
@@ -88,7 +68,7 @@ def find_similar_words_by_vec(word_vec: torch.Tensor, top_k: int = 5) -> list[st
     return similar_words
 
 
-def evaluate_model(text: str) -> None:
+def evaluate_model_context(text: str) -> None:
     tokenizer, model = load_tokenizer_model()
     token_ids = tokenizer.encode(text).ids
     token_ids_tensor = torch.tensor(token_ids).unsqueeze(0).to(current_device)
@@ -99,15 +79,19 @@ def evaluate_model(text: str) -> None:
         print(tokenizer.decode(pred.tolist()))
 
 
-if __name__ == "__main__":
-    # evaluate_model("machine learning a method")
+def evaludate_embedding() -> None:
+    print(f"Embedding for 'machine': {word_to_vec('machine').shape}")
 
-    # print(word_to_vec("machine").shape)
-    # print(vocab_embedding().shape)
+    embeddings, _ = vocab_embedding()
+    print("Vocabulary embeddings shape:", embeddings.shape)
 
-    word = "machine"
-    print(f"[{word}]'s similar words: {find_similar_words(word, top_k=10)}")
 
+def evaluate_similar_words(word: str, top_k: int = 5) -> None:
+    similar_words = find_similar_words(word, top_k)
+    print(f"[{word}]'s similar words: {similar_words}")
+
+
+def evaluate_king_queen():
     # king - man + women
     king_vec = word_to_vec("king")
     man_vec = word_to_vec("man")
@@ -116,8 +100,16 @@ if __name__ == "__main__":
     queen_vec = word_to_vec("queen")
 
     similar_words = find_similar_words_by_vec(res_vec, top_k=10)
-    print(f"similarity res: {similar_words}")
+    print(f"[king-man+women]'s similar words: {similar_words}")
 
     print(f"similarity king-queen: {calc_vecs_similarity(king_vec, queen_vec)}")
     print(f"similarity man-woman: {calc_vecs_similarity(man_vec, woman_vec)}")
-    print(f"similarity res-queen: {calc_vecs_similarity(res_vec, queen_vec)}")
+    print(f"similarity (king-man+women)-queen: {calc_vecs_similarity(res_vec, queen_vec)}")
+
+
+if __name__ == "__main__":
+    # evaluate_model_context("machine learning a method")
+
+    evaludate_embedding()
+    evaluate_similar_words("home", top_k=10)
+    evaluate_king_queen()
