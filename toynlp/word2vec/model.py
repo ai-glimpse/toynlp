@@ -44,3 +44,7 @@ if __name__ == "__main__":
     example_input = torch.tensor([[1, 2, 3, 4, 5]], dtype=torch.long)  # Example input tensor
     output = model(example_input)
     print(output.shape)  # Should print torch.Size([1, 20000])
+
+    # print model parameters count
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Total parameters: {total_params}")
