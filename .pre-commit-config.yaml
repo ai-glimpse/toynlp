@@ -24,8 +24,6 @@ repos:
     rev: v1.15.0  # Use the sha / tag you want to point at
     hooks:
       - id: mypy
-        additional_dependencies:
-          - 'numpy'
         args: ["--config-file", "pyproject.toml",
                "--install-types", "--non-interactive", "--ignore-missing-imports", "--check-untyped-defs"
         ]
