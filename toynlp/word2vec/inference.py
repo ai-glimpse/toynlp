@@ -107,9 +107,21 @@ def evaluate_king_queen():
     print(f"similarity (king-man+women)-queen: {calc_vecs_similarity(res_vec, queen_vec)}")
 
 
+def evaluate_word_addition(words: list[str]) -> None:
+    word_vecs = [word_to_vec(word) for word in words]
+    res_vec = torch.sum(torch.stack(word_vecs), dim=0)
+    similar_words = find_similar_words_by_vec(res_vec, top_k=10)
+    print(f"[{' + '.join(words)}]'s most similar words:")
+    for i, word in enumerate(similar_words, 1):
+        print(f"  {i:2d}. 🔸 {word}")
+
+
 if __name__ == "__main__":
     # evaluate_model_context("machine learning a method")
 
-    evaludate_embedding()
-    evaluate_similar_words("home", top_k=10)
-    evaluate_king_queen()
+    # evaludate_embedding()
+    # evaluate_similar_words("home", top_k=10)
+    # evaluate_king_queen()
+
+    evaluate_word_addition(["tall", "rich", "handsome"])
+    evaluate_word_addition(["white", "rich", "beautiful"])
