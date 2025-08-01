@@ -1,9 +1,10 @@
 from pathlib import Path
 
 from datasets import Dataset
-from tokenizers import Tokenizer
+from tokenizers import Tokenizer, normalizers
 from tokenizers.models import WordLevel
-from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.normalizers import NFD, Lowercase, StripAccents
+from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.trainers import WordLevelTrainer
 
 
@@ -17,12 +18,21 @@ class Word2VecTokenizer:
         self.vocab_size = vocab_size
 
         self.tokenizer = Tokenizer(WordLevel(vocab=None, unk_token="[UNK]"))
-        self.tokenizer.pre_tokenizer = Whitespace()
+        self.tokenizer.pre_tokenizer = Sequence([
+            Punctuation(behavior="removed"),  # Remove punctuation during pre-tokenization
+            Whitespace(),
+        ])
+        self.tokenizer.normalizer = normalizers.Sequence([
+            NFD(),
+            Lowercase(),
+            StripAccents(),
+        ])  # type: ignore[assignment]
+
 
     def train(self, dataset: Dataset) -> Tokenizer:
         trainer = WordLevelTrainer(
             vocab_size=self.vocab_size,  # type: ignore[unknown-argument]
-            min_frequency=3,  # type: ignore[unknown-argument]
+            min_frequency=50,  # type: ignore[unknown-argument]
             special_tokens=["[UNK]"],  # type: ignore[unknown-argument]
         )
         self.tokenizer.train_from_iterator(dataset["text"], trainer=trainer)
@@ -35,15 +45,9 @@ class Word2VecTokenizer:
 
 
 if __name__ == "__main__":
-    from toynlp.word2vec.config import PathConfig
-    from toynlp.word2vec.dataset import get_dataset
-
-    tokenizer_path = PathConfig().tokenizer_path
-
-    tokenizer = Word2VecTokenizer(model_path=tokenizer_path, vocab_size=20000)
-    training_dataset = get_dataset()
-    tokenizer.train(training_dataset["train"])  # type: ignore[unknown-argument]
+    from toynlp.word2vec.config import Word2VecPathConfig
+    tokenizer_path = Word2VecPathConfig().tokenizer_path
 
     word2vec_tokenizer = Word2VecTokenizer(tokenizer_path).load()
-    print(word2vec_tokenizer.encode("Hello World"))
+    print(word2vec_tokenizer.encode("Hello, World!").ids)
     print(word2vec_tokenizer.decode([0, 1, 2, 3, 4, 5]))

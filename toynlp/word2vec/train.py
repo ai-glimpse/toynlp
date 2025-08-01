@@ -77,7 +77,6 @@ class Word2VecTrainer:
 
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
-                    # torch.save(self.model.state_dict(), "word2vec.pth")
                     torch.save(self.model, self.model_path)
 
     def calc_loss_batch(self, input_batch: torch.Tensor, target_batch: torch.Tensor) -> torch.Tensor:
@@ -99,7 +98,22 @@ class Word2VecTrainer:
         return total_loss / total_samples  # Correct average
 
 
-def run(config: Word2VecConfig) -> None:
+def train_tokenizer(config: Word2VecConfig) -> None:
+    path_config = config.paths
+    tokenizer_model_path = path_config.tokenizer_path
+
+    if not Path(tokenizer_model_path).exists():
+        word2vec_tokenizer = Word2VecTokenizer(
+            model_path=tokenizer_model_path,
+            vocab_size=config.model.vocab_size,
+        )
+        dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
+        word2vec_tokenizer.train(dataset["train"])  # type: ignore[unknown-argument]
+    else:
+        print(f"Tokenizer already exists at {tokenizer_model_path}")
+
+
+def train_model(config: Word2VecConfig) -> None:
     wandb.init(
         # set the wandb project where this run will be logged
         project=config.wandb.project,
@@ -107,15 +121,8 @@ def run(config: Word2VecConfig) -> None:
         # track hyperparameters and run metadata
         config=asdict(config),
     )
-
     dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
     tokenizer_model_path = config.paths.tokenizer_path
-    if not Path(tokenizer_model_path).exists():
-        word2vec_tokenizer = Word2VecTokenizer(
-            model_path=tokenizer_model_path,
-            vocab_size=config.model.vocab_size,
-        )
-        word2vec_tokenizer.train(dataset["train"])  # type: ignore[unknown-argument]
     tokenizer = Word2VecTokenizer(model_path=tokenizer_model_path).load()
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
@@ -143,17 +150,17 @@ def run(config: Word2VecConfig) -> None:
 if __name__ == "__main__":
     config = Word2VecConfig(
         model=ModelConfig(
-            context_size=5,
-            vocab_size=20000,
-            embedding_dim=100,
+            embedding_dim=256,
         ),
         optimizer=OptimizerConfig(
             learning_rate=1e-4,
             weight_decay=1e-4,
         ),
         data=DataConfig(
-            batch_size=1024,
+            batch_size=256,
         ),
         training=TrainingConfig(epochs=5),
     )
-    run(config)
+
+    train_tokenizer(config)
+    train_model(config)

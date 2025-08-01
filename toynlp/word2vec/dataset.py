@@ -7,8 +7,8 @@ from toynlp.word2vec.config import DataConfig
 
 
 def get_dataset(
-    dataset_path: str = "Salesforce/wikitext",
-    dataset_name: str = "wikitext-2-raw-v1",
+    dataset_path: str,
+    dataset_name: str,
 ) -> DatasetDict:
     dataset = load_dataset(path=dataset_path, name=dataset_name)
     return dataset  # type: ignore[return-value]
@@ -56,16 +56,20 @@ def get_split_dataloader(
 
 
 if __name__ == "__main__":
-    from toynlp.word2vec.config import DataConfig, PathConfig
+    from toynlp.word2vec.config import DataConfig, DatasetConfig, Word2VecPathConfig
     from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
     data_config = DataConfig()
-    path_config = PathConfig()
+    dataset_config = DatasetConfig()
+    path_config = Word2VecPathConfig()
 
-    dataset = get_dataset()
+    dataset = get_dataset(
+        dataset_path=dataset_config.path,
+        dataset_name=dataset_config.name,
+    )
 
     tokenizer = Word2VecTokenizer(model_path=path_config.tokenizer_path).load()
     train_dataloader = get_split_dataloader(dataset, "train", tokenizer, data_config)
     for batch_input, batch_target in train_dataloader:
-        print(batch_input, batch_target)
+        print(batch_input.shape, batch_target.shape)
         break

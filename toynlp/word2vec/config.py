@@ -7,13 +7,13 @@ from toynlp.paths import MODEL_PATH
 @dataclass
 class DatasetConfig:
     path: str = "Salesforce/wikitext"
-    name: str = "wikitext-2-raw-v1"
+    name: str = "wikitext-103-raw-v1"
 
 
 @dataclass
 class DataConfig:
     # token processing
-    cbow_n_words: int = 2
+    cbow_n_words: int = 4
 
     # data loader
     batch_size: int = 32
@@ -29,9 +29,9 @@ class OptimizerConfig:
 
 @dataclass
 class ModelConfig:
-    context_size: int = 5
+    context_size: int = 9
     vocab_size: int = 20000
-    embedding_dim: int = 100
+    embedding_dim: int = 256
 
 
 @dataclass
@@ -46,7 +46,7 @@ class WanDbConfig:
 
 
 @dataclass
-class PathConfig:
+class Word2VecPathConfig:
     model_path: pathlib.Path = MODEL_PATH / "word2vec" / "model.pt"
     tokenizer_path: pathlib.Path = MODEL_PATH / "word2vec" / "tokenizer.json"
 
@@ -64,7 +64,7 @@ class Word2VecConfig:
     data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     wandb: WanDbConfig = field(default_factory=WanDbConfig)
-    paths: PathConfig = field(default_factory=PathConfig)
+    paths: Word2VecPathConfig = field(default_factory=Word2VecPathConfig)
 
     def __post_init__(self) -> None:
         """Basic validation."""
