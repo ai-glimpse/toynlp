@@ -2,7 +2,6 @@ from pathlib import Path
 
 from huggingface_hub import HfApi
 
-from toynlp.paths import W2V_TOKENIZER_PATH
 from toynlp.word2vec.inference import load_tokenizer_model
 from toynlp.word2vec.model import CbowModel
 
@@ -25,10 +24,8 @@ def push_tokenizer_to_hub(path: Path, repo_id: str) -> None:
 
 
 if __name__ == "__main__":
-    # Load the trained model
     tokenizer, model = load_tokenizer_model()
-    # Push the model to the Hugging Face Hub
 
     repo_id = "AI-Glimpse/word2vec-cbow-wiki-103"
-    # push_model_to_hub(model, repo_id)
-    push_tokenizer_to_hub(W2V_TOKENIZER_PATH, repo_id)
+    push_model_to_hub(model, repo_id)
+    # push_tokenizer_to_hub(W2V_TOKENIZER_PATH, repo_id)

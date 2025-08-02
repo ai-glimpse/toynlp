@@ -77,7 +77,7 @@ class Word2VecTrainer:
         total_loss = 0.0
         total_samples = 0
         for input_batch, target_batch in train_dataloader:
-            self.optimizer.zero_grad()  # Note: Zero gradients before backward pass
+            self.optimizer.zero_grad()
             input_batch_device, target_batch_device = (
                 input_batch.to(self.device),
                 target_batch.to(self.device),
@@ -172,11 +172,10 @@ def train_cbow():
             name="wikitext-103-raw-v1",
         ),
         model=ModelConfig(
-            embedding_dim=256,
+            embedding_dim=100,
         ),
         optimizer=OptimizerConfig(
-            learning_rate=1e-4,
-            weight_decay=1e-4,
+            learning_rate=0.01,
         ),
         data=DataConfig(
             batch_size=512,
@@ -197,11 +196,10 @@ def train_skip_gram():
             name="wikitext-103-raw-v1",
         ),
         model=ModelConfig(
-            embedding_dim=256,
+            embedding_dim=100,
         ),
         optimizer=OptimizerConfig(
-            learning_rate=1e-4,
-            weight_decay=1e-4,
+            learning_rate=0.01,
         ),
         data=DataConfig(
             batch_size=64,
@@ -215,5 +213,5 @@ def train_skip_gram():
 
 
 if __name__ == "__main__":
-    # train_skip_gram()
-    train_cbow()
+    # train_cbow()
+    train_skip_gram()
