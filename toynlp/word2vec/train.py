@@ -10,6 +10,7 @@ from toynlp.device import current_device
 from toynlp.paths import CBOW_MODEL_PATH, SKIP_GRAM_MODEL_PATH, W2V_TOKENIZER_PATH
 from toynlp.word2vec.config import (
     DataConfig,
+    DatasetConfig,
     ModelConfig,
     OptimizerConfig,
     TrainingConfig,
@@ -45,42 +46,56 @@ class Word2VecTrainer:
     ) -> None:
         best_val_loss = float("inf")
         for epoch in range(self.config.training.epochs):
-            self.model.train()
-            self.optimizer.zero_grad()
-            for input_batch, target_batch in train_dataloader:
-                input_batch_device, target_batch_device = (
-                    input_batch.to(self.device),
-                    target_batch.to(self.device),
-                )
-                loss = self.calc_loss_batch(input_batch_device, target_batch_device)
-                loss.backward()
-                self.optimizer.step()
-                # print(f"Epoch {epoch}, Batch {i}, Loss: {loss.item()}")
+            train_loss = self._train_epoch(train_dataloader)
+            val_loss, test_loss = self._validate_epoch(val_dataloader, test_dataloader)
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                torch.save(self.model, self.model_path)
+                print(f"Saved best model to {self.model_path}")
 
-            self.model.eval()
-            with torch.no_grad():
-                train_loss = self.calc_loss_loader(train_dataloader)
-                val_loss = self.calc_loss_loader(val_dataloader)
-                test_loss = self.calc_loss_loader(test_dataloader)
-                print(
-                    f"Epoch {epoch}, Train Loss: {train_loss}, Val Loss: {val_loss}, Test Loss: {test_loss}",
-                )
-                # log metrics to wandb
-                wandb.log(
-                    {
-                        "TrainLoss": train_loss,
-                        "Val Loss": val_loss,
-                        "Test Loss": test_loss,
-                        "TrainPerplexity": torch.exp(torch.tensor(train_loss)),
-                        "ValPerplexity": torch.exp(torch.tensor(val_loss)),
-                        "TestPerplexity": torch.exp(torch.tensor(test_loss)),
-                    },
-                )
+            print(
+                f"Epoch {epoch + 1}/{self.config.training.epochs} - "
+                f"Train Loss: {train_loss:.4f}, "
+                f"Val Loss: {val_loss:.4f}, "
+                f"Test Loss: {test_loss:.4f}",
+            )
 
-                if val_loss < best_val_loss:
-                    best_val_loss = val_loss
-                    torch.save(self.model, self.model_path)
-                    print(f"Saved best model to {self.model_path}")
+            # log metrics to wandb
+            wandb.log(
+                {
+                    "TrainLoss": train_loss,
+                    "Val Loss": val_loss,
+                    "Test Loss": test_loss,
+                    "TrainPerplexity": torch.exp(torch.tensor(train_loss)),
+                    "ValPerplexity": torch.exp(torch.tensor(val_loss)),
+                    "TestPerplexity": torch.exp(torch.tensor(test_loss)),
+                },
+            )
+
+    def _train_epoch(self, train_dataloader: DataLoader) -> float:
+        self.model.train()
+        total_loss = 0.0
+        total_samples = 0
+        for input_batch, target_batch in train_dataloader:
+            self.optimizer.zero_grad()  # Note: Zero gradients before backward pass
+            input_batch_device, target_batch_device = (
+                input_batch.to(self.device),
+                target_batch.to(self.device),
+            )
+            loss = self.calc_loss_batch(input_batch_device, target_batch_device)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item() * input_batch.size(0)  # Multiply by batch size
+            total_samples += input_batch.size(0)
+        train_loss = total_loss / total_samples
+        return train_loss
+
+    def _validate_epoch(self, val_dataloader: DataLoader, test_dataloader: DataLoader) -> tuple[float, float]:
+        self.model.eval()
+        with torch.no_grad():
+            val_loss = self.calc_loss_loader(val_dataloader)
+            test_loss = self.calc_loss_loader(test_dataloader)
+        return val_loss, test_loss
 
     def calc_loss_batch(self, input_batch: torch.Tensor, target_batch: torch.Tensor) -> torch.Tensor:
         logits = self.model(input_batch)
@@ -149,18 +164,34 @@ def train_model(config: Word2VecConfig) -> None:
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
-if __name__ == "__main__":
-    from toynlp.word2vec.config import (
-        DataConfig,
-        DatasetConfig,
-        ModelConfig,
-        OptimizerConfig,
-        TrainingConfig,
-        Word2VecConfig,
+def train_cbow():
+    config = Word2VecConfig(
+        model_name="cbow",
+        dataset=DatasetConfig(
+            path="Salesforce/wikitext",
+            name="wikitext-103-raw-v1",
+        ),
+        model=ModelConfig(
+            embedding_dim=256,
+        ),
+        optimizer=OptimizerConfig(
+            learning_rate=1e-4,
+            weight_decay=1e-4,
+        ),
+        data=DataConfig(
+            batch_size=512,
+            num_workers=8,
+        ),
+        training=TrainingConfig(epochs=10),
     )
 
+    train_tokenizer(config)
+    train_model(config)
+
+
+def train_skip_gram():
     config = Word2VecConfig(
-        model_name="skip_gram",  # or "cbow"
+        model_name="skip_gram",
         dataset=DatasetConfig(
             path="Salesforce/wikitext",
             name="wikitext-103-raw-v1",
@@ -181,3 +212,8 @@ if __name__ == "__main__":
 
     train_tokenizer(config)
     train_model(config)
+
+
+if __name__ == "__main__":
+    # train_skip_gram()
+    train_cbow()
