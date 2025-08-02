@@ -1,9 +1,10 @@
+from huggingface_hub import PyTorchModelHubMixin
 from torch import Tensor, nn
 
 from toynlp.word2vec.config import ModelConfig
 
 
-class Word2VecModel(nn.Module):
+class Word2VecModel(nn.Module, PyTorchModelHubMixin):
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         self.config = config

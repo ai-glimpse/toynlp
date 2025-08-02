@@ -21,7 +21,9 @@ classifiers=[
 requires-python = ">= 3.12"
 dependencies = [
     "datasets>=3.2.0",
+    "huggingface-hub>=0.28.1",
     "numpy>=2.2.2",
+    "safetensors>=0.5.3",
     "tokenizers>=0.21.0",
     "torch>=2.5.1",
     "wandb>=0.19.5",
