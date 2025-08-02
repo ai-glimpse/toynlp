@@ -35,9 +35,9 @@ def collate_cbow_fn(
             target = token_ids[i]
             batch_input.append(context)
             batch_target.append(target)
-    batch_input = torch.tensor(batch_input, dtype=torch.long)
-    batch_target = torch.tensor(batch_target, dtype=torch.long)
-    return batch_input, batch_target
+    batch_input_tensor = torch.tensor(batch_input, dtype=torch.long)
+    batch_target_tensor = torch.tensor(batch_target, dtype=torch.long)
+    return batch_input_tensor, batch_target_tensor
 
 
 def collate_skip_gram_fn(
@@ -60,9 +60,9 @@ def collate_skip_gram_fn(
             for context in context_words:
                 batch_input.append(context)
                 batch_target.append(target)
-    batch_input = torch.tensor(batch_input, dtype=torch.long)
-    batch_target = torch.tensor(batch_target, dtype=torch.long)
-    return batch_input, batch_target
+    batch_input_tensor = torch.tensor(batch_input, dtype=torch.long)
+    batch_target_tensor = torch.tensor(batch_target, dtype=torch.long)
+    return batch_input_tensor, batch_target_tensor
 
 
 def get_split_dataloader(

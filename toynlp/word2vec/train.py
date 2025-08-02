@@ -28,7 +28,7 @@ class Word2VecTrainer:
             self.model = CbowModel(config.model)
             self.model_path = CBOW_MODEL_PATH
         else:
-            self.model = SkipGramModel(config.model)
+            self.model = SkipGramModel(config.model)  # type: ignore[assignment]
             self.model_path = SKIP_GRAM_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
