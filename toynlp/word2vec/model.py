@@ -36,7 +36,6 @@ if __name__ == "__main__":
 
     # Example usage
     config = ModelConfig(
-        context_size=5,
         vocab_size=20000,
         embedding_dim=100,
     )

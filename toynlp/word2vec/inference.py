@@ -30,7 +30,8 @@ def word_to_vec(word: str) -> torch.Tensor:
 
 
 def vocab_embedding(
-    tokenizer: Tokenizer | None = None, model: Word2VecModel | None = None,
+    tokenizer: Tokenizer | None = None,
+    model: Word2VecModel | None = None,
 ) -> tuple[torch.Tensor, list[int]]:
     """Returns vocabulary embeddings and corresponding token IDs."""
     if tokenizer is None or model is None:
@@ -117,11 +118,12 @@ def evaluate_word_addition(words: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    # evaluate_model_context("machine learning a method")
+    # machine learning is a [method] of data analysis that
+    evaluate_model_context("machine learning is a of data analysis that")
 
     # evaludate_embedding()
-    # evaluate_similar_words("home", top_k=10)
-    # evaluate_king_queen()
+    evaluate_similar_words("home", top_k=10)
+    evaluate_king_queen()
 
     evaluate_word_addition(["tall", "rich", "handsome"])
     evaluate_word_addition(["white", "rich", "beautiful"])

@@ -157,7 +157,8 @@ if __name__ == "__main__":
             weight_decay=1e-4,
         ),
         data=DataConfig(
-            batch_size=256,
+            batch_size=512,
+            num_workers=8,
         ),
         training=TrainingConfig(epochs=5),
     )

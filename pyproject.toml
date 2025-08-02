@@ -90,7 +90,6 @@ explicit = true
 ignore_missing_imports = true
 check_untyped_defs = true
 disallow_untyped_decorators = false
-plugins = ["numpy.typing.mypy_plugin"]
 strict = false
 
 [[tool.mypy.overrides]]

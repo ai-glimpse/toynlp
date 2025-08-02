@@ -29,7 +29,6 @@ class OptimizerConfig:
 
 @dataclass
 class ModelConfig:
-    context_size: int = 9
     vocab_size: int = 20000
     embedding_dim: int = 256
 
@@ -87,7 +86,7 @@ if __name__ == "__main__":
 
     config = Word2VecConfig(
         model=ModelConfig(
-            context_size=5,
+            embedding_dim=256,
         ),
         optimizer=OptimizerConfig(
             learning_rate=5e-5,
