@@ -1,7 +1,5 @@
-import pathlib
 from dataclasses import dataclass, field
-
-from toynlp.paths import MODEL_PATH
+from typing import Literal
 
 
 @dataclass
@@ -14,6 +12,7 @@ class DatasetConfig:
 class DataConfig:
     # token processing
     cbow_n_words: int = 4
+    skip_gram_n_words: int = 4
 
     # data loader
     batch_size: int = 32
@@ -45,25 +44,14 @@ class WanDbConfig:
 
 
 @dataclass
-class Word2VecPathConfig:
-    model_path: pathlib.Path = MODEL_PATH / "word2vec" / "model.pt"
-    tokenizer_path: pathlib.Path = MODEL_PATH / "word2vec" / "tokenizer.json"
-
-    def __post_init__(self) -> None:
-        """Ensure paths are absolute."""
-        self.model_path.parent.mkdir(parents=True, exist_ok=True)
-        self.tokenizer_path.parent.mkdir(parents=True, exist_ok=True)
-
-
-@dataclass
 class Word2VecConfig:
+    model_name: Literal["cbow", "skip_gram"] = "cbow"
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     wandb: WanDbConfig = field(default_factory=WanDbConfig)
-    paths: Word2VecPathConfig = field(default_factory=Word2VecPathConfig)
 
     def __post_init__(self) -> None:
         """Basic validation."""
@@ -76,8 +64,7 @@ class Word2VecConfig:
             self.wandb.name = self._get_wandb_name()
 
     def _get_wandb_name(self) -> str:
-        """Fields: embedding_dim."""
-        s = f"embedding_dim:{self.model.embedding_dim}"
+        s = f"[{self.model_name}]embedding_dim:{self.model.embedding_dim}"
         return s
 
 

@@ -1,7 +1,7 @@
 import pathlib
 from dataclasses import dataclass, field
 
-from toynlp.paths import MODEL_PATH
+from toynlp.paths import _MODEL_PATH
 
 
 @dataclass
@@ -41,8 +41,8 @@ class WanDbConfig:
 
 @dataclass
 class NNLMPathConfig:
-    model_path: pathlib.Path = MODEL_PATH / "nnlm" / "model.pt"
-    tokenizer_path: pathlib.Path = MODEL_PATH / "nnlm" / "tokenizer.json"
+    model_path: pathlib.Path = _MODEL_PATH / "nnlm" / "model.pt"
+    tokenizer_path: pathlib.Path = _MODEL_PATH / "nnlm" / "tokenizer.json"
 
     def __post_init__(self) -> None:
         """Ensure paths are absolute."""

@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 from toynlp.device import current_device
+from toynlp.paths import CBOW_MODEL_PATH, SKIP_GRAM_MODEL_PATH, W2V_TOKENIZER_PATH
 from toynlp.word2vec.config import (
     DataConfig,
     ModelConfig,
@@ -15,14 +16,19 @@ from toynlp.word2vec.config import (
     Word2VecConfig,
 )
 from toynlp.word2vec.dataset import get_split_dataloader
-from toynlp.word2vec.model import CbowModel
+from toynlp.word2vec.model import CbowModel, SkipGramModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
 
 class Word2VecTrainer:
     def __init__(self, config: Word2VecConfig) -> None:
         self.config = config
-        self.model = CbowModel(config.model)
+        if self.config.model_name == "cbow":
+            self.model = CbowModel(config.model)
+            self.model_path = CBOW_MODEL_PATH
+        else:
+            self.model = SkipGramModel(config.model)
+            self.model_path = SKIP_GRAM_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(
@@ -30,10 +36,6 @@ class Word2VecTrainer:
             lr=config.optimizer.learning_rate,
             weight_decay=config.optimizer.weight_decay,
         )
-
-    @property
-    def model_path(self) -> Path:
-        return self.config.paths.model_path
 
     def train(
         self,
@@ -78,6 +80,7 @@ class Word2VecTrainer:
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
                     torch.save(self.model, self.model_path)
+                    print(f"Saved best model to {self.model_path}")
 
     def calc_loss_batch(self, input_batch: torch.Tensor, target_batch: torch.Tensor) -> torch.Tensor:
         logits = self.model(input_batch)
@@ -99,21 +102,18 @@ class Word2VecTrainer:
 
 
 def train_tokenizer(config: Word2VecConfig) -> None:
-    path_config = config.paths
-    tokenizer_model_path = path_config.tokenizer_path
-
-    if not Path(tokenizer_model_path).exists():
+    if not Path(W2V_TOKENIZER_PATH).exists():
         word2vec_tokenizer = Word2VecTokenizer(
-            model_path=tokenizer_model_path,
             vocab_size=config.model.vocab_size,
         )
         dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
         word2vec_tokenizer.train(dataset["train"])  # type: ignore[unknown-argument]
     else:
-        print(f"Tokenizer already exists at {tokenizer_model_path}")
+        print(f"Tokenizer already exists at {W2V_TOKENIZER_PATH}")
 
 
 def train_model(config: Word2VecConfig) -> None:
+    model_name = config.model_name
     wandb.init(
         # set the wandb project where this run will be logged
         project=config.wandb.project,
@@ -122,25 +122,27 @@ def train_model(config: Word2VecConfig) -> None:
         config=asdict(config),
     )
     dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
-    tokenizer_model_path = config.paths.tokenizer_path
-    tokenizer = Word2VecTokenizer(model_path=tokenizer_model_path).load()
+    tokenizer = Word2VecTokenizer().load()
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "train",
         tokenizer=tokenizer,
         data_config=config.data,
+        model_name=model_name,
     )
     val_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "validation",
         tokenizer=tokenizer,
         data_config=config.data,
+        model_name=model_name,
     )
     test_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
-        "validation",
+        "test",
         tokenizer=tokenizer,
         data_config=config.data,
+        model_name=model_name,
     )
 
     trainer = Word2VecTrainer(config)
@@ -148,7 +150,21 @@ def train_model(config: Word2VecConfig) -> None:
 
 
 if __name__ == "__main__":
+    from toynlp.word2vec.config import (
+        DataConfig,
+        DatasetConfig,
+        ModelConfig,
+        OptimizerConfig,
+        TrainingConfig,
+        Word2VecConfig,
+    )
+
     config = Word2VecConfig(
+        model_name="skip_gram",  # or "cbow"
+        dataset=DatasetConfig(
+            path="Salesforce/wikitext",
+            name="wikitext-103-raw-v1",
+        ),
         model=ModelConfig(
             embedding_dim=256,
         ),
@@ -157,7 +173,7 @@ if __name__ == "__main__":
             weight_decay=1e-4,
         ),
         data=DataConfig(
-            batch_size=512,
+            batch_size=64,
             num_workers=8,
         ),
         training=TrainingConfig(epochs=5),

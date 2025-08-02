@@ -2,17 +2,21 @@ import torch
 from tokenizers import Tokenizer
 
 from toynlp.device import current_device
-from toynlp.word2vec.config import Word2VecPathConfig
+from toynlp.paths import CBOW_MODEL_PATH, SKIP_GRAM_MODEL_PATH
 from toynlp.word2vec.model import CbowModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
 
-def load_tokenizer_model() -> tuple[Tokenizer, CbowModel]:
-    path_config = Word2VecPathConfig()
-    word2vec_model_path = path_config.model_path
-    tokenizer_model_path = path_config.tokenizer_path
+def load_tokenizer_model(model_name: str = "cbow") -> tuple[Tokenizer, CbowModel]:
+    if model_name == "cbow":
+        word2vec_model_path = CBOW_MODEL_PATH
+    elif model_name == "skip_gram":
+        word2vec_model_path = SKIP_GRAM_MODEL_PATH
+    else:
+        msg = f"Unknown model name: {model_name}. Use 'cbow' or 'skip_gram'."
+        raise ValueError(msg)
 
-    tokenizer = Word2VecTokenizer(tokenizer_model_path).load()
+    tokenizer = Word2VecTokenizer().load()
     model = torch.load(str(word2vec_model_path), weights_only=False)
     model.to(current_device)
     model.eval()
