@@ -8,8 +8,8 @@ from toynlp.word2vec.model import CbowModel
 
 
 def push_model_to_hub(model: CbowModel, repo_id: str) -> None:
-    model.save_pretrained(repo_id)
     """Push the model to the Hugging Face Hub."""
+    model.save_pretrained(repo_id)
     model.push_to_hub(repo_id)
     print(f"Model pushed to Hugging Face Hub at {repo_id}")
 
