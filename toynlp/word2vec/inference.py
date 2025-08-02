@@ -84,7 +84,7 @@ def evaluate_model_context(text: str) -> None:
         print(tokenizer.decode(pred.tolist()))
 
 
-def evaludate_embedding() -> None:
+def evaluate_embedding() -> None:
     print(f"Embedding for 'machine': {word_to_vec('machine').shape}")
 
     embeddings, _ = vocab_embedding()
