@@ -56,10 +56,10 @@ def collate_skip_gram_fn(
 
         for i in range(skip_gram_n_words, len(token_ids) - skip_gram_n_words):
             context_words = token_ids[i - skip_gram_n_words : i] + token_ids[i + 1 : i + skip_gram_n_words + 1]
-            target = token_ids[i]
+            input_word = token_ids[i]
             for context in context_words:
-                batch_input.append(context)
-                batch_target.append(target)
+                batch_input.append(input_word)
+                batch_target.append(context)
     batch_input_tensor = torch.tensor(batch_input, dtype=torch.long)
     batch_target_tensor = torch.tensor(batch_target, dtype=torch.long)
     return batch_input_tensor, batch_target_tensor

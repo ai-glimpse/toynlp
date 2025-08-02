@@ -49,7 +49,7 @@ class SkipGramModel(nn.Module, PyTorchModelHubMixin):
         """Forward pass of the model.
 
         Args:
-            x: Input tensor of shape (batch_size, context_size).
+            x: Input tensor of shape (batch_size, ).
 
         Returns:
             Output tensor of shape (batch_size, vocab_size).
