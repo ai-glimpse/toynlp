@@ -2,10 +2,10 @@ from dataclasses import asdict
 from pathlib import Path
 
 import torch
-import wandb
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 
+import wandb
 from toynlp.device import current_device
 from toynlp.paths import CBOW_MODEL_PATH, SKIP_GRAM_MODEL_PATH, W2V_TOKENIZER_PATH
 from toynlp.word2vec.config import (
