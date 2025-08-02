@@ -4,7 +4,7 @@ from torch import Tensor, nn
 from toynlp.word2vec.config import ModelConfig
 
 
-class Word2VecModel(nn.Module, PyTorchModelHubMixin):
+class CbowModel(nn.Module, PyTorchModelHubMixin):
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         self.config = config
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         vocab_size=20000,
         embedding_dim=100,
     )
-    model = Word2VecModel(config)
+    model = CbowModel(config)
     example_input = torch.tensor([[1, 2, 3, 4, 5]], dtype=torch.long)  # Example input tensor
     output = model(example_input)
     print(output.shape)  # Should print torch.Size([1, 20000])

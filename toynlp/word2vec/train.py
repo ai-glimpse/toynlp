@@ -15,14 +15,14 @@ from toynlp.word2vec.config import (
     Word2VecConfig,
 )
 from toynlp.word2vec.dataset import get_split_dataloader
-from toynlp.word2vec.model import Word2VecModel
+from toynlp.word2vec.model import CbowModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
 
 class Word2VecTrainer:
     def __init__(self, config: Word2VecConfig) -> None:
         self.config = config
-        self.model = Word2VecModel(config.model)
+        self.model = CbowModel(config.model)
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(

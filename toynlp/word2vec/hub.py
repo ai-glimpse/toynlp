@@ -5,11 +5,11 @@ from huggingface_hub import HfApi
 from tokenizers import Tokenizer
 
 from toynlp.word2vec.config import Word2VecPathConfig
-from toynlp.word2vec.model import Word2VecModel
+from toynlp.word2vec.model import CbowModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
 
-def load_tokenizer_model() -> tuple[Tokenizer, Word2VecModel]:
+def load_tokenizer_model() -> tuple[Tokenizer, CbowModel]:
     path_config = Word2VecPathConfig()
     word2vec_model_path = path_config.model_path
     tokenizer_model_path = path_config.tokenizer_path
@@ -19,7 +19,7 @@ def load_tokenizer_model() -> tuple[Tokenizer, Word2VecModel]:
     return tokenizer, model
 
 
-def push_model_to_hub(model: Word2VecModel, repo_id: str) -> None:
+def push_model_to_hub(model: CbowModel, repo_id: str) -> None:
     model.save_pretrained(repo_id)
     """Push the model to the Hugging Face Hub."""
     model.push_to_hub(repo_id)

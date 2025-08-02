@@ -3,11 +3,11 @@ from tokenizers import Tokenizer
 
 from toynlp.device import current_device
 from toynlp.word2vec.config import Word2VecPathConfig
-from toynlp.word2vec.model import Word2VecModel
+from toynlp.word2vec.model import CbowModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
 
-def load_tokenizer_model() -> tuple[Tokenizer, Word2VecModel]:
+def load_tokenizer_model() -> tuple[Tokenizer, CbowModel]:
     path_config = Word2VecPathConfig()
     word2vec_model_path = path_config.model_path
     tokenizer_model_path = path_config.tokenizer_path
@@ -31,7 +31,7 @@ def word_to_vec(word: str) -> torch.Tensor:
 
 def vocab_embedding(
     tokenizer: Tokenizer | None = None,
-    model: Word2VecModel | None = None,
+    model: CbowModel | None = None,
 ) -> tuple[torch.Tensor, list[int]]:
     """Returns vocabulary embeddings and corresponding token IDs."""
     if tokenizer is None or model is None:
