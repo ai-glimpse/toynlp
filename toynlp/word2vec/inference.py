@@ -7,7 +7,7 @@ from toynlp.word2vec.model import CbowModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
 
-def load_tokenizer_model(model_name: str = "cbow") -> tuple[Tokenizer, CbowModel]:
+def load_tokenizer_model(model_name: str = "skip_gram") -> tuple[Tokenizer, CbowModel]:
     if model_name == "cbow":
         word2vec_model_path = CBOW_MODEL_PATH
     elif model_name == "skip_gram":
@@ -121,13 +121,28 @@ def evaluate_word_addition(words: list[str]) -> None:
         print(f"  {i:2d}. 🔸 {word}")
 
 
+def evaluate_country_capital(capital_1: str, country_1: str, country_2: str) -> None:
+    capital_vec_1 = word_to_vec(capital_1)
+    country_vec_1 = word_to_vec(country_1)
+    country_vec_2 = word_to_vec(country_2)
+
+    res_vec = capital_vec_1 - country_vec_1 + country_vec_2
+    similar_words = find_similar_words_by_vec(res_vec, top_k=10)
+    print(f"[{capital_1} - {country_1} + {country_2}]'s most similar words:")
+    for i, word in enumerate(similar_words, 1):
+        print(f"  {i:2d}. 🔸 {word}")
+
+
 if __name__ == "__main__":
     # machine learning is a [method] of data analysis that
-    evaluate_model_context("machine learning is a of data analysis that")
+    # evaluate_model_context("machine learning is a of data analysis that")
 
     # evaludate_embedding()
-    evaluate_similar_words("home", top_k=10)
+    # evaluate_similar_words("home", top_k=10)
     evaluate_king_queen()
 
-    evaluate_word_addition(["tall", "rich", "handsome"])
-    evaluate_word_addition(["white", "rich", "beautiful"])
+    # evaluate_word_addition(["tall", "rich", "handsome"])
+    # evaluate_word_addition(["white", "rich", "beautiful"])
+
+    evaluate_country_capital("Paris", "France", "Italy")
+    evaluate_country_capital("think", "thinking", "read")
