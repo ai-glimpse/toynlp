@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     tokenizer, model = load_tokenizer_model()
 
-    repo_id = "AI-Glimpse/word2vec-cbow-wiki-103"
+    repo_id = "AI-Glimpse/word2vec"
     push_model_to_hub(model, repo_id)
     push_file_to_hub(W2V_TOKENIZER_PATH, repo_id)
     push_file_to_hub(CBOW_MODEL_PATH, repo_id)
