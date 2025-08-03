@@ -20,3 +20,22 @@
 # ToyNLP
 
 NLP models with clean implementation.
+
+
+## Models
+
+10 important NLP models range from 2003 to 2020:
+
+- [x] NNLM(2003)
+- [x] Word2Vec(2013)
+- [ ] Seq2Seq(2014)
+- [ ] Attention(2015)
+- [ ] fastText(2016)
+- [ ] Transformer(2017)
+- [ ] BERT(2018)
+- [ ] GPT(2018)
+- [ ] XLNet(2019)
+- [ ] T5(2020)
+
+You may wonder where is GPT-2? Well, it's in [toyllm](https://github.com/ai-glimpse/toyllm)!
+I separated the models into two libraries, `toynlp` for traditional "small" NLP models and `toyllm` for LLMs, which are typically larger and more complex.

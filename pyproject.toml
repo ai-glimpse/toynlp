@@ -21,7 +21,9 @@ classifiers=[
 requires-python = ">= 3.12"
 dependencies = [
     "datasets>=3.2.0",
+    "huggingface-hub>=0.28.1",
     "numpy>=2.2.2",
+    "safetensors>=0.5.3",
     "tokenizers>=0.21.0",
     "torch>=2.5.1",
     "wandb>=0.19.5",
@@ -32,13 +34,13 @@ dev = [
     "pre-commit",
     "ipython",
     "mypy",
-    "ruff",
     "pytest",
     "pytest-cov",
     "pytest-sugar",
     "hypothesis>=6.112.0",
     "jupyterlab>=4.3.5",
     "ipywidgets>=8.1.5",
+    "ruff>=0.12.7",
 ]
 docs = [
     "mkdocs",
@@ -86,11 +88,42 @@ url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
 
+# pytest coverage configuration: https://pytest-cov.readthedocs.io/en/latest/
+[tool.coverage.run]
+include = [
+    "**/model.py",
+]
+omit = [
+    "tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+
 [tool.mypy]
 ignore_missing_imports = true
 check_untyped_defs = true
 disallow_untyped_decorators = false
-plugins = ["numpy.typing.mypy_plugin"]
 strict = false
 
 [[tool.mypy.overrides]]
@@ -141,6 +174,7 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+    "I001",    # Unsorted imports  # TODO: Enable this rule after find ruff's bug
     "ANN201",  # Missing return type annotation for public function
     "ANN001",  # Missing type annotation for function argument
     "TRY003",  # Avoid specifying long messages outside the exception class

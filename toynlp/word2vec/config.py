@@ -1,7 +1,23 @@
-import pathlib
 from dataclasses import dataclass, field
+from typing import Literal
 
-from toynlp.paths import _MODEL_PATH
+
+@dataclass
+class DatasetConfig:
+    path: str = "Salesforce/wikitext"
+    name: str = "wikitext-103-raw-v1"
+
+
+@dataclass
+class DataConfig:
+    # token processing
+    cbow_n_words: int = 4
+    skip_gram_n_words: int = 4
+
+    # data loader
+    batch_size: int = 32
+    num_workers: int = 4
+    shuffle: bool = True
 
 
 @dataclass
@@ -12,20 +28,8 @@ class OptimizerConfig:
 
 @dataclass
 class ModelConfig:
-    context_size: int = 6
     vocab_size: int = 20000
-    embedding_dim: int = 100
-    hidden_dim: int = 60
-    dropout_rate: float = 0.2
-    with_dropout: bool = True
-    with_direct_connection: bool = False
-
-
-@dataclass
-class DataConfig:
-    batch_size: int = 32
-    num_workers: int = 4
-    shuffle: bool = True
+    embedding_dim: int = 256
 
 
 @dataclass
@@ -36,28 +40,18 @@ class TrainingConfig:
 @dataclass
 class WanDbConfig:
     name: str | None = None
-    project: str = "NNLM"
+    project: str = "Word2Vec"
 
 
 @dataclass
-class NNLMPathConfig:
-    model_path: pathlib.Path = _MODEL_PATH / "nnlm" / "model.pt"
-    tokenizer_path: pathlib.Path = _MODEL_PATH / "nnlm" / "tokenizer.json"
-
-    def __post_init__(self) -> None:
-        """Ensure paths are absolute."""
-        self.model_path.parent.mkdir(parents=True, exist_ok=True)
-        self.tokenizer_path.parent.mkdir(parents=True, exist_ok=True)
-
-
-@dataclass
-class NNLMConfig:
+class Word2VecConfig:
+    model_name: Literal["cbow", "skip_gram"] = "cbow"
+    dataset: DatasetConfig = field(default_factory=DatasetConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     wandb: WanDbConfig = field(default_factory=WanDbConfig)
-    paths: NNLMPathConfig = field(default_factory=NNLMPathConfig)
 
     def __post_init__(self) -> None:
         """Basic validation."""
@@ -70,21 +64,16 @@ class NNLMConfig:
             self.wandb.name = self._get_wandb_name()
 
     def _get_wandb_name(self) -> str:
-        """Fields: hidden_dim, with_dropout, dropout_rate, with_direct_connection."""
-        s = f"hidden_dim:{self.model.hidden_dim};with_direct_connection:{self.model.with_direct_connection}"
-        if self.model.with_dropout:
-            s += f";dropout:{self.model.dropout_rate}"
-        else:
-            s += ";no_dropout"
+        s = f"[{self.model_name}]embedding_dim:{self.model.embedding_dim}"
         return s
 
 
 if __name__ == "__main__":
     from dataclasses import asdict
 
-    config = NNLMConfig(
+    config = Word2VecConfig(
         model=ModelConfig(
-            context_size=5,
+            embedding_dim=256,
         ),
         optimizer=OptimizerConfig(
             learning_rate=5e-5,

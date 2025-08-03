@@ -2,6 +2,7 @@
 *.pth
 *.json
 models/
+AI-Glimpse/
 
 # wandb
 wandb/
