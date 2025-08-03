@@ -137,7 +137,7 @@ if __name__ == "__main__":
     # machine learning is a [method] of data analysis that
     # evaluate_model_context("machine learning is a of data analysis that")
 
-    # evaludate_embedding()
+    # evaluate_embedding()
     # evaluate_similar_words("home", top_k=10)
     evaluate_king_queen()
 
