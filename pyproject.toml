@@ -88,6 +88,38 @@ url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
 
+# pytest coverage configuration: https://pytest-cov.readthedocs.io/en/latest/
+[tool.coverage.run]
+include = [
+    "**/model.py",
+]
+omit = [
+    "tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+
 [tool.mypy]
 ignore_missing_imports = true
 check_untyped_defs = true
