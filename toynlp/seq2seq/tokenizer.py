@@ -43,7 +43,7 @@ class Seq2SeqTokenizer:
         trainer = WordLevelTrainer(
             vocab_size=self.vocab_size,  # type: ignore[unknown-argument]
             min_frequency=50,  # type: ignore[unknown-argument]
-            special_tokens=["[UNK]", "[BOS]", "[EOS]"],  # type: ignore[unknown-argument]
+            special_tokens=["[UNK]", "[BOS]", "[EOS]", "[PAD]"],  # type: ignore[unknown-argument]
         )
         self.tokenizer.train_from_iterator(dataset["text"], trainer=trainer)
         self.tokenizer.save(str(self.model_path))
@@ -84,3 +84,6 @@ if __name__ == "__main__":
     seq2seq_tokenizer_fr = Seq2SeqTokenizer(lang="fr").load()
     print(seq2seq_tokenizer_fr.encode("Bonjour le monde!").ids)
     print("|".join(seq2seq_tokenizer_fr.decode([1, 16891, 13, 381, 618, 2]).split()))
+
+    print(seq2seq_tokenizer_en.token_to_id("[PAD]"))
+    print(seq2seq_tokenizer_fr.token_to_id("[PAD]"))
