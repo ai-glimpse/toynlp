@@ -1,5 +1,4 @@
 import torch
-
 from toynlp.seq2seq.config import ModelConfig
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 from toynlp.device import current_device
@@ -80,6 +79,8 @@ class Seq2SeqModel(torch.nn.Module):
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         self.config = config
+        # TODO: to implement teacher forcing, we need to pass the target sequence during training
+        self.force_teacher_ratio = self.config.teacher_forcing_ratio
         self.encoder = Encoder(
             input_size=config.source_vocab_size,
             embedding_size=config.embedding_dim,

@@ -175,6 +175,9 @@ target-version = "py312"
 select = ["ALL"]
 ignore = [
     "I001",    # Unsorted imports  # TODO: Enable this rule after find ruff's bug
+    "FIX002",  # TODO checker
+    "TD002",  # TODO checker
+    "TD003",   # TODO checker
     "ANN201",  # Missing return type annotation for public function
     "ANN001",  # Missing type annotation for function argument
     "TRY003",  # Avoid specifying long messages outside the exception class

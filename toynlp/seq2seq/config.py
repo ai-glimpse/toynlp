@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Literal
 
 
 @dataclass
@@ -33,6 +32,8 @@ class ModelConfig:
     hidden_dim: int = 1000
     num_layers: int = 4
 
+    teacher_forcing_ratio: float = 0.5
+
 
 @dataclass
 class TrainingConfig:
@@ -47,7 +48,6 @@ class WanDbConfig:
 
 @dataclass
 class Seq2SeqConfig:
-    model_name: Literal["cbow", "skip_gram"] = "cbow"
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
@@ -66,7 +66,7 @@ class Seq2SeqConfig:
             self.wandb.name = self._get_wandb_name()
 
     def _get_wandb_name(self) -> str:
-        s = f"[{self.model_name}]embedding_dim:{self.model.embedding_dim}"
+        s = f"E:{self.model.embedding_dim},H:{self.model.hidden_dim},L:{self.model.num_layers}"
         return s
 
 
