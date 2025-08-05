@@ -10,6 +10,8 @@ class DatasetConfig:
 
 @dataclass
 class DataConfig:
+    # max length of the input and output sequences
+    max_length: int = 1000
     # data loader
     batch_size: int = 32
     num_workers: int = 4
@@ -24,8 +26,8 @@ class OptimizerConfig:
 
 @dataclass
 class ModelConfig:
-    input_vocab_size: int = 80000
-    output_vocab_size: int = 80000
+    source_vocab_size: int = 80000
+    target_vocab_size: int = 80000
 
     embedding_dim: int = 1000
     hidden_dim: int = 1000

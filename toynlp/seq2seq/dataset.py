@@ -18,6 +18,7 @@ def collate_fn(
     batch: dict[str, list[str]],
     source_tokenizer: Tokenizer,
     target_tokenizer: Tokenizer,
+    max_length: int = 1000,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     batch_input = []
     batch_target = []
@@ -28,8 +29,8 @@ def collate_fn(
         # reverse the input text words order(use item["en"][::-1])
         en_tensor = source_tokenizer.encode(item["translation"]["en"]).ids  # type: ignore[call-arg,index]
         fr_tensor = target_tokenizer.encode(item["translation"]["fr"]).ids  # type: ignore[call-arg,index]
-        batch_input.append(torch.tensor(en_tensor, dtype=torch.long))
-        batch_target.append(torch.tensor(fr_tensor, dtype=torch.long))
+        batch_input.append(torch.tensor(en_tensor[:max_length], dtype=torch.long))
+        batch_target.append(torch.tensor(fr_tensor[:max_length], dtype=torch.long))
     batch_input_tensor = pad_sequence(batch_input, padding_value=input_pad_id, batch_first=True)
     batch_target_tensor = pad_sequence(batch_target, padding_value=target_pad_id, batch_first=True)
     return batch_input_tensor, batch_target_tensor
@@ -47,7 +48,7 @@ def get_split_dataloader(
         batch_size=data_config.batch_size,
         num_workers=data_config.num_workers,
         shuffle=data_config.shuffle,
-        collate_fn=lambda batch: collate_fn(batch, source_tokenizer, target_tokenizer),
+        collate_fn=lambda batch: collate_fn(batch, source_tokenizer, target_tokenizer, data_config.max_length),
         drop_last=True,
     )
     return dataloader

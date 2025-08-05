@@ -10,6 +10,7 @@ from toynlp.seq2seq.config import Seq2SeqConfig
 
 from toynlp.paths import SEQ2SEQ_TOKENIZER_EN_PATH, SEQ2SEQ_TOKENIZER_FR_PATH
 
+
 class Seq2SeqTokenizer:
     def __init__(
         self,
@@ -58,16 +59,18 @@ class Seq2SeqTokenizer:
 def train_tokenizer(config: Seq2SeqConfig, lang: Literal["en", "fr"] = "en") -> None:
     tokenizer_path = SEQ2SEQ_TOKENIZER_EN_PATH if lang == "en" else SEQ2SEQ_TOKENIZER_FR_PATH
     if not tokenizer_path.exists():
+        vocab_size = config.model.source_vocab_size if lang == "en" else config.model.target_vocab_size
         seq2seq_tokenizer = Seq2SeqTokenizer(
-            vocab_size=config.model.input_vocab_size,
+            vocab_size=vocab_size,
             lang=lang,
         )
         dataset = load_dataset(path=config.dataset.path, name=config.dataset.name, split="train")
-        lang_dataset = dataset.map(lambda batch: {"text": [item[lang] for item in batch["translation"]]}, 
-                                   batched=True,
-                                   remove_columns=["translation"],
-                                   num_proc=8,  # type: ignore[call-arg]
-                                   )
+        lang_dataset = dataset.map(
+            lambda batch: {"text": [item[lang] for item in batch["translation"]]},
+            batched=True,
+            remove_columns=["translation"],
+            num_proc=8,  # type: ignore[call-arg]
+        )
         seq2seq_tokenizer.train(dataset=lang_dataset)  # type: ignore[unknown-argument]
     else:
         print(f"Tokenizer already exists at {tokenizer_path}")
