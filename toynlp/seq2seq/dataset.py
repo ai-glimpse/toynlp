@@ -8,7 +8,7 @@ from toynlp.seq2seq.config import DataConfig
 
 def get_dataset(
     dataset_path: str,
-    dataset_name: str,
+    dataset_name: str | None,
 ) -> DatasetDict:
     dataset = load_dataset(path=dataset_path, name=dataset_name)
     return dataset  # type: ignore[return-value]
@@ -27,10 +27,14 @@ def collate_fn(
 
     for item in batch:
         # reverse the input text words order(use item["en"][::-1])
-        en_tensor = source_tokenizer.encode(item["translation"]["en"]).ids  # type: ignore[call-arg,index]
-        fr_tensor = target_tokenizer.encode(item["translation"]["fr"]).ids  # type: ignore[call-arg,index]
-        batch_input.append(torch.tensor(en_tensor[:max_length], dtype=torch.long))
-        batch_target.append(torch.tensor(fr_tensor[:max_length], dtype=torch.long))
+        # en_tensor = source_tokenizer.encode(item["translation"]["en"]).ids  # type: ignore[call-arg,index]
+        # fr_tensor = target_tokenizer.encode(item["translation"]["fr"]).ids  # type: ignore[call-arg,index]
+        # batch_input.append(torch.tensor(en_tensor[:max_length], dtype=torch.long))
+        # batch_target.append(torch.tensor(fr_tensor[:max_length], dtype=torch.long))
+        de_tensor = source_tokenizer.encode(item["de"]).ids  # type: ignore[call-arg,index]
+        en_tensor = target_tokenizer.encode(item["en"]).ids  # type: ignore[call-arg,index]
+        batch_input.append(torch.tensor(de_tensor[:max_length], dtype=torch.long))
+        batch_target.append(torch.tensor(en_tensor[:max_length], dtype=torch.long))
     batch_input_tensor = pad_sequence(batch_input, padding_value=input_pad_id, batch_first=True)
     batch_target_tensor = pad_sequence(batch_target, padding_value=target_pad_id, batch_first=True)
     return batch_input_tensor, batch_target_tensor
@@ -66,8 +70,8 @@ if __name__ == "__main__":
         dataset_name=dataset_config.name,
     )
 
-    source_tokenizer = Seq2SeqTokenizer(lang="en").load()
-    target_tokenizer = Seq2SeqTokenizer(lang="fr").load()
+    source_tokenizer = Seq2SeqTokenizer(lang="de").load()
+    target_tokenizer = Seq2SeqTokenizer(lang="en").load()
     train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, data_config)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)

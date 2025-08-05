@@ -12,6 +12,9 @@ SKIP_GRAM_MODEL_PATH = _MODEL_PATH / "word2vec" / "skip_gram_model.pt"
 
 
 # Seq2Seq paths
-SEQ2SEQ_TOKENIZER_EN_PATH = _MODEL_PATH / "seq2seq" / "tokenizer_en.json"
-SEQ2SEQ_TOKENIZER_FR_PATH = _MODEL_PATH / "seq2seq" / "tokenizer_fr.json"
+SEQ2SEQ_TOKENIZER_PATH_MAP = {
+    "en": _MODEL_PATH / "seq2seq" / "tokenizer_en.json",
+    "fr": _MODEL_PATH / "seq2seq" / "tokenizer_fr.json",
+    "de": _MODEL_PATH / "seq2seq" / "tokenizer_de.json",
+}
 SEQ2SEQ_MODEL_PATH = _MODEL_PATH / "seq2seq" / "seq2seq_model.pt"

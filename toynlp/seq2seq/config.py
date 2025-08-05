@@ -1,10 +1,19 @@
 from dataclasses import dataclass, field
 
 
+# @dataclass
+# class DatasetConfig:
+#     path: str = "wmt/wmt14"
+#     name: str = "fr-en"
+#     source: str = "en"
+#     target: str = "fr"
+
 @dataclass
 class DatasetConfig:
-    path: str = "wmt/wmt14"
-    name: str = "fr-en"
+    path: str = "bentrevett/multi30k"
+    name: str | None = None
+    source: str = "de"
+    target: str = "en"
 
 
 @dataclass
@@ -25,13 +34,14 @@ class OptimizerConfig:
 
 @dataclass
 class ModelConfig:
-    source_vocab_size: int = 80000
-    target_vocab_size: int = 80000
+    source_vocab_size: int = 8000
+    target_vocab_size: int = 6000
 
-    embedding_dim: int = 1000
-    hidden_dim: int = 1000
-    num_layers: int = 4
+    embedding_dim: int = 256
+    hidden_dim: int = 512
+    num_layers: int = 2
 
+    dropout_ratio: float = 0.5
     teacher_forcing_ratio: float = 0.5
 
 
@@ -64,6 +74,15 @@ class Seq2SeqConfig:
 
         if self.wandb.name is None:
             self.wandb.name = self._get_wandb_name()
+
+    def get_lang_vocab_size(self, lang: str) -> int:
+        """Get the vocabulary size for the specified language."""
+        if lang == self.dataset.source:
+            return self.model.source_vocab_size
+        if lang == self.dataset.target:
+            return self.model.target_vocab_size
+        msg = f"Language '{lang}' is not supported. Use '{self.dataset.source}' or '{self.dataset.target}'."
+        raise ValueError(msg)
 
     def _get_wandb_name(self) -> str:
         s = f"E:{self.model.embedding_dim},H:{self.model.hidden_dim},L:{self.model.num_layers}"

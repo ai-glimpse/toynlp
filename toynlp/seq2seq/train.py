@@ -9,7 +9,6 @@ from toynlp.device import current_device
 from toynlp.paths import SEQ2SEQ_MODEL_PATH
 from toynlp.seq2seq.config import (
     DataConfig,
-    DatasetConfig,
     ModelConfig,
     OptimizerConfig,
     TrainingConfig,
@@ -96,10 +95,10 @@ class Seq2SeqTrainer:
     def calc_loss_batch(self, input_batch: torch.Tensor, target_batch: torch.Tensor) -> torch.Tensor:
         # TODO: make it clear!
         logits = self.model(input_batch, target_batch)
-        print(f"logits shape: {logits.shape}, target_batch shape: {target_batch.shape}")
+        # print(f"logits shape: {logits.shape}, target_batch shape: {target_batch.shape}")
         pred = logits[:, 1:, :].reshape(-1, logits.shape[-1])
         target_batch = target_batch[:, 1:].reshape(-1)
-        print(f"pred shape: {pred.shape}, target_batch shape: {target_batch.shape}")
+        # print(f"target_batch min: {target_batch.min().item()}, max: {target_batch.max().item()}")
         loss = self.criterion(pred, target_batch)
         return loss
 
@@ -126,8 +125,8 @@ def train_model(config: Seq2SeqConfig) -> None:
         config=asdict(config),
     )
     dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
-    source_tokenizer = Seq2SeqTokenizer(lang="en").load()
-    target_tokenizer = Seq2SeqTokenizer(lang="fr").load()
+    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source).load()
+    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target).load()
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "train",
@@ -156,23 +155,19 @@ def train_model(config: Seq2SeqConfig) -> None:
 
 def train():
     config = Seq2SeqConfig(
-        dataset=DatasetConfig(
-            path="wmt/wmt14",
-            name="fr-en",
-        ),
         model=ModelConfig(
-            embedding_dim=1000,
-            hidden_dim=1000,
-            num_layers=4,
+            embedding_dim=256,
+            hidden_dim=512,
+            num_layers=2,
         ),
         optimizer=OptimizerConfig(
-            learning_rate=0.01,
+            learning_rate=0.005,
         ),
         data=DataConfig(
-            batch_size=32,
+            batch_size=256,
             num_workers=8,
         ),
-        training=TrainingConfig(epochs=5),
+        training=TrainingConfig(epochs=100),
     )
 
     train_model(config)

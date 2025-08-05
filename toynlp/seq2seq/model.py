@@ -1,4 +1,5 @@
 import torch
+import random
 from toynlp.seq2seq.config import ModelConfig
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 from toynlp.device import current_device
@@ -11,6 +12,7 @@ class Encoder(torch.nn.Module):
         embedding_size: int,
         hidden_size: int,
         num_layers: int,
+        dropout_ratio: float,
     ) -> None:
         super().__init__()
         self.embedding = torch.nn.Embedding(
@@ -23,10 +25,11 @@ class Encoder(torch.nn.Module):
             num_layers=num_layers,
             batch_first=True,
         )
+        self.dropout = torch.nn.Dropout(p=dropout_ratio)
 
     def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # (batch_size, seq_length) -> (batch_size, seq_length, embedding_size)
-        embedded = self.embedding(input_ids)
+        embedded = self.dropout(self.embedding(input_ids))
         # output: (batch_size, seq_length, hidden_size)
         # hidden: (num_layers, batch_size, hidden_size)
         # cell: (num_layers, batch_size, hidden_size)
@@ -43,6 +46,7 @@ class Decoder(torch.nn.Module):
         embedding_size: int,
         hidden_size: int,
         num_layers: int,
+        dropout_ratio: float,
     ) -> None:
         super().__init__()
         self.embedding = torch.nn.Embedding(
@@ -56,6 +60,7 @@ class Decoder(torch.nn.Module):
             batch_first=True,
         )
         self.fc = torch.nn.Linear(hidden_size, output_size)
+        self.dropout = torch.nn.Dropout(p=dropout_ratio)
 
     def forward(
         self,
@@ -65,7 +70,7 @@ class Decoder(torch.nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Decoder usually forwards one token at a time."""
         # (batch_size, seq_length) -> (batch_size, seq_length, embedding_size)
-        target_embedded = self.embedding(input_ids)
+        target_embedded = self.dropout(self.embedding(input_ids))
         # output: (batch_size, seq_length, hidden_size)
         # hidden: (num_layers, batch_size, hidden_size)
         # cell: (num_layers, batch_size, hidden_size)
@@ -86,6 +91,7 @@ class Seq2SeqModel(torch.nn.Module):
             embedding_size=config.embedding_dim,
             hidden_size=config.hidden_dim,
             num_layers=config.num_layers,
+            dropout_ratio=config.dropout_ratio,
         )
         self.decoder = Decoder(
             input_size=config.target_vocab_size,
@@ -93,8 +99,9 @@ class Seq2SeqModel(torch.nn.Module):
             embedding_size=config.embedding_dim,
             hidden_size=config.hidden_dim,
             num_layers=config.num_layers,
+            dropout_ratio=config.dropout_ratio,
         )
-        self.target_tokenizer = Seq2SeqTokenizer(lang="fr", vocab_size=config.target_vocab_size).load()
+        self.target_tokenizer = Seq2SeqTokenizer(lang="en").load()
         self.target_vocab_ids = list(self.target_tokenizer.get_vocab().values())
         self.device = current_device
 
@@ -113,8 +120,17 @@ class Seq2SeqModel(torch.nn.Module):
             # (batch_size, target_vocab_size) -> (batch_size, 1)
             # Get the index of the highest probability token
             top_token_index = decoder_output.argmax(dim=-1).squeeze(1).tolist()
-            token_ids = [self.target_vocab_ids[i] for i in top_token_index]
-            encoder_input_tensor = torch.tensor(token_ids, dtype=torch.long).unsqueeze(1).to(self.device)
+            # decide if we are going to use teacher forcing or not
+            teacher_force = random.random() < self.force_teacher_ratio
+            # teacher_force = True  # For simplicity, always use teacher forcing
+            if teacher_force:
+                # Use the actual target token for the next input
+                encoder_input_tensor = target_ids[:, t].unsqueeze(1)
+            else:
+                # Use the predicted token for the next input
+                # Convert token ids back to tensor
+                token_ids = [self.target_vocab_ids[i] for i in top_token_index]
+                encoder_input_tensor = torch.tensor(token_ids, dtype=torch.long).unsqueeze(1).to(self.device)
         return outputs
 
 
