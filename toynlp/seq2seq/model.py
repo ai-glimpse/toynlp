@@ -2,6 +2,7 @@ import torch
 
 from toynlp.seq2seq.config import ModelConfig
 
+
 class Encoder(torch.nn.Module):
     def __init__(
         self,
@@ -9,7 +10,7 @@ class Encoder(torch.nn.Module):
         embedding_size: int,
         hidden_size: int,
         num_layers: int,
-        ) -> None:
+    ) -> None:
         super().__init__()
         self.embedding = torch.nn.Embedding(
             num_embeddings=input_size,
@@ -23,7 +24,11 @@ class Encoder(torch.nn.Module):
         )
 
     def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        # (batch_size, seq_length) -> (batch_size, seq_length, embedding_size)
         embedded = self.embedding(input_ids)
+        # output: (batch_size, seq_length, hidden_size)
+        # hidden: (num_layers, batch_size, hidden_size)
+        # cell: (num_layers, batch_size, hidden_size)
         # we don't need the output, just the hidden and cell states
         _, (hidden, cell) = self.lstm(embedded)
         return hidden, cell
@@ -37,7 +42,7 @@ class Decoder(torch.nn.Module):
         embedding_size: int,
         hidden_size: int,
         num_layers: int,
-        ) -> None:
+    ) -> None:
         super().__init__()
         self.embedding = torch.nn.Embedding(
             num_embeddings=input_size,
@@ -59,8 +64,3 @@ class Seq2SeqModel(torch.nn.Module):
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         self.config = config
-        self.embedding = torch.nn.Embedding(
-            num_embeddings=config.input_vocab_size,
-            embedding_dim=config.embedding_dim,
-        )
-        raise NotImplementedError

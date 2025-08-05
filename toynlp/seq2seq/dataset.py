@@ -21,17 +21,17 @@ def collate_fn(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     batch_input = []
     batch_target = []
-    input_pad_id = source_tokenizer.token_to_id("[PAD]") or 0
-    target_pad_id = target_tokenizer.token_to_id("[PAD]") or 0
+    input_pad_id = source_tokenizer.token_to_id("[PAD]")
+    target_pad_id = target_tokenizer.token_to_id("[PAD]")
 
     for item in batch:
-        # TODO: reverse the input text words order(use item["en"][::-1])
+        # reverse the input text words order(use item["en"][::-1])
         en_tensor = source_tokenizer.encode(item["translation"]["en"]).ids  # type: ignore[call-arg,index]
         fr_tensor = target_tokenizer.encode(item["translation"]["fr"]).ids  # type: ignore[call-arg,index]
         batch_input.append(torch.tensor(en_tensor, dtype=torch.long))
         batch_target.append(torch.tensor(fr_tensor, dtype=torch.long))
-    batch_input_tensor = pad_sequence(batch_input, padding_value=input_pad_id)
-    batch_target_tensor = pad_sequence(batch_target, padding_value=target_pad_id)
+    batch_input_tensor = pad_sequence(batch_input, padding_value=input_pad_id, batch_first=True)
+    batch_target_tensor = pad_sequence(batch_target, padding_value=target_pad_id, batch_first=True)
     return batch_input_tensor, batch_target_tensor
 
 
@@ -70,4 +70,5 @@ if __name__ == "__main__":
     train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, data_config)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)
+        print(batch_input[0], batch_target[0])
         break
