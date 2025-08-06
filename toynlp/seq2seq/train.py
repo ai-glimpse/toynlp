@@ -96,12 +96,15 @@ class Seq2SeqTrainer:
         return val_loss, test_loss
 
     def calc_loss_batch(self, input_batch: torch.Tensor, target_batch: torch.Tensor) -> torch.Tensor:
-        # TODO: make it clear!
+        # Prepare logits and targets for loss calculation:
+        # - We remove the first token in the sequence ([:, 1:, :]) because, in teacher forcing,
+        #   the first output token is typically not used for loss (it corresponds to the start token).
+        # - We then flatten the logits to shape (batch_size * seq_len_minus1, vocab_size)
+        #   and the targets to shape (batch_size * seq_len_minus1), as required by nn.CrossEntropyLoss.
+        #   This aligns each predicted token with its corresponding target token across the batch.
         logits = self.model(input_batch, target_batch)
-        # print(f"logits shape: {logits.shape}, target_batch shape: {target_batch.shape}")
         pred = logits[:, 1:, :].reshape(-1, logits.shape[-1])
         target_batch = target_batch[:, 1:].reshape(-1)
-        # print(f"target_batch min: {target_batch.min().item()}, max: {target_batch.max().item()}")
         loss = self.criterion(pred, target_batch)
         return loss
 
