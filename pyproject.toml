@@ -44,6 +44,7 @@ dev = [
     "jupyterlab>=4.3.5",
     "ipywidgets>=8.1.5",
     "ruff>=0.12.7",
+    "types-pyyaml>=6.0.12.20250516",
 ]
 docs = [
     "mkdocs",
