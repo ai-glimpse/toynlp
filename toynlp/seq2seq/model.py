@@ -100,7 +100,7 @@ class Seq2SeqModel(torch.nn.Module):
             num_layers=config.num_layers,
             dropout_ratio=config.dropout_ratio,
         )
-        self.target_tokenizer = Seq2SeqTokenizer(lang="en").load()
+        self.target_tokenizer = Seq2SeqTokenizer(lang=self.config.target_lang).load()
         self.target_vocab_ids = list(self.target_tokenizer.get_vocab().values())
         self.device = current_device
 
