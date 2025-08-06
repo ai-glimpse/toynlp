@@ -50,9 +50,9 @@ def get_split_dataloader(
         num_workers=dataset_config.num_workers,
         shuffle=dataset_config.shuffle,
         collate_fn=lambda batch: collate_fn(
-            batch,
+            batch,  # type: ignore[arg-type]
             source_tokenizer,
-            target_tokenizer,  # type: ignore[arg-type]
+            target_tokenizer,
             dataset_config.source_lang,
             dataset_config.target_lang,
             dataset_config.max_length,
