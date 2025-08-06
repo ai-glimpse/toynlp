@@ -3,7 +3,7 @@ from datasets import DatasetDict, load_dataset
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
-from toynlp.seq2seq.config import DataConfig
+from toynlp.seq2seq.config import DatasetConfig
 
 
 def get_dataset(
@@ -18,6 +18,8 @@ def collate_fn(
     batch: dict[str, list[str]],
     source_tokenizer: Tokenizer,
     target_tokenizer: Tokenizer,
+    source_lang: str,
+    target_lang: str,
     max_length: int = 1000,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     batch_input = []
@@ -40,15 +42,21 @@ def get_split_dataloader(
     split: str,
     source_tokenizer: Tokenizer,
     target_tokenizer: Tokenizer,
-    data_config: DataConfig,
+    dataset_config: DatasetConfig,
 ) -> DataLoader:
     dataloader = DataLoader(
         dataset=dataset[split],  # type: ignore[arg-type]
-        batch_size=data_config.batch_size,
-        num_workers=data_config.num_workers,
-        shuffle=data_config.shuffle,
-        collate_fn=lambda batch: collate_fn(batch, source_tokenizer, target_tokenizer, data_config.max_length),  # type: ignore[arg-type]
-        drop_last=True,
+        batch_size=dataset_config.batch_size,
+        num_workers=dataset_config.num_workers,
+        shuffle=dataset_config.shuffle,
+        collate_fn=lambda batch: collate_fn(
+            batch,
+            source_tokenizer,
+            target_tokenizer,  # type: ignore[arg-type]
+            dataset_config.source_lang,
+            dataset_config.target_lang,
+            dataset_config.max_length,
+        ),
     )
     return dataloader
 
@@ -66,7 +74,7 @@ if __name__ == "__main__":
 
     source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source_lang).load()
     target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target_lang).load()
-    train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, config.data)
+    train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, config.dataset)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)
         print(batch_input[0], batch_target[0])

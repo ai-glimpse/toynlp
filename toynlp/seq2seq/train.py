@@ -140,21 +140,21 @@ def train_model() -> None:
         "train",
         source_tokenizer=source_tokenizer,
         target_tokenizer=target_tokenizer,
-        data_config=config.data,
+        dataset_config=config.dataset,
     )
     val_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "validation",
         source_tokenizer=source_tokenizer,
         target_tokenizer=target_tokenizer,
-        data_config=config.data,
+        dataset_config=config.dataset,
     )
     test_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "test",
         source_tokenizer=source_tokenizer,
         target_tokenizer=target_tokenizer,
-        data_config=config.data,
+        dataset_config=config.dataset,
     )
 
     trainer = Seq2SeqTrainer(pad_token_id=target_tokenizer.token_to_id("[PAD]"))

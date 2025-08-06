@@ -3,6 +3,10 @@ dataset:
   name: null
   source_lang: de
   target_lang: en
+  max_length: 1000
+  batch_size: 512
+  num_workers: 8
+  shuffle: true
 
 tokenizer:
   min_frequency: 1
@@ -24,11 +28,6 @@ model:
   dropout_ratio: 0.7
   teacher_forcing_ratio: 0.3
 
-data:
-  max_length: 1000
-  batch_size: 512
-  num_workers: 8
-  shuffle: true
 
 optimizer:
   learning_rate: 0.001

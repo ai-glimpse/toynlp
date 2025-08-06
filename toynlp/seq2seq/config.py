@@ -24,6 +24,11 @@ class DatasetConfig:
     source_lang: str = "de"
     target_lang: str = "en"
 
+    max_length: int = 1000
+    batch_size: int = 32
+    num_workers: int = 4
+    shuffle: bool = True
+
 
 @dataclass
 class DataConfig:
@@ -82,7 +87,6 @@ class Seq2SeqConfig:
     tokenizer: TokenizerConfig = field(default_factory=TokenizerConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
-    data: DataConfig = field(default_factory=DataConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     inference: InferenceConfig = field(default_factory=InferenceConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
@@ -118,7 +122,6 @@ class Seq2SeqConfig:
             "dataset": DatasetConfig,
             "model": ModelConfig,
             "optimizer": OptimizerConfig,
-            "data": DataConfig,
             "training": TrainingConfig,
             "inference": InferenceConfig,
             "evaluation": EvaluationConfig,
@@ -203,9 +206,6 @@ if __name__ == "__main__":
         ),
         optimizer=OptimizerConfig(
             learning_rate=5e-5,
-        ),
-        data=DataConfig(
-            batch_size=64,
         ),
         training=TrainingConfig(epochs=10),
     )
