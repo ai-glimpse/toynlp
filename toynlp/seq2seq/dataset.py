@@ -26,11 +26,6 @@ def collate_fn(
     target_pad_id = target_tokenizer.token_to_id("[PAD]")
 
     for item in batch:
-        # reverse the input text words order(use item["en"][::-1])
-        # en_tensor = source_tokenizer.encode(item["translation"]["en"]).ids  # type: ignore[call-arg,index]
-        # fr_tensor = target_tokenizer.encode(item["translation"]["fr"]).ids  # type: ignore[call-arg,index]
-        # batch_input.append(torch.tensor(en_tensor[:max_length], dtype=torch.long))
-        # batch_target.append(torch.tensor(fr_tensor[:max_length], dtype=torch.long))
         de_tensor = source_tokenizer.encode(item["de"]).ids  # type: ignore[call-arg,index]
         en_tensor = target_tokenizer.encode(item["en"]).ids  # type: ignore[call-arg,index]
         batch_input.append(torch.tensor(de_tensor[:max_length], dtype=torch.long))
