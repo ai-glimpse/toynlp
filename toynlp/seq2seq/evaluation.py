@@ -7,7 +7,7 @@ from toynlp.seq2seq.dataset import get_dataset
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from traitlets import Any
+    from typing import Any
 
 
 class Seq2SeqEvaluator:
