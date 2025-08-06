@@ -26,10 +26,10 @@ def collate_fn(
     target_pad_id = target_tokenizer.token_to_id("[PAD]")
 
     for item in batch:
-        de_tensor = source_tokenizer.encode(item["de"]).ids  # type: ignore[call-arg,index]
-        en_tensor = target_tokenizer.encode(item["en"]).ids  # type: ignore[call-arg,index]
-        batch_input.append(torch.tensor(de_tensor[:max_length], dtype=torch.long))
-        batch_target.append(torch.tensor(en_tensor[:max_length], dtype=torch.long))
+        src_tensor = source_tokenizer.encode(item[source_lang]).ids  # type: ignore[call-arg,index]
+        tgt_tensor = target_tokenizer.encode(item[target_lang]).ids  # type: ignore[call-arg,index]
+        batch_input.append(torch.tensor(src_tensor[:max_length], dtype=torch.long))
+        batch_target.append(torch.tensor(tgt_tensor[:max_length], dtype=torch.long))
     batch_input_tensor = pad_sequence(batch_input, padding_value=input_pad_id, batch_first=True)
     batch_target_tensor = pad_sequence(batch_target, padding_value=target_pad_id, batch_first=True)
     return batch_input_tensor, batch_target_tensor
