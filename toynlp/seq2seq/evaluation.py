@@ -116,8 +116,8 @@ class Seq2SeqEvaluator:
         print(f"Evaluating on {total_samples} samples...")
 
         # Extract source and target texts
-        source_texts = split_data[self.config.dataset.source]
-        target_texts = split_data[self.config.dataset.target]
+        source_texts = split_data[self.config.dataset.source_lang]
+        target_texts = split_data[self.config.dataset.target_lang]
 
         # Generate translations in batches
         predictions = []
@@ -218,13 +218,13 @@ class Seq2SeqEvaluator:
         print("=" * 60)
 
         for i in range(start_idx, end_idx):
-            source_text = split_data[i][self.config.dataset.source]
-            target_text = split_data[i][self.config.dataset.target]
+            source_text = split_data[i][self.config.dataset.source_lang]
+            target_text = split_data[i][self.config.dataset.target_lang]
             prediction = self.inference.translate(source_text)
 
             print(f"\nSample {i + 1}:")
-            print(f"Source ({self.config.dataset.source}): {source_text}")
-            print(f"Target ({self.config.dataset.target}): {target_text}")
+            print(f"Source ({self.config.dataset.source_lang}): {source_text}")
+            print(f"Target ({self.config.dataset.target_lang}): {target_text}")
             print(f"Prediction: {prediction}")
 
             # Compute BLEU for this single sample

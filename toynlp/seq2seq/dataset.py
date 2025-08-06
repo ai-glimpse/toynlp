@@ -47,7 +47,7 @@ def get_split_dataloader(
         batch_size=data_config.batch_size,
         num_workers=data_config.num_workers,
         shuffle=data_config.shuffle,
-        collate_fn=lambda batch: collate_fn(batch, source_tokenizer, target_tokenizer, data_config.max_length),
+        collate_fn=lambda batch: collate_fn(batch, source_tokenizer, target_tokenizer, data_config.max_length),  # type: ignore[arg-type]
         drop_last=True,
     )
     return dataloader
@@ -64,8 +64,8 @@ if __name__ == "__main__":
         dataset_name=config.dataset.name,
     )
 
-    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source).load()
-    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target).load()
+    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source_lang).load()
+    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target_lang).load()
     train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, config.data)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)

@@ -132,8 +132,8 @@ def train_model() -> None:
         )
 
     dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
-    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source).load()
-    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target).load()
+    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source_lang).load()
+    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target_lang).load()
 
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]

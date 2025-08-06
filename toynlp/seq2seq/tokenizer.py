@@ -97,8 +97,8 @@ def train_tokenizer(lang: str) -> None:
 def train_all_tokenizers() -> None:
     """Train tokenizers for both source and target languages."""
     config = get_config()
-    train_tokenizer(config.dataset.source)
-    train_tokenizer(config.dataset.target)
+    train_tokenizer(config.dataset.source_lang)
+    train_tokenizer(config.dataset.target_lang)
 
 
 def test_tokenizers() -> None:
@@ -107,19 +107,19 @@ def test_tokenizers() -> None:
     print("\nTesting tokenizers:")
 
     # Test source language tokenizer
-    src_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source).load()
+    src_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source_lang).load()
     src_text = "Zwei Männer stehen am Herd und bereiten Essen zu."
     src_tokens = src_tokenizer.encode(src_text).ids
-    print(f"\n{config.dataset.source.upper()}:")
+    print(f"\n{config.dataset.source_lang.upper()}:")
     print(f"Text: {src_text}")
     print(f"Tokens: {src_tokens}")
     print(f"Decoded: {src_tokenizer.decode(src_tokens)}")
 
     # Test target language tokenizer
-    tgt_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target).load()
+    tgt_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target_lang).load()
     tgt_text = "Two men are at the stove preparing food."
     tgt_tokens = tgt_tokenizer.encode(tgt_text).ids
-    print(f"\n{config.dataset.target.upper()}:")
+    print(f"\n{config.dataset.target_lang.upper()}:")
     print(f"Text: {tgt_text}")
     print(f"Tokens: {tgt_tokens}")
     print(f"Decoded: {tgt_tokenizer.decode(tgt_tokens)}")

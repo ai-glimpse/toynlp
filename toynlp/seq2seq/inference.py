@@ -21,8 +21,8 @@ class Seq2SeqInference:
         self.device = current_device
 
         # Load tokenizers
-        self.source_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.source).load()
-        self.target_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.target).load()
+        self.source_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.source_lang).load()
+        self.target_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.target_lang).load()
 
         # Load model
         self.model = Seq2SeqModel(self.config.model)
@@ -156,7 +156,7 @@ def test_translation() -> None:
         "Kannst du mir helfen?",
     ]
 
-    print(f"\nTranslating from {inference.config.dataset.source} to {inference.config.dataset.target}:")
+    print(f"\nTranslating from {inference.config.dataset.source_lang} to {inference.config.dataset.target_lang}:")
     print("=" * 60)
 
     for i, sentence in enumerate(test_sentences, 1):

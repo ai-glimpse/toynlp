@@ -1,8 +1,8 @@
 dataset:
   path: bentrevett/multi30k
   name: null
-  source: de
-  target: en
+  source_lang: de
+  target_lang: en
 
 tokenizer:
   min_frequency: 1
@@ -14,6 +14,8 @@ tokenizer:
     - "[PAD]"
 
 model:
+  source_lang: de
+  target_lang: en
   source_vocab_size: 8000
   target_vocab_size: 6000
   embedding_dim: 256

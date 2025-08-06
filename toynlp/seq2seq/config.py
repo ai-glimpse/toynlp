@@ -21,8 +21,8 @@ class TokenizerConfig:
 class DatasetConfig:
     path: str = "bentrevett/multi30k"
     name: str | None = None
-    source: str = "de"
-    target: str = "en"
+    source_lang: str = "de"
+    target_lang: str = "en"
 
 
 @dataclass
@@ -41,6 +41,8 @@ class OptimizerConfig:
 
 @dataclass
 class ModelConfig:
+    source_lang: str = "de"
+    target_lang: str = "en"
     source_vocab_size: int = 8000
     target_vocab_size: int = 6000
     embedding_dim: int = 256
@@ -95,11 +97,11 @@ class Seq2SeqConfig:
             self.wandb.name = self._get_wandb_name()
 
     def get_lang_vocab_size(self, lang: str) -> int:
-        if lang == self.dataset.source:
+        if lang == self.dataset.source_lang:
             return self.model.source_vocab_size
-        if lang == self.dataset.target:
+        if lang == self.dataset.target_lang:
             return self.model.target_vocab_size
-        msg = f"Language '{lang}' not supported. Use '{self.dataset.source}' or '{self.dataset.target}'"
+        msg = f"Language '{lang}' not supported. Use '{self.dataset.source_lang}' or '{self.dataset.target_lang}'"
         raise ValueError(msg)
 
     def _get_wandb_name(self) -> str:
