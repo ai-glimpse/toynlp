@@ -1,9 +1,13 @@
 from evaluate import load
 from tqdm import tqdm
 
-from toynlp.seq2seq.config import Seq2SeqConfig
+from toynlp.seq2seq.config import get_config
 from toynlp.seq2seq.inference import Seq2SeqInference
 from toynlp.seq2seq.dataset import get_dataset
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from traitlets import Any
 
 
 class Seq2SeqEvaluator:
@@ -15,7 +19,7 @@ class Seq2SeqEvaluator:
         Args:
             inference: Seq2SeqInference instance. If None, creates a new one.
         """
-        self.config = Seq2SeqConfig()
+        self.config = get_config()
         self.inference = inference if inference is not None else Seq2SeqInference()
 
         # Load BLEU metric
@@ -79,7 +83,7 @@ class Seq2SeqEvaluator:
         self,
         split: str = "test",
         max_samples: int | None = None,
-        batch_size: int = 32,
+        batch_size: int | None = None,
     ) -> dict[str, float]:
         """Evaluate model on a specific dataset split.
 
@@ -91,6 +95,10 @@ class Seq2SeqEvaluator:
         Returns:
             Dictionary containing BLEU scores and other metrics
         """
+        if max_samples is None:
+            max_samples = self.config.evaluation.max_samples
+        if batch_size is None:
+            batch_size = self.config.evaluation.batch_size
         if split not in self.dataset:
             available_splits = list(self.dataset.keys())
             msg = f"Split '{split}' not found in dataset. Available: {available_splits}"
@@ -115,7 +123,7 @@ class Seq2SeqEvaluator:
         predictions = []
 
         for i in tqdm(range(0, len(source_texts), batch_size), desc="Translating"):
-            batch_sources = source_texts[i:i + batch_size]
+            batch_sources = source_texts[i : i + batch_size]
             batch_predictions = self.inference.translate_batch(batch_sources)
             predictions.extend(batch_predictions)
 
@@ -146,7 +154,7 @@ class Seq2SeqEvaluator:
     def evaluate_all_splits(
         self,
         max_samples_per_split: int | None = None,
-        batch_size: int = 32,
+        batch_size: int | None = None,
     ) -> dict[str, dict[str, float]]:
         """Evaluate model on all available dataset splits.
 
@@ -157,7 +165,7 @@ class Seq2SeqEvaluator:
         Returns:
             Dictionary with results for each split
         """
-        results = {}
+        results: dict[str, Any] = {}
 
         for split in self.dataset:
             try:
@@ -206,7 +214,7 @@ class Seq2SeqEvaluator:
         end_idx = min(start_idx + num_samples, len(split_data))
 
         print(f"\n=== Sample Translations from {split} split ===")
-        print(f"Showing samples {start_idx} to {end_idx-1}")
+        print(f"Showing samples {start_idx} to {end_idx - 1}")
         print("=" * 60)
 
         for i in range(start_idx, end_idx):
@@ -214,7 +222,7 @@ class Seq2SeqEvaluator:
             target_text = split_data[i][self.config.dataset.target]
             prediction = self.inference.translate(source_text)
 
-            print(f"\nSample {i+1}:")
+            print(f"\nSample {i + 1}:")
             print(f"Source ({self.config.dataset.source}): {source_text}")
             print(f"Target ({self.config.dataset.target}): {target_text}")
             print(f"Prediction: {prediction}")
@@ -239,15 +247,15 @@ def run_evaluation() -> None:
     evaluator = Seq2SeqEvaluator()
 
     # Show some sample translations first
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("SAMPLE TRANSLATIONS")
-    print("="*60)
+    print("=" * 60)
     evaluator.compare_samples(split="test", num_samples=3)
 
     # Evaluate on all splits with full datasets
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("BLEU SCORE EVALUATION")
-    print("="*60)
+    print("=" * 60)
 
     # Full evaluation on validation and test splits
     # Keep train split limited to avoid overly long evaluation
@@ -278,9 +286,9 @@ def run_evaluation() -> None:
         print(f"  Samples: {metrics['num_samples']}")
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("EVALUATION SUMMARY")
-    print("="*60)
+    print("=" * 60)
 
     for split, metrics in results.items():
         if "error" not in metrics:

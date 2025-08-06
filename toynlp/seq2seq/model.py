@@ -84,7 +84,6 @@ class Seq2SeqModel(torch.nn.Module):
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         self.config = config
-        # TODO: to implement teacher forcing, we need to pass the target sequence during training
         self.force_teacher_ratio = self.config.teacher_forcing_ratio
         self.encoder = Encoder(
             input_size=config.source_vocab_size,
@@ -135,17 +134,17 @@ class Seq2SeqModel(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    from toynlp.seq2seq.config import ModelConfig
+    from toynlp.seq2seq.config import get_config
 
-    model_config = ModelConfig()
-    model = Seq2SeqModel(model_config)
+    config = get_config()
+    model = Seq2SeqModel(config.model)
     model.to(current_device)
     print(model)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters())}")
 
     # Example input
-    input_tensor = torch.randint(0, model_config.source_vocab_size, (2, 10)).to(current_device)
-    target_tensor = torch.randint(0, model_config.target_vocab_size, (2, 8)).to(current_device)
+    input_tensor = torch.randint(0, config.model.source_vocab_size, (2, 10)).to(current_device)
+    target_tensor = torch.randint(0, config.model.target_vocab_size, (2, 8)).to(current_device)
     print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
     output = model(input_tensor, target_tensor)

@@ -1,35 +1,28 @@
-from dataclasses import asdict
-
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
+import argparse
 
 import wandb
 from toynlp.device import current_device
 from toynlp.paths import SEQ2SEQ_MODEL_PATH
-from toynlp.seq2seq.config import (
-    DataConfig,
-    ModelConfig,
-    OptimizerConfig,
-    TrainingConfig,
-    Seq2SeqConfig,
-)
+from toynlp.seq2seq.config import get_config, load_config
 from toynlp.seq2seq.dataset import get_split_dataloader
 from toynlp.seq2seq.model import Seq2SeqModel
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 
 
 class Seq2SeqTrainer:
-    def __init__(self, config: Seq2SeqConfig, pad_token_id: int) -> None:
-        self.config = config
-        self.model = Seq2SeqModel(config.model)
+    def __init__(self, pad_token_id: int) -> None:
+        self.config = get_config()
+        self.model = Seq2SeqModel(self.config.model)
         self.model_path = SEQ2SEQ_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
-            lr=config.optimizer.learning_rate,
-            weight_decay=config.optimizer.weight_decay,
+            lr=self.config.optimizer.learning_rate,
+            weight_decay=self.config.optimizer.weight_decay,
         )
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=pad_token_id)
 
@@ -56,16 +49,17 @@ class Seq2SeqTrainer:
             )
 
             # log metrics to wandb
-            wandb.log(
-                {
-                    "TrainLoss": train_loss,
-                    "Val Loss": val_loss,
-                    "Test Loss": test_loss,
-                    "TrainPerplexity": torch.exp(torch.tensor(train_loss)),
-                    "ValPerplexity": torch.exp(torch.tensor(val_loss)),
-                    "TestPerplexity": torch.exp(torch.tensor(test_loss)),
-                },
-            )
+            if self.config.wandb.enabled:
+                wandb.log(
+                    {
+                        "TrainLoss": train_loss,
+                        "Val Loss": val_loss,
+                        "Test Loss": test_loss,
+                        "TrainPerplexity": torch.exp(torch.tensor(train_loss)),
+                        "ValPerplexity": torch.exp(torch.tensor(val_loss)),
+                        "TestPerplexity": torch.exp(torch.tensor(test_loss)),
+                    },
+                )
 
     def _train_epoch(self, train_dataloader: DataLoader) -> float:
         self.model.train()
@@ -116,17 +110,19 @@ class Seq2SeqTrainer:
         return total_loss / total_samples  # Correct average
 
 
-def train_model(config: Seq2SeqConfig) -> None:
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project=config.wandb.project,
-        name=config.wandb.name,
-        # track hyperparameters and run metadata
-        config=asdict(config),
-    )
+def train_model() -> None:
+    config = get_config()
+    if config.wandb.enabled:
+        wandb.init(
+            project=config.wandb.project,
+            name=config.wandb.name,
+            config=config.to_dict(),
+        )
+
     dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
     source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source).load()
     target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target).load()
+
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "train",
@@ -149,29 +145,23 @@ def train_model(config: Seq2SeqConfig) -> None:
         data_config=config.data,
     )
 
-    trainer = Seq2SeqTrainer(config=config, pad_token_id=target_tokenizer.token_to_id("[PAD]"))
+    trainer = Seq2SeqTrainer(pad_token_id=target_tokenizer.token_to_id("[PAD]"))
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
-def train():
-    config = Seq2SeqConfig(
-        model=ModelConfig(
-            embedding_dim=256,
-            hidden_dim=512,
-            num_layers=2,
-        ),
-        optimizer=OptimizerConfig(
-            learning_rate=0.005,
-        ),
-        data=DataConfig(
-            batch_size=256,
-            num_workers=8,
-        ),
-        training=TrainingConfig(epochs=100),
+def main() -> None:
+    """CLI entry point for training seq2seq model."""
+    parser = argparse.ArgumentParser(description="Train Seq2Seq model")
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to YAML configuration file (e.g., configs/seq2seq/default.yml)",
     )
-
-    train_model(config)
+    args = parser.parse_args()
+    load_config(args.config)
+    train_model()
 
 
 if __name__ == "__main__":
-    train()
+    main()

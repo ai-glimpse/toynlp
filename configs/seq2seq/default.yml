@@ -1,0 +1,48 @@
+dataset:
+  path: bentrevett/multi30k
+  name: null
+  source: de
+  target: en
+
+tokenizer:
+  min_frequency: 1
+  num_proc: 8
+  special_tokens:
+    - "[UNK]"
+    - "[BOS]"
+    - "[EOS]"
+    - "[PAD]"
+
+model:
+  source_vocab_size: 8000
+  target_vocab_size: 6000
+  embedding_dim: 256
+  hidden_dim: 512
+  num_layers: 2
+  dropout_ratio: 0.5
+  teacher_forcing_ratio: 0.5
+
+data:
+  max_length: 1000
+  batch_size: 256
+  num_workers: 4
+  shuffle: true
+
+optimizer:
+  learning_rate: 0.005
+  weight_decay: 0.0001
+
+training:
+  epochs: 100
+
+inference:
+  max_length: 50
+
+evaluation:
+  max_samples: null
+  batch_size: 64
+
+wandb:
+  enabled: true
+  name: null
+  project: Seq2Seq

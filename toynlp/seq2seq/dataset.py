@@ -59,20 +59,19 @@ def get_split_dataloader(
 
 
 if __name__ == "__main__":
-    from toynlp.seq2seq.config import DataConfig, DatasetConfig
+    from toynlp.seq2seq.config import get_config
     from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 
-    data_config = DataConfig()
-    dataset_config = DatasetConfig()
+    config = get_config()
 
     dataset = get_dataset(
-        dataset_path=dataset_config.path,
-        dataset_name=dataset_config.name,
+        dataset_path=config.dataset.path,
+        dataset_name=config.dataset.name,
     )
 
-    source_tokenizer = Seq2SeqTokenizer(lang="de").load()
-    target_tokenizer = Seq2SeqTokenizer(lang="en").load()
-    train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, data_config)
+    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source).load()
+    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target).load()
+    train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, config.data)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)
         print(batch_input[0], batch_target[0])

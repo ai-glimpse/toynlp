@@ -19,11 +19,13 @@ classifiers=[
     "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">= 3.12"
+
 dependencies = [
     "datasets>=3.2.0",
     "evaluate>=0.4.5",
     "huggingface-hub>=0.28.1",
     "numpy>=2.2.2",
+    "pyyaml>=6.0",
     "safetensors>=0.5.3",
     "tokenizers>=0.21.0",
     "torch>=2.5.1",
@@ -54,6 +56,12 @@ docs = [
     "mkdocs-git-committers-plugin-2",
     "mkdocs-git-revision-date-localized-plugin",
 ]
+
+[project.scripts]
+# uv run seq2seq-train --config configs/seq2seq/default.yml
+seq2seq-train = "toynlp.seq2seq.train:main"
+# uv run seq2seq-tokenize --config configs/seq2seq/default.yml
+seq2seq-tokenize = "toynlp.seq2seq.tokenizer:main"
 
 [project.urls]
 "Homepage" = "https://shenxiangzhuang.github.io/toynlp"

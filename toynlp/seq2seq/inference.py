@@ -1,7 +1,7 @@
 import torch
 from pathlib import Path
 
-from toynlp.seq2seq.config import Seq2SeqConfig
+from toynlp.seq2seq.config import get_config
 from toynlp.seq2seq.model import Seq2SeqModel
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 from toynlp.device import current_device
@@ -17,7 +17,7 @@ class Seq2SeqInference:
         Args:
             model_path: Path to the saved model file
         """
-        self.config = Seq2SeqConfig()
+        self.config = get_config()
         self.device = current_device
 
         # Load tokenizers
@@ -72,7 +72,7 @@ class Seq2SeqInference:
         text = text.replace("[BOS]", "").replace("[EOS]", "").replace("[PAD]", "").strip()
         return text
 
-    def translate(self, text: str, max_length: int = 50) -> str:
+    def translate(self, text: str, max_length: int | None = None) -> str:
         """Translate text from source language to target language.
 
         Args:
@@ -82,6 +82,8 @@ class Seq2SeqInference:
         Returns:
             Translated text
         """
+        if max_length is None:
+            max_length = self.config.inference.max_length
         with torch.no_grad():
             # Preprocess input
             input_tensor = self.preprocess_text(text)
@@ -118,7 +120,7 @@ class Seq2SeqInference:
             translation = self.postprocess_tokens(output_tokens)
             return translation
 
-    def translate_batch(self, texts: list[str], max_length: int = 50) -> list[str]:
+    def translate_batch(self, texts: list[str], max_length: int | None = None) -> list[str]:
         """Translate a batch of texts.
 
         Args:
@@ -128,6 +130,8 @@ class Seq2SeqInference:
         Returns:
             List of translated texts
         """
+        if max_length is None:
+            max_length = self.config.inference.max_length
         translations = []
         for text in texts:
             translation = self.translate(text, max_length)
@@ -208,4 +212,3 @@ def interactive_translation() -> None:
 if __name__ == "__main__":
     # Run translation tests
     test_translation()
-
