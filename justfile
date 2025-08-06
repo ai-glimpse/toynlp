@@ -1,6 +1,7 @@
 # Sequence-to-Sequence (Seq2Seq) Model Tasks
 seq2seq-tokenize:
-    uv run python toynlp/seq2seq/tokenizer.py
+    uv run python toynlp/seq2seq/tokenizer.py \
+        --config configs/seq2seq/default.yml
 
 seq2seq-train:
     uv run python toynlp/seq2seq/train.py \
