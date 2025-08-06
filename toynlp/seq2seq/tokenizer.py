@@ -30,7 +30,6 @@ class Seq2SeqTokenizer:
             [
                 NFD(),
                 Lowercase(),
-                # StripAccents(),
             ],  # type: ignore[assignment]
         )
         self.tokenizer.post_processor = TemplateProcessing(
