@@ -121,7 +121,6 @@ class Seq2SeqModel(torch.nn.Module):
             top_token_index = decoder_output.argmax(dim=-1).squeeze(1).tolist()
             # decide if we are going to use teacher forcing or not
             teacher_force = random.random() < self.force_teacher_ratio
-            # teacher_force = True  # For simplicity, always use teacher forcing
             if teacher_force:
                 # Use the actual target token for the next input
                 encoder_input_tensor = target_ids[:, t].unsqueeze(1)
