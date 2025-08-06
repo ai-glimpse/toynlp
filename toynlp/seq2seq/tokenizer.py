@@ -75,7 +75,7 @@ def train_tokenizer(lang: str) -> None:
         # Prepare text data
         lang_dataset = dataset.map(
             lambda batch: {"text": list(batch[lang])},
-            remove_columns=["en", "de"],
+            remove_columns=[config.dataset.source, config.dataset.target],
             batched=True,
             num_proc=config.tokenizer.num_proc,  # type: ignore[unknown-argument]
         )
