@@ -55,6 +55,7 @@ class TrainingConfig:
     epochs: int = 10
     clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
 
+
 @dataclass
 class InferenceConfig:
     max_length: int = 50
