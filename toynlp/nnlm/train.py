@@ -7,7 +7,7 @@ from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
 import wandb
-from toynlp.device import current_device
+from toynlp.util import current_device
 from toynlp.nnlm.config import (
     DataConfig,
     ModelConfig,

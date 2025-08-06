@@ -1,7 +1,7 @@
 import torch
 from tokenizers import Tokenizer
 
-from toynlp.device import current_device
+from toynlp.util import current_device
 from toynlp.paths import CBOW_MODEL_PATH, SKIP_GRAM_MODEL_PATH
 from toynlp.word2vec.model import CbowModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer

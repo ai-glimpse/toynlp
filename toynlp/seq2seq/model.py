@@ -2,7 +2,7 @@ import torch
 import random
 from toynlp.seq2seq.config import ModelConfig
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
-from toynlp.device import current_device
+from toynlp.util import current_device
 
 
 class Encoder(torch.nn.Module):

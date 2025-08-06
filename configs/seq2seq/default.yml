@@ -24,16 +24,18 @@ model:
 
 data:
   max_length: 1000
-  batch_size: 256
+  batch_size: 512
   num_workers: 4
   shuffle: true
 
 optimizer:
   learning_rate: 0.005
-  weight_decay: 0.0001
+  weight_decay: 0.01
 
 training:
-  epochs: 100
+  epochs: 50
+  clip_norm: 1.0
+
 
 inference:
   max_length: 50

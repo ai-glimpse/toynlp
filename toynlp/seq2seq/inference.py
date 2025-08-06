@@ -4,7 +4,7 @@ from pathlib import Path
 from toynlp.seq2seq.config import get_config
 from toynlp.seq2seq.model import Seq2SeqModel
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
-from toynlp.device import current_device
+from toynlp.util import current_device
 from toynlp.paths import SEQ2SEQ_MODEL_PATH
 
 
@@ -181,34 +181,5 @@ def test_translation() -> None:
         print(f"Batch translation error: {e}")
 
 
-def interactive_translation() -> None:
-    """Interactive translation function for user input."""
-    print("Starting interactive translation mode...")
-    print("Enter text to translate (type 'quit' to exit):")
-
-    inference = Seq2SeqInference()
-
-    while True:
-        try:
-            user_input = input(f"\n{inference.config.dataset.source.upper()}: ").strip()
-
-            if user_input.lower() in ["quit", "exit", "q"]:
-                print("Goodbye!")
-                break
-
-            if not user_input:
-                continue
-
-            translation = inference.translate(user_input)
-            print(f"{inference.config.dataset.target.upper()}: {translation}")
-
-        except KeyboardInterrupt:
-            print("\nGoodbye!")
-            break
-        except (RuntimeError, ValueError, KeyError) as e:
-            print(f"Translation error: {e}")
-
-
 if __name__ == "__main__":
-    # Run translation tests
     test_translation()
