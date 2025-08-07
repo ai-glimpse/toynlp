@@ -95,14 +95,17 @@ explicit = true
 
 # pytest coverage configuration: https://pytest-cov.readthedocs.io/en/latest/
 [tool.coverage.run]
-include = [
-    "**/model.py",
-]
 omit = [
     "tests/*",
     "*/__pycache__/*",
     "*/venv/*",
     "*/.venv/*",
+    "**/__init__.py",
+    "**/train.py",
+    "**/inference.py",
+    "**/evaluation.py",
+    "**/hub.py",
+    "**/dataset.py",
 ]
 
 [tool.coverage.report]
