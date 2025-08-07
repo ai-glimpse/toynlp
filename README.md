@@ -26,7 +26,7 @@ NLP models with clean implementation.
 
 - [x] NNLM(2003)
 - [x] Word2Vec(2013)
-- [ ] Seq2Seq(2014)
+- [x] Seq2Seq(2014)
 - [ ] Attention(2015)
 - [ ] fastText(2016)
 - [ ] Transformer(2017)
@@ -35,5 +35,10 @@ NLP models with clean implementation.
 - [ ] XLNet(2019)
 - [ ] T5(2020)
 
-You may wonder where is GPT-2? Well, it's in [toyllm](https://github.com/ai-glimpse/toyllm)!
+
+## FAQ
+
+### Where is GPT-2 and other LLMs?
+
+ Well, it's in [toyllm](https://github.com/ai-glimpse/toyllm)!
 I separated the models into two libraries, `toynlp` for traditional "small" NLP models and `toyllm` for LLMs, which are typically larger and more complex.

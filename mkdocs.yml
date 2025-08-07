@@ -10,7 +10,6 @@ nav:
   - Home: index.md
   - Models:
     - NNLM: models/nnlm.md
-  - Changelog: changelog.md
   - Author's website: https://shenxiangzhuang.github.io/
 
 theme:
