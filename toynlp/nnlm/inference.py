@@ -1,6 +1,6 @@
 import torch
 
-from toynlp.device import current_device
+from toynlp.util import current_device
 from toynlp.nnlm.config import NNLMPathConfig
 from toynlp.nnlm.tokenizer import NNLMTokenizer
 

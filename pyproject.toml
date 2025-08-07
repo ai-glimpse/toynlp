@@ -19,10 +19,13 @@ classifiers=[
     "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">= 3.12"
+
 dependencies = [
     "datasets>=3.2.0",
+    "evaluate>=0.4.5",
     "huggingface-hub>=0.28.1",
     "numpy>=2.2.2",
+    "pyyaml>=6.0",
     "safetensors>=0.5.3",
     "tokenizers>=0.21.0",
     "torch>=2.5.1",
@@ -41,6 +44,7 @@ dev = [
     "jupyterlab>=4.3.5",
     "ipywidgets>=8.1.5",
     "ruff>=0.12.7",
+    "types-pyyaml>=6.0.12.20250516",
 ]
 docs = [
     "mkdocs",
@@ -53,6 +57,7 @@ docs = [
     "mkdocs-git-committers-plugin-2",
     "mkdocs-git-revision-date-localized-plugin",
 ]
+
 
 [project.urls]
 "Homepage" = "https://shenxiangzhuang.github.io/toynlp"
@@ -90,14 +95,17 @@ explicit = true
 
 # pytest coverage configuration: https://pytest-cov.readthedocs.io/en/latest/
 [tool.coverage.run]
-include = [
-    "**/model.py",
-]
 omit = [
     "tests/*",
     "*/__pycache__/*",
     "*/venv/*",
     "*/.venv/*",
+    "**/__init__.py",
+    "**/train.py",
+    "**/inference.py",
+    "**/evaluation.py",
+    "**/hub.py",
+    "**/dataset.py",
 ]
 
 [tool.coverage.report]
@@ -175,6 +183,9 @@ target-version = "py312"
 select = ["ALL"]
 ignore = [
     "I001",    # Unsorted imports  # TODO: Enable this rule after find ruff's bug
+    "FIX002",  # TODO checker
+    "TD002",  # TODO checker
+    "TD003",   # TODO checker
     "ANN201",  # Missing return type annotation for public function
     "ANN001",  # Missing type annotation for function argument
     "TRY003",  # Avoid specifying long messages outside the exception class

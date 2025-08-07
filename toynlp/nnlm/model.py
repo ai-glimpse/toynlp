@@ -67,7 +67,7 @@ class NNLM(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    from toynlp.device import current_device
+    from toynlp.util import current_device
 
     config = ModelConfig(
         context_size=6,
