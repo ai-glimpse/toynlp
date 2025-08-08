@@ -3,10 +3,10 @@ import tyro
 from typing import Any
 
 
-
 @dataclass
 class AttentionConfig:
     """All in one for everything, without nested dataclasses."""
+
     # dataset configs
     dataset_path: str = "bentrevett/multi30k"
     dataset_name: str | None = None
@@ -46,7 +46,6 @@ class AttentionConfig:
     wandb_project: str = "Attention"
     wandb_enabled: bool = True
 
-
     def get_lang_vocab_size(self, lang: str) -> int:
         """Get vocabulary size for a specific language."""
         if lang == self.source_lang:
@@ -61,35 +60,9 @@ class AttentionConfig:
         return asdict(self)
 
 
-# Global configuration instance
-_config: AttentionConfig | None = None
-
-
-def get_config() -> AttentionConfig:
-    """Get the global configuration instance."""
-    global _config
-    if _config is None:
-        _config = AttentionConfig()
-    return _config
-
-
-def set_config(config: AttentionConfig) -> None:
-    """Set the global configuration instance."""
-    global _config
-    _config = config
-
-
-def load_config_from_cli() -> AttentionConfig:
-    """Load configuration from command line arguments using tyro."""
-    config = tyro.cli(AttentionConfig)
-    set_config(config)
-    return config
-
-
-def reset_config() -> None:
-    """Reset the global configuration to default values."""
-    global _config
-    _config = AttentionConfig()
+def create_config_from_cli() -> AttentionConfig:
+    """Create configuration from command line arguments using tyro."""
+    return tyro.cli(AttentionConfig)
 
 
 if __name__ == "__main__":

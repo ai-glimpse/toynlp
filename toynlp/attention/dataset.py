@@ -62,10 +62,10 @@ def get_split_dataloader(
 
 
 if __name__ == "__main__":
-    from toynlp.attention.config import get_config
+    from toynlp.attention.config import create_config_from_cli
     from toynlp.attention.tokenizer import AttentionTokenizer
 
-    config = get_config()
+    config = create_config_from_cli()
 
     dataset = get_dataset(
         dataset_path=config.dataset_path,

@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import wandb
 from toynlp.util import current_device
 from toynlp.paths import ATTENTION_MODEL_PATH
-from toynlp.attention.config import get_config, load_config_from_cli
+from toynlp.attention.config import AttentionConfig, create_config_from_cli
 from toynlp.attention.dataset import get_split_dataloader
 from toynlp.attention.model import AttentionModel
 from toynlp.attention.tokenizer import AttentionTokenizer
@@ -16,8 +16,8 @@ set_deterministic_mode()  # Set deterministic mode for reproducibility
 
 
 class AttentionTrainer:
-    def __init__(self, pad_token_id: int) -> None:
-        self.config = get_config()
+    def __init__(self, config: AttentionConfig, pad_token_id: int) -> None:
+        self.config = config
         self.model = AttentionModel(self.config)
         self.model_path = ATTENTION_MODEL_PATH
         self.device = current_device
@@ -121,8 +121,7 @@ class AttentionTrainer:
         return total_loss / total_samples  # Correct average
 
 
-def train_model() -> None:
-    config = get_config()
+def train_model(config: AttentionConfig) -> None:
     if config.wandb_enabled:
         wandb.init(
             project=config.wandb_project,
@@ -156,26 +155,26 @@ def train_model() -> None:
         config=config,
     )
 
-    trainer = AttentionTrainer(pad_token_id=target_tokenizer.token_to_id("[PAD]"))
+    trainer = AttentionTrainer(config=config, pad_token_id=target_tokenizer.token_to_id("[PAD]"))
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
 def main() -> None:
     """CLI entry point for training attention model using tyro configuration."""
     # Load configuration from command line using tyro
-    config = load_config_from_cli()
+    config = create_config_from_cli()
 
-    print("="*60)
+    print("=" * 60)
     print("ATTENTION MODEL TRAINING")
-    print("="*60)
+    print("=" * 60)
     print(f"Dataset: {config.dataset_path}")
     print(f"Languages: {config.source_lang} -> {config.target_lang}")
     print(f"Model: {config.embedding_dim}d embeddings, {config.hidden_dim}d hidden")
     print(f"Training: {config.epochs} epochs, lr={config.learning_rate}")
     print(f"WandB: {'enabled' if config.wandb_enabled else 'disabled'}")
-    print("="*60)
+    print("=" * 60)
 
-    train_model()
+    train_model(config)
 
 
 if __name__ == "__main__":

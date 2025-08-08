@@ -5,7 +5,7 @@ from tokenizers.normalizers import NFD, Lowercase
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import WordLevelTrainer
-from toynlp.attention.config import get_config, load_config_from_cli
+from toynlp.attention.config import AttentionConfig, create_config_from_cli
 
 from toynlp.paths import ATTENTION_TOKENIZER_PATH_MAP
 
@@ -52,13 +52,13 @@ class AttentionTokenizer:
         return self.tokenizer
 
 
-def train_tokenizer(lang: str) -> None:
-    """Train a tokenizer for the specified language using the global config.
+def train_tokenizer(lang: str, config: AttentionConfig) -> None:
+    """Train a tokenizer for the specified language using the provided config.
 
     Args:
         lang: Language code (e.g., 'en', 'de')
+        config: Configuration instance
     """
-    config = get_config()
     tokenizer_path = ATTENTION_TOKENIZER_PATH_MAP[lang]
 
     if not tokenizer_path.exists():
@@ -93,16 +93,14 @@ def train_tokenizer(lang: str) -> None:
         print(f"Tokenizer already exists at {tokenizer_path}")
 
 
-def train_all_tokenizers() -> None:
+def train_all_tokenizers(config: AttentionConfig) -> None:
     """Train tokenizers for both source and target languages."""
-    config = get_config()
-    train_tokenizer(config.source_lang)
-    train_tokenizer(config.target_lang)
+    train_tokenizer(config.source_lang, config)
+    train_tokenizer(config.target_lang, config)
 
 
-def test_tokenizers() -> None:
+def test_tokenizers(config: AttentionConfig) -> None:
     """Test the trained tokenizers with sample texts."""
-    config = get_config()
     print("\nTesting tokenizers:")
 
     # Test source language tokenizer
@@ -127,14 +125,16 @@ def test_tokenizers() -> None:
 def main() -> None:
     """CLI entry point for training tokenizers using tyro config management."""
     # Load configuration from command line using tyro
-    config = load_config_from_cli()
+    config = create_config_from_cli()
 
     print(f"Training tokenizers for {config.source_lang} and {config.target_lang}")
     print(f"Dataset: {config.dataset_path}")
+
     # Train tokenizers for both languages
-    train_all_tokenizers()
+    train_all_tokenizers(config)
+
     # Test tokenizers
-    test_tokenizers()
+    test_tokenizers(config)
 
 
 if __name__ == "__main__":

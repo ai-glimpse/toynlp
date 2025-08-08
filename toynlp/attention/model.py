@@ -1,6 +1,6 @@
 import torch
 import random
-from toynlp.attention.config import AttentionConfig, get_config
+from toynlp.attention.config import AttentionConfig, create_config_from_cli
 from toynlp.attention.tokenizer import AttentionTokenizer
 from toynlp.util import current_device
 
@@ -103,6 +103,8 @@ class AttentionModel(torch.nn.Module):
         self.target_tokenizer = AttentionTokenizer(lang=self.config.target_lang).load()
         self.target_vocab_ids = list(self.target_tokenizer.get_vocab().values())
         self.device = current_device
+        # TODO: Shall we move model to the current device here?
+        # self.to(self.device)
 
     def forward(self, input_ids: torch.Tensor, target_ids: torch.Tensor) -> torch.Tensor:
         hidden, cell = self.encoder(input_ids)
@@ -133,7 +135,7 @@ class AttentionModel(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    config = get_config()
+    config = create_config_from_cli()
     model = AttentionModel(config)
     model.to(current_device)
     print(model)
