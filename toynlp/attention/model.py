@@ -69,8 +69,7 @@ class Decoder(torch.nn.Module):
         target_embedded = self.dropout(self.embedding(input_ids))
         # output: (batch_size, seq_length, hidden_size)
         # hidden: (num_layers, batch_size, hidden_size)
-        # cell: (num_layers, batch_size, hidden_size)
-        lstm_output, (hidden, cell) = self.gru(target_embedded, (hidden, cell))
+        lstm_output, hidden = self.gru(target_embedded, hidden)
         # (batch_size, seq_length, hidden_size) -> (batch_size, seq_length, output_size)
         output = self.fc(lstm_output)
         return output, hidden
