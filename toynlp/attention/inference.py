@@ -1,36 +1,37 @@
 import torch
 from pathlib import Path
 
-from toynlp.seq2seq.config import get_config
-from toynlp.seq2seq.model import Seq2SeqModel
-from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
+from toynlp.attention.config import AttentionConfig
+from toynlp.attention.model import AttentionModel
+from toynlp.attention.tokenizer import AttentionTokenizer
 from toynlp.util import current_device
-from toynlp.paths import SEQ2SEQ_MODEL_PATH
+from toynlp.paths import ATTENTION_MODEL_PATH
 
 
-class Seq2SeqInference:
-    """Seq2Seq model inference class for translation tasks."""
+class AttentionInference:
+    """Attention model inference class for translation tasks."""
 
-    def __init__(self, model_path: Path = SEQ2SEQ_MODEL_PATH) -> None:
+    def __init__(self, config: AttentionConfig, model_path: Path = ATTENTION_MODEL_PATH) -> None:
         """Initialize the inference class with model and tokenizers.
 
         Args:
+            config: Attention configuration
             model_path: Path to the saved model file
         """
-        self.config = get_config()
+        self.config = config
         self.device = current_device
 
         # Load tokenizers
-        self.source_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.source_lang).load()
-        self.target_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.target_lang).load()
+        self.source_tokenizer = AttentionTokenizer(lang=self.config.source_lang).load()
+        self.target_tokenizer = AttentionTokenizer(lang=self.config.target_lang).load()
 
         # Load model
-        self.model = Seq2SeqModel(self.config.model)
+        self.model = AttentionModel(self.config)
         if model_path.exists():
             # Try to load the complete model first, if it fails, load state_dict
             try:
                 loaded_model = torch.load(model_path, map_location=self.device, weights_only=False)
-                if isinstance(loaded_model, Seq2SeqModel):
+                if isinstance(loaded_model, AttentionModel):
                     self.model = loaded_model
                 else:
                     self.model.load_state_dict(loaded_model)
@@ -83,7 +84,7 @@ class Seq2SeqInference:
             Translated text
         """
         if max_length is None:
-            max_length = self.config.inference.max_length
+            max_length = self.config.inference_max_length
         with torch.no_grad():
             # Preprocess input
             input_tensor = self.preprocess_text(text)
@@ -131,7 +132,7 @@ class Seq2SeqInference:
             List of translated texts
         """
         if max_length is None:
-            max_length = self.config.inference.max_length
+            max_length = self.config.inference_max_length
         translations = []
         for text in texts:
             translation = self.translate(text, max_length)
@@ -139,12 +140,12 @@ class Seq2SeqInference:
         return translations
 
 
-def test_translation() -> None:
+def test_translation(config: AttentionConfig) -> None:
     """Test function to demonstrate translation capabilities."""
-    print("Loading Seq2Seq model for translation testing...")
+    print("Loading Attention model for translation testing...")
 
     # Initialize inference
-    inference = Seq2SeqInference()
+    inference = AttentionInference(config)
 
     # Test sentences (German to English)
     test_sentences = [
@@ -156,7 +157,7 @@ def test_translation() -> None:
         "Kannst du mir helfen?",
     ]
 
-    print(f"\nTranslating from {inference.config.dataset.source_lang} to {inference.config.dataset.target_lang}:")
+    print(f"\nTranslating from {config.source_lang} to {config.target_lang}:")
     print("=" * 60)
 
     for i, sentence in enumerate(test_sentences, 1):
@@ -182,4 +183,10 @@ def test_translation() -> None:
 
 
 if __name__ == "__main__":
-    test_translation()
+    from toynlp.attention.config import create_config_from_cli
+
+    # Create config from CLI
+    config = create_config_from_cli()
+
+    # Run translation test
+    test_translation(config)
