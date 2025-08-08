@@ -11,7 +11,6 @@ class Encoder(torch.nn.Module):
         input_size: int,
         embedding_size: int,
         hidden_size: int,
-        num_layers: int,
         dropout_ratio: float,
     ) -> None:
         super().__init__()
@@ -19,23 +18,23 @@ class Encoder(torch.nn.Module):
             num_embeddings=input_size,
             embedding_dim=embedding_size,
         )
-        self.lstm = torch.nn.LSTM(
+        self.gru = torch.nn.GRU(
             input_size=embedding_size,
             hidden_size=hidden_size,
-            num_layers=num_layers,
             batch_first=True,
+            bidirectional=True,
         )
         self.dropout = torch.nn.Dropout(p=dropout_ratio)
 
-    def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         # (batch_size, seq_length) -> (batch_size, seq_length, embedding_size)
         embedded = self.dropout(self.embedding(input_ids))
         # output: (batch_size, seq_length, hidden_size)
         # hidden: (num_layers, batch_size, hidden_size)
         # cell: (num_layers, batch_size, hidden_size)
         # we don't need the output, just the hidden and cell states
-        _, (hidden, cell) = self.lstm(embedded)
-        return hidden, cell
+        _, hidden = self.gru(embedded)
+        return hidden
 
 
 class Decoder(torch.nn.Module):
@@ -45,7 +44,6 @@ class Decoder(torch.nn.Module):
         output_size: int,
         embedding_size: int,
         hidden_size: int,
-        num_layers: int,
         dropout_ratio: float,
     ) -> None:
         super().__init__()
@@ -53,10 +51,9 @@ class Decoder(torch.nn.Module):
             num_embeddings=input_size,
             embedding_dim=embedding_size,
         )
-        self.lstm = torch.nn.LSTM(
+        self.gru = torch.nn.GRU(
             input_size=embedding_size,
             hidden_size=hidden_size,
-            num_layers=num_layers,
             batch_first=True,
         )
         self.fc = torch.nn.Linear(hidden_size, output_size)
@@ -66,18 +63,17 @@ class Decoder(torch.nn.Module):
         self,
         input_ids: torch.Tensor,
         hidden: torch.Tensor,
-        cell: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Decoder usually forwards one token at a time."""
         # (batch_size, seq_length) -> (batch_size, seq_length, embedding_size)
         target_embedded = self.dropout(self.embedding(input_ids))
         # output: (batch_size, seq_length, hidden_size)
         # hidden: (num_layers, batch_size, hidden_size)
         # cell: (num_layers, batch_size, hidden_size)
-        lstm_output, (hidden, cell) = self.lstm(target_embedded, (hidden, cell))
+        lstm_output, (hidden, cell) = self.gru(target_embedded, (hidden, cell))
         # (batch_size, seq_length, hidden_size) -> (batch_size, seq_length, output_size)
         output = self.fc(lstm_output)
-        return output, hidden, cell
+        return output, hidden
 
 
 class AttentionModel(torch.nn.Module):
@@ -89,7 +85,6 @@ class AttentionModel(torch.nn.Module):
             input_size=config.source_vocab_size,
             embedding_size=config.embedding_dim,
             hidden_size=config.hidden_dim,
-            num_layers=config.num_layers,
             dropout_ratio=config.dropout_ratio,
         )
         self.decoder = Decoder(
@@ -97,7 +92,6 @@ class AttentionModel(torch.nn.Module):
             output_size=config.target_vocab_size,
             embedding_size=config.embedding_dim,
             hidden_size=config.hidden_dim,
-            num_layers=config.num_layers,
             dropout_ratio=config.dropout_ratio,
         )
         self.target_tokenizer = AttentionTokenizer(lang=self.config.target_lang).load()
@@ -137,14 +131,27 @@ class AttentionModel(torch.nn.Module):
 if __name__ == "__main__":
     config = create_config_from_cli()
     model = AttentionModel(config)
-    model.to(current_device)
-    print(model)
-    print(f"Model parameters: {sum(p.numel() for p in model.parameters())}")
+
+    input_tensor = torch.randint(0, config.source_vocab_size, (8, 10))
+    print(f"Input tensor shape: {input_tensor.shape}")
+    encoder = Encoder(
+                input_size=config.source_vocab_size,
+                embedding_size=config.embedding_dim,
+                hidden_size=config.hidden_dim,
+                dropout_ratio=config.dropout_ratio,
+            )
+    encoder_output_hidden = encoder(input_tensor)
+    print(f"Encoder output hidden shape: {encoder_output_hidden.shape}")
+
+
+    # model.to(current_device)
+    # print(model)
+    # print(f"Model parameters: {sum(p.numel() for p in model.parameters())}")
 
     # Example input
-    input_tensor = torch.randint(0, config.source_vocab_size, (2, 10)).to(current_device)
-    target_tensor = torch.randint(0, config.target_vocab_size, (2, 8)).to(current_device)
-    print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
+    # input_tensor = torch.randint(0, config.source_vocab_size, (2, 10)).to(current_device)
+    # target_tensor = torch.randint(0, config.target_vocab_size, (2, 8)).to(current_device)
+    # print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
-    output = model(input_tensor, target_tensor)
-    print(f"Output tensor shape: {output.shape}")  # Should be (batch_size, seq_length, target_vocab_size)
+    # output = model(input_tensor, target_tensor)
+    # print(f"Output tensor shape: {output.shape}")  # Should be (batch_size, seq_length, target_vocab_size)

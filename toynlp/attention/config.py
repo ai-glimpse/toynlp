@@ -27,7 +27,6 @@ class AttentionConfig:
     target_vocab_size: int = 6000
     embedding_dim: int = 256
     hidden_dim: int = 512
-    num_layers: int = 2
     dropout_ratio: float = 0.5
     teacher_forcing_ratio: float = 0.5
     # optimizer configs
