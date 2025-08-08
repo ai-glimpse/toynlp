@@ -29,6 +29,7 @@ dependencies = [
     "safetensors>=0.5.3",
     "tokenizers>=0.21.0",
     "torch>=2.5.1",
+    "tyro>=0.9.27",
     "wandb>=0.19.5",
 ]
 
