@@ -109,11 +109,11 @@ class Seq2SeqModel(torch.nn.Module):
         batch_size, seq_length = target_ids.shape
         # Prepare the first input for the decoder, usually the start token
         # (batch_size, squence_length) -> (batch_size, 1)
-        encoder_input_tensor = target_ids[:, 0].unsqueeze(1)  # Get the first token for the decoder
+        decoder_input_tensor = target_ids[:, 0].unsqueeze(1)  # Get the first token for the decoder
         outputs = torch.zeros(batch_size, seq_length, self.config.target_vocab_size).to(self.device)
         for t in range(seq_length):
             # decoder output: (batch_size, 1, target_vocab_size)
-            decoder_output, hidden, cell = self.decoder(encoder_input_tensor, hidden, cell)
+            decoder_output, hidden, cell = self.decoder(decoder_input_tensor, hidden, cell)
             # Get the output for the current time step
             outputs[:, t, :] = decoder_output.squeeze(1)
             # (batch_size, target_vocab_size) -> (batch_size, 1)
@@ -123,12 +123,12 @@ class Seq2SeqModel(torch.nn.Module):
             teacher_force = random.random() < self.force_teacher_ratio
             if teacher_force:
                 # Use the actual target token for the next input
-                encoder_input_tensor = target_ids[:, t].unsqueeze(1)
+                decoder_input_tensor = target_ids[:, t].unsqueeze(1)
             else:
                 # Use the predicted token for the next input
                 # Convert token ids back to tensor
                 token_ids = [self.target_vocab_ids[i] for i in top_token_index]
-                encoder_input_tensor = torch.tensor(token_ids, dtype=torch.long).unsqueeze(1).to(self.device)
+                decoder_input_tensor = torch.tensor(token_ids, dtype=torch.long).unsqueeze(1).to(self.device)
         return outputs
 
 
