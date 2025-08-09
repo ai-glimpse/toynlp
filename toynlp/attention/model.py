@@ -161,7 +161,7 @@ class Seq2SeqAttentionModel(torch.nn.Module):
         # decoder_input_ids: (batch_size, 1)
         decoder_input_ids = target_ids[:, 0].unsqueeze(1)  # Get the first token for the decoder
         outputs = torch.zeros(batch_size, seq_length, self.config.target_vocab_size).to(self.device)
-        for t in range(seq_length):
+        for t in range(1, seq_length):
             context = self.attention(encoder_outputs, hidden)
             # decoder output: (batch_size, 1, target_vocab_size)
             decoder_output, hidden = self.decoder(decoder_input_ids, context, hidden)
