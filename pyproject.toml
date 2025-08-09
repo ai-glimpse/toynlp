@@ -46,6 +46,8 @@ dev = [
     "ipywidgets>=8.1.5",
     "ruff>=0.12.7",
     "types-pyyaml>=6.0.12.20250516",
+    "matplotlib>=3.10.5",
+    "seaborn>=0.13.2",
 ]
 docs = [
     "mkdocs",

@@ -7,6 +7,8 @@ from toynlp.attention.tokenizer import AttentionTokenizer
 from toynlp.util import current_device
 from toynlp.paths import ATTENTION_MODEL_PATH
 
+import matplotlib.pyplot as plt  # type: ignore[unresolved-import]
+
 
 class AttentionInference:
     """Attention model inference class for translation tasks."""
@@ -73,12 +75,18 @@ class AttentionInference:
         text = text.replace("[BOS]", "").replace("[EOS]", "").replace("[PAD]", "").strip()
         return text
 
-    def translate(self, text: str, max_length: int | None = None) -> str:
+    def translate(
+        self,
+        text: str,
+        max_length: int | None = None,
+        plot_attention: bool = False,
+    ) -> str:
         """Translate text from source language to target language.
 
         Args:
             text: Input text to translate
             max_length: Maximum length of output sequence
+            plot_attention: Whether to plot attention weights
 
         Returns:
             Translated text
@@ -99,9 +107,10 @@ class AttentionInference:
             # Generate translation token by token
             output_tokens = []
             decoder_input_ids = torch.tensor([[bos_token_id]], dtype=torch.long).to(self.device)
-
-            for _ in range(max_length):
-                context = self.model.attention(encoder_outputs, hidden)
+            attention_weights = torch.zeros(max_length, input_tensor.shape[1])
+            for i in range(max_length):
+                context, attention_weight = self.model.attention(encoder_outputs, hidden)
+                attention_weights[i] = attention_weight.squeeze(0).detach().cpu()
                 # decoder output: (batch_size, 1, target_vocab_size)
                 decoder_output, hidden = self.model.decoder(decoder_input_ids, context, hidden)
                 # Forward through decoder
@@ -119,7 +128,43 @@ class AttentionInference:
 
             # Convert tokens to text
             translation = self.postprocess_tokens(output_tokens)
+            if plot_attention:
+                self.plot_attention_weight(
+                    attention_weights[: len(output_tokens)],
+                    input_tensor.squeeze().tolist(),
+                    output_tokens,
+                )
             return translation
+
+    def plot_attention_weight(
+        self,
+        attention_weight: torch.Tensor,
+        source_token_ids: list[int],
+        predict_token_ids: list[int],
+    ) -> None:
+        # Convert attention weights to numpy arrays
+        attention_weights_np = attention_weight.cpu().numpy()
+        print(f"Attention weights shape: {attention_weights_np.shape}")
+        source_tokens = self.source_tokenizer.decode(source_token_ids, skip_special_tokens=False).split()
+        print(f"source_tokens: {source_tokens}, source_token_ids: {source_token_ids}")
+        predict_tokens = self.target_tokenizer.decode(predict_token_ids, skip_special_tokens=False).split()
+        print(f"predict_tokens: {predict_tokens}, predict_token_ids: {predict_token_ids}")
+
+        # Plot each attention weight matrix
+        plt.figure(figsize=(12, 12))
+        plt.matshow(attention_weights_np, cmap="bone")
+        plt.xlabel("Source Tokens")
+        plt.ylabel("Target Tokens")
+        plt.xticks(ticks=range(len(source_tokens)), labels=source_tokens, rotation=90)
+        plt.yticks(ticks=range(len(predict_tokens)), labels=predict_tokens)
+        # plt.show()
+        plt.tight_layout()
+        path = ATTENTION_MODEL_PATH.parent / "viz"
+        path.mkdir(parents=True, exist_ok=True)
+        plt.savefig(
+            f"{path}/attention_{' '.join(predict_tokens[1:5])}.png",
+            dpi=300,
+        )
 
     def translate_batch(self, texts: list[str], max_length: int | None = None) -> list[str]:
         """Translate a batch of texts.
@@ -140,7 +185,7 @@ class AttentionInference:
         return translations
 
 
-def test_translation(config: AttentionConfig) -> None:
+def run_translation(config: AttentionConfig, plot_attention: bool = False) -> None:
     """Test function to demonstrate translation capabilities."""
     print("Loading Attention model for translation testing...")
 
@@ -149,27 +194,17 @@ def test_translation(config: AttentionConfig) -> None:
 
     # Test sentences (German to English)
     test_sentences = [
-        "Ein Mann sitzt auf einer Bank.",
-        "Hallo, wie geht es dir?",
-        "Ich liebe maschinelles Lernen.",
-        "Das Wetter ist heute schön.",
-        "Wo ist die nächste U-Bahn-Station?",
-        "Kannst du mir helfen?",
+        "Ein Boston Terrier läuft über saftig-grünes Gras vor einem weißen Zaun.",
+        "Ein Mann mit einem orangefarbenen Hut, der etwas anstarrt.",
     ]
 
     print(f"\nTranslating from {config.source_lang} to {config.target_lang}:")
     print("=" * 60)
 
     for i, sentence in enumerate(test_sentences, 1):
-        try:
-            translation = inference.translate(sentence)
-            print(f"{i}. Source: {sentence}")
-            print(f"   Target: {translation}")
-            print()
-        except (RuntimeError, ValueError, KeyError) as e:
-            print(f"{i}. Source: {sentence}")
-            print(f"   Error: {e}")
-            print()
+        translation = inference.translate(sentence, plot_attention=plot_attention)
+        print(f"{i}. Source: {sentence}")
+        print(f"   Target: {translation}")
 
     # Test batch translation
     print("Testing batch translation...")
@@ -189,4 +224,4 @@ if __name__ == "__main__":
     config = create_config_from_cli()
 
     # Run translation test
-    test_translation(config)
+    run_translation(config, plot_attention=True)

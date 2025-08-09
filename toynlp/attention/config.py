@@ -25,17 +25,17 @@ class AttentionConfig:
     # model configs
     source_vocab_size: int = 8000
     target_vocab_size: int = 6000
-    embedding_dim: int = 256
+    embedding_dim: int = 512
     encoder_hidden_dim: int = 512
     decoder_hidden_dim: int = 512
     align_hidden_size: int = 1000  # n': the size of the hidden state in the attention mechanism
     dropout_ratio: float = 0.5
     teacher_forcing_ratio: float = 0.5
     # optimizer configs
-    learning_rate: float = 0.005
-    weight_decay: float = 1e-4
+    learning_rate: float = 0.001
+    weight_decay: float = 0.01
     # training configs
-    epochs: int = 10
+    epochs: int = 20
     clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
     # inference configs
     inference_max_length: int = 50
