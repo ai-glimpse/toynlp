@@ -15,6 +15,8 @@ class Encoder(torch.nn.Module):
         dropout_ratio: float,
     ) -> None:
         super().__init__()
+        self.encoder_hidden_dim = encoder_hidden_dim
+        self.decoder_hidden_dim = decoder_hidden_dim
         self.embedding = torch.nn.Embedding(
             num_embeddings=input_size,
             embedding_dim=embedding_size,
@@ -32,39 +34,39 @@ class Encoder(torch.nn.Module):
         )
 
     def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        batch_size, seq_length = input_ids.shape
         # (batch_size, seq_length) -> (batch_size, seq_length, embedding_size)
         embedded = self.dropout(self.embedding(input_ids))
         # output: (batch_size, seq_length, encoder_hidden_dim * 2)
         # hidden: (2 * num_layers, batch_size, encoder_hidden_dim)
         outputs, hidden = self.gru(embedded)
-        # TODO: reshape & map to decoder hidden dim
-        hidden = hidden.view(hidden.size(1), -1)
-        decoder_init_hidden = self.fc(hidden).unsqueeze(0)  # Map to decoder hidden size
+        # hidden shape viewed as (batch_size, 2 * encoder_hidden_dim)
+        # decoder_init_hidden: (batch_size, decoder_hidden_dim)
+        decoder_init_hidden = self.fc(hidden.view(batch_size, 2 * self.encoder_hidden_dim)).unsqueeze(0)
         return outputs, decoder_init_hidden
 
 
 class Attention(torch.nn.Module):
     def __init__(
         self,
-        hidden_size: int,
+        encoder_hidden_size: int,
+        decoder_hidden_size: int,
         align_hidden_size: int,
     ) -> None:
         super().__init__()
-        self.align_hidden_size = align_hidden_size
-        self.Wa = torch.nn.Linear(hidden_size, align_hidden_size)
-        self.Ua = torch.nn.Linear(hidden_size * 2, align_hidden_size)
+        self.Wa = torch.nn.Linear(decoder_hidden_size, align_hidden_size)
+        self.Ua = torch.nn.Linear(encoder_hidden_size * 2, align_hidden_size)
         self.Va = torch.nn.Linear(align_hidden_size, 1)
 
     def forward(self, encoder_outputs: torch.Tensor, decoder_hidden: torch.Tensor) -> torch.Tensor:
         """Compute attention weights and context vector."""
         # encoder_outputs: (batch_size, source_seq_length, hidden_size * 2)  # Bidirectional GRU
-        # decoder_hidden: (batch_size, hidden_size)
+        # decoder_hidden: (1, batch_size, decoder_hidden_size)
 
         # E matrix: e_ij = v_a^T * tanh(W_a * s_(i-1) + U_a * h_j)
-        # where s_(i-1) is the previous decoder hidden state and h_j is the encoder hidden state
-        # e_ij: (batch_size, source_seq_length, 1)
         hidden_state_merged = torch.tanh(
-            self.Wa(decoder_hidden).reshape(-1, 1, self.align_hidden_size) + self.Ua(encoder_outputs),
+            # TODO: verify the dimension alignment here
+            self.Wa(decoder_hidden.permute(1, 0, 2)) + self.Ua(encoder_outputs),
         )
         attention_value = self.Va(hidden_state_merged)
         # print(f"attention_value shape: {attention_value.shape}")
@@ -87,6 +89,9 @@ class Decoder(torch.nn.Module):
         decoder_hidden_dim: int,
         dropout_ratio: float,
     ) -> None:
+        self.encoder_hidden_dim = encoder_hidden_dim
+        self.decoder_hidden_dim = decoder_hidden_dim
+
         super().__init__()
         self.embedding = torch.nn.Embedding(
             num_embeddings=input_size,
@@ -132,7 +137,8 @@ class Seq2SeqAttentionModel(torch.nn.Module):
             dropout_ratio=config.dropout_ratio,
         )
         self.attention = Attention(
-            hidden_size=config.encoder_hidden_dim,
+            encoder_hidden_size=config.encoder_hidden_dim,
+            decoder_hidden_size=config.decoder_hidden_dim,
             align_hidden_size=config.align_hidden_size,
         )
         self.decoder = Decoder(
@@ -151,7 +157,8 @@ class Seq2SeqAttentionModel(torch.nn.Module):
         encoder_outputs, hidden = self.encoder(input_ids)
         batch_size, seq_length = target_ids.shape
         # Prepare the first input for the decoder, usually the start token
-        # (batch_size, squence_length) -> (batch_size, 1)
+        # target_ids: (batch_size, squence_length)
+        # decoder_input_ids: (batch_size, 1)
         decoder_input_ids = target_ids[:, 0].unsqueeze(1)  # Get the first token for the decoder
         outputs = torch.zeros(batch_size, seq_length, self.config.target_vocab_size).to(self.device)
         for t in range(seq_length):
