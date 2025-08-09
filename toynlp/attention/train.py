@@ -7,7 +7,7 @@ from toynlp.util import current_device
 from toynlp.paths import ATTENTION_MODEL_PATH
 from toynlp.attention.config import AttentionConfig, create_config_from_cli
 from toynlp.attention.dataset import get_split_dataloader
-from toynlp.attention.model import AttentionModel
+from toynlp.attention.model import Seq2SeqAttentionModel
 from toynlp.attention.tokenizer import AttentionTokenizer
 from toynlp.util import setup_seed, set_deterministic_mode
 
@@ -18,7 +18,7 @@ set_deterministic_mode()  # Set deterministic mode for reproducibility
 class AttentionTrainer:
     def __init__(self, config: AttentionConfig, pad_token_id: int) -> None:
         self.config = config
-        self.model = AttentionModel(self.config)
+        self.model = Seq2SeqAttentionModel(self.config)
         self.model_path = ATTENTION_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
@@ -169,7 +169,6 @@ def main() -> None:
     print("=" * 60)
     print(f"Dataset: {config.dataset_path}")
     print(f"Languages: {config.source_lang} -> {config.target_lang}")
-    print(f"Model: {config.embedding_dim}d embeddings, {config.hidden_dim}d hidden")
     print(f"Training: {config.epochs} epochs, lr={config.learning_rate}")
     print(f"WandB: {'enabled' if config.wandb_enabled else 'disabled'}")
     print("=" * 60)

@@ -13,7 +13,7 @@ class AttentionConfig:
     source_lang: str = "de"
     target_lang: str = "en"
     max_length: int = 1000
-    batch_size: int = 32
+    batch_size: int = 256
     num_workers: int = 4
     shuffle: bool = True
     # tokenizer configs
@@ -26,11 +26,13 @@ class AttentionConfig:
     source_vocab_size: int = 8000
     target_vocab_size: int = 6000
     embedding_dim: int = 256
-    hidden_dim: int = 512
+    encoder_hidden_dim: int = 512
+    decoder_hidden_dim: int = 512
+    align_hidden_size: int = 1000  # n': the size of the hidden state in the attention mechanism
     dropout_ratio: float = 0.5
     teacher_forcing_ratio: float = 0.5
     # optimizer configs
-    learning_rate: float = 1e-4
+    learning_rate: float = 0.005
     weight_decay: float = 1e-4
     # training configs
     epochs: int = 10

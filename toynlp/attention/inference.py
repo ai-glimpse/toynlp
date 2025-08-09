@@ -2,7 +2,7 @@ import torch
 from pathlib import Path
 
 from toynlp.attention.config import AttentionConfig
-from toynlp.attention.model import AttentionModel
+from toynlp.attention.model import Seq2SeqAttentionModel
 from toynlp.attention.tokenizer import AttentionTokenizer
 from toynlp.util import current_device
 from toynlp.paths import ATTENTION_MODEL_PATH
@@ -26,12 +26,12 @@ class AttentionInference:
         self.target_tokenizer = AttentionTokenizer(lang=self.config.target_lang).load()
 
         # Load model
-        self.model = AttentionModel(self.config)
+        self.model = Seq2SeqAttentionModel(self.config)
         if model_path.exists():
             # Try to load the complete model first, if it fails, load state_dict
             try:
                 loaded_model = torch.load(model_path, map_location=self.device, weights_only=False)
-                if isinstance(loaded_model, AttentionModel):
+                if isinstance(loaded_model, Seq2SeqAttentionModel):
                     self.model = loaded_model
                 else:
                     self.model.load_state_dict(loaded_model)
@@ -90,21 +90,21 @@ class AttentionInference:
             input_tensor = self.preprocess_text(text)
 
             # Get encoder outputs
-            hidden, cell = self.model.encoder(input_tensor)
+            encoder_outputs, hidden = self.model.encoder(input_tensor)
 
             # Initialize decoder input with BOS token
             bos_token_id = self.target_tokenizer.token_to_id("[BOS]")
             eos_token_id = self.target_tokenizer.token_to_id("[EOS]")
 
-            decoder_input = torch.tensor([[bos_token_id]], dtype=torch.long).to(self.device)
-
             # Generate translation token by token
             output_tokens = []
+            decoder_input_ids = torch.tensor([[bos_token_id]], dtype=torch.long).to(self.device)
 
             for _ in range(max_length):
+                context = self.model.attention(encoder_outputs, hidden)
+                # decoder output: (batch_size, 1, target_vocab_size)
+                decoder_output, hidden = self.model.decoder(decoder_input_ids, context, hidden)
                 # Forward through decoder
-                decoder_output, hidden, cell = self.model.decoder(decoder_input, hidden, cell)
-
                 # Get the token with highest probability
                 next_token_id = decoder_output.argmax(dim=-1).squeeze().item()
 
@@ -115,7 +115,7 @@ class AttentionInference:
                 output_tokens.append(next_token_id)
 
                 # Use the predicted token as next input
-                decoder_input = torch.tensor([[next_token_id]], dtype=torch.long).to(self.device)
+                decoder_input_ids = torch.tensor([[next_token_id]], dtype=torch.long).to(self.device)
 
             # Convert tokens to text
             translation = self.postprocess_tokens(output_tokens)
