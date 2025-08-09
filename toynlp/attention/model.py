@@ -34,15 +34,15 @@ class Encoder(torch.nn.Module):
         )
 
     def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        batch_size, seq_length = input_ids.shape
         # (batch_size, seq_length) -> (batch_size, seq_length, embedding_size)
         embedded = self.dropout(self.embedding(input_ids))
         # output: (batch_size, seq_length, encoder_hidden_dim * 2)
         # hidden: (2 * num_layers, batch_size, encoder_hidden_dim)
         outputs, hidden = self.gru(embedded)
-        # hidden shape viewed as (batch_size, 2 * encoder_hidden_dim)
+        # hidden cat: (batch_size, 2 * encoder_hidden_dim)
+        hidden_cat = torch.cat((hidden[-2], hidden[-1]), dim=1)
         # decoder_init_hidden: (batch_size, decoder_hidden_dim)
-        decoder_init_hidden = self.fc(hidden.view(batch_size, 2 * self.encoder_hidden_dim)).unsqueeze(0)
+        decoder_init_hidden = self.fc(hidden_cat).unsqueeze(0)
         return outputs, decoder_init_hidden
 
 
