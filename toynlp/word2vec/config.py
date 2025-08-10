@@ -6,32 +6,32 @@ import tyro
 @dataclass
 class Word2VecConfig:
     """All in one for everything, without nested dataclasses."""
-    
+
     # model selection
     model_name: Literal["cbow", "skip_gram"] = "cbow"
-    
+
     # dataset configs
     dataset_path: str = "Salesforce/wikitext"
     dataset_name: str = "wikitext-103-raw-v1"
-    
-    # model configs  
+
+    # model configs
     vocab_size: int = 20000
     embedding_dim: int = 256
-    
+
     # data processing configs
     cbow_n_words: int = 4
     skip_gram_n_words: int = 4
     batch_size: int = 32
     num_workers: int = 4
     shuffle: bool = True
-    
+
     # optimizer configs
     learning_rate: float = 1e-4
     weight_decay: float = 1e-4
-    
+
     # training configs
     epochs: int = 10
-    
+
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Word2Vec"
@@ -49,7 +49,7 @@ class Word2VecConfig:
     def _get_wandb_name(self) -> str:
         s = f"[{self.model_name}]embedding_dim:{self.embedding_dim}"
         return s
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
         return asdict(self)

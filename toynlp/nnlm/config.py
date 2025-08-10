@@ -9,7 +9,7 @@ from toynlp.paths import _MODEL_PATH
 @dataclass
 class NNLMConfig:
     """All in one for everything, without nested dataclasses."""
-    
+
     # model configs
     context_size: int = 6
     vocab_size: int = 20000
@@ -18,23 +18,23 @@ class NNLMConfig:
     dropout_rate: float = 0.2
     with_dropout: bool = True
     with_direct_connection: bool = False
-    
+
     # optimizer configs
     learning_rate: float = 1e-4
     weight_decay: float = 1e-4
-    
+
     # data configs
     batch_size: int = 32
     num_workers: int = 4
     shuffle: bool = True
-    
+
     # training configs
     epochs: int = 10
-    
+
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "NNLM"
-    
+
     # path configs
     model_path: pathlib.Path = _MODEL_PATH / "nnlm" / "model.pt"
     tokenizer_path: pathlib.Path = _MODEL_PATH / "nnlm" / "tokenizer.json"
@@ -48,7 +48,7 @@ class NNLMConfig:
 
         if self.wandb_name is None:
             self.wandb_name = self._get_wandb_name()
-            
+
         # Ensure paths are absolute
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
         self.tokenizer_path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,7 +61,7 @@ class NNLMConfig:
         else:
             s += ";no_dropout"
         return s
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
         return asdict(self)
