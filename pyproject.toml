@@ -104,6 +104,8 @@ omit = [
     "*/venv/*",
     "*/.venv/*",
     "**/__init__.py",
+    "**/config.py",
+    "**/tokenizer.py",
     "**/train.py",
     "**/inference.py",
     "**/evaluation.py",

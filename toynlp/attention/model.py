@@ -66,7 +66,6 @@ class Attention(torch.nn.Module):
         # E matrix: e_ij = v_a^T * tanh(W_a * s_(i-1) + U_a * h_j)
         # hidden_state_merged: (batch_size, source_seq_length, align_hidden_size)
         hidden_state_merged = torch.tanh(
-            # TODO: verify the dimension alignment here
             self.Wa(decoder_hidden.permute(1, 0, 2)) + self.Ua(encoder_outputs),
         )
         # attention_value: (batch_size, source_seq_length, 1)
@@ -165,7 +164,7 @@ class Seq2SeqAttentionModel(torch.nn.Module):
         # decoder_input_ids: (batch_size, 1)
         decoder_input_ids = target_ids[:, 0].unsqueeze(1)  # Get the first token for the decoder
         outputs = torch.zeros(batch_size, seq_length, self.config.target_vocab_size).to(self.device)
-        for t in range(1, seq_length):  # TODO: or start from 0?
+        for t in range(1, seq_length):
             context, _ = self.attention(encoder_outputs, hidden)
             # decoder output: (batch_size, 1, target_vocab_size)
             decoder_output, hidden = self.decoder(decoder_input_ids, context, hidden)
