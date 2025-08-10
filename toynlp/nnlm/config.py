@@ -94,9 +94,9 @@ class ModelConfig:
     vocab_size: int
     embedding_dim: int
     hidden_dim: int
-    dropout_rate: float
-    with_dropout: bool
-    with_direct_connection: bool
+    dropout_rate: float = 0.2
+    with_dropout: bool = True
+    with_direct_connection: bool = False
 
 
 @dataclass
