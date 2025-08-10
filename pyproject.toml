@@ -29,6 +29,7 @@ dependencies = [
     "safetensors>=0.5.3",
     "tokenizers>=0.21.0",
     "torch>=2.5.1",
+    "tyro>=0.9.27",
     "wandb>=0.19.5",
 ]
 
@@ -45,6 +46,8 @@ dev = [
     "ipywidgets>=8.1.5",
     "ruff>=0.12.7",
     "types-pyyaml>=6.0.12.20250516",
+    "matplotlib>=3.10.5",
+    "seaborn>=0.13.2",
 ]
 docs = [
     "mkdocs",
@@ -101,6 +104,8 @@ omit = [
     "*/venv/*",
     "*/.venv/*",
     "**/__init__.py",
+    "**/config.py",
+    "**/tokenizer.py",
     "**/train.py",
     "**/inference.py",
     "**/evaluation.py",
