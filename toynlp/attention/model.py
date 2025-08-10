@@ -182,7 +182,7 @@ class Seq2SeqAttentionModel(torch.nn.Module):
                 # Use the predicted token for the next input
                 # Convert token ids back to tensor
                 token_ids = [self.target_vocab_ids[i] for i in top_token_index]
-                decoder_input_ids = torch.tensor(token_ids, dtype=torch.long).unsqueeze(1).to(self.device)
+                decoder_input_ids = torch.tensor(token_ids, dtype=torch.long, device=self.device).unsqueeze(1)
         return outputs
 
 
