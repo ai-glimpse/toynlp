@@ -65,45 +65,7 @@ class NNLMConfig:
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
         return asdict(self)
-    
-    def get_model_config(self):
-        """Get model config for backward compatibility."""
-        return ModelConfig(
-            context_size=self.context_size,
-            vocab_size=self.vocab_size,
-            embedding_dim=self.embedding_dim,
-            hidden_dim=self.hidden_dim,
-            dropout_rate=self.dropout_rate,
-            with_dropout=self.with_dropout,
-            with_direct_connection=self.with_direct_connection,
-        )
-    
-    def get_data_config(self):
-        """Get data config for backward compatibility."""
-        return DataConfig(
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=self.shuffle,
-        )
 
-
-# Legacy config classes for backward compatibility
-@dataclass
-class ModelConfig:
-    context_size: int
-    vocab_size: int
-    embedding_dim: int
-    hidden_dim: int
-    dropout_rate: float = 0.2
-    with_dropout: bool = True
-    with_direct_connection: bool = False
-
-
-@dataclass
-class DataConfig:
-    batch_size: int
-    num_workers: int
-    shuffle: bool
 
 def create_config_from_cli() -> NNLMConfig:
     """Create configuration from command line arguments using tyro."""

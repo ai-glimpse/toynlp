@@ -53,39 +53,7 @@ class Word2VecConfig:
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
         return asdict(self)
-    
-    def get_model_config(self):
-        """Get model config for backward compatibility."""
-        return ModelConfig(
-            vocab_size=self.vocab_size,
-            embedding_dim=self.embedding_dim,
-        )
-    
-    def get_data_config(self):
-        """Get data config for backward compatibility."""
-        return DataConfig(
-            cbow_n_words=self.cbow_n_words,
-            skip_gram_n_words=self.skip_gram_n_words,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=self.shuffle,
-        )
 
-
-# Legacy config classes for backward compatibility
-@dataclass
-class ModelConfig:
-    vocab_size: int
-    embedding_dim: int
-
-
-@dataclass  
-class DataConfig:
-    cbow_n_words: int
-    skip_gram_n_words: int
-    batch_size: int
-    num_workers: int
-    shuffle: bool
 
 def create_config_from_cli() -> Word2VecConfig:
     """Create configuration from command line arguments using tyro."""
