@@ -8,14 +8,7 @@ from torch.utils.data import DataLoader
 import wandb
 from toynlp.util import current_device
 from toynlp.paths import CBOW_MODEL_PATH, SKIP_GRAM_MODEL_PATH, W2V_TOKENIZER_PATH
-from toynlp.word2vec.config import (
-    DataConfig,
-    DatasetConfig,
-    ModelConfig,
-    OptimizerConfig,
-    TrainingConfig,
-    Word2VecConfig,
-)
+from toynlp.word2vec.config import Word2VecConfig, create_config_from_cli
 from toynlp.word2vec.dataset import get_split_dataloader
 from toynlp.word2vec.model import CbowModel, SkipGramModel
 from toynlp.word2vec.tokenizer import Word2VecTokenizer
@@ -24,18 +17,19 @@ from toynlp.word2vec.tokenizer import Word2VecTokenizer
 class Word2VecTrainer:
     def __init__(self, config: Word2VecConfig) -> None:
         self.config = config
+        model_config = config.get_model_config()
         if self.config.model_name == "cbow":
-            self.model = CbowModel(config.model)
+            self.model = CbowModel(model_config)
             self.model_path = CBOW_MODEL_PATH
         else:
-            self.model = SkipGramModel(config.model)  # type: ignore[assignment]
+            self.model = SkipGramModel(model_config)  # type: ignore[assignment]
             self.model_path = SKIP_GRAM_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
-            lr=config.optimizer.learning_rate,
-            weight_decay=config.optimizer.weight_decay,
+            lr=config.learning_rate,
+            weight_decay=config.weight_decay,
         )
 
     def train(
@@ -45,7 +39,7 @@ class Word2VecTrainer:
         test_dataloader: DataLoader,
     ) -> None:
         best_val_loss = float("inf")
-        for epoch in range(self.config.training.epochs):
+        for epoch in range(self.config.epochs):
             train_loss = self._train_epoch(train_dataloader)
             val_loss, test_loss = self._validate_epoch(val_dataloader, test_dataloader)
             if val_loss < best_val_loss:
@@ -119,9 +113,9 @@ class Word2VecTrainer:
 def train_tokenizer(config: Word2VecConfig) -> None:
     if not Path(W2V_TOKENIZER_PATH).exists():
         word2vec_tokenizer = Word2VecTokenizer(
-            vocab_size=config.model.vocab_size,
+            vocab_size=config.vocab_size,
         )
-        dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
+        dataset = load_dataset(path=config.dataset_path, name=config.dataset_name)
         word2vec_tokenizer.train(dataset["train"])  # type: ignore[unknown-argument]
     else:
         print(f"Tokenizer already exists at {W2V_TOKENIZER_PATH}")
@@ -131,32 +125,33 @@ def train_model(config: Word2VecConfig) -> None:
     model_name = config.model_name
     wandb.init(
         # set the wandb project where this run will be logged
-        project=config.wandb.project,
-        name=config.wandb.name,
+        project=config.wandb_project,
+        name=config.wandb_name,
         # track hyperparameters and run metadata
         config=asdict(config),
     )
-    dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
+    dataset = load_dataset(path=config.dataset_path, name=config.dataset_name)
     tokenizer = Word2VecTokenizer().load()
+    data_config = config.get_data_config()
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "train",
         tokenizer=tokenizer,
-        data_config=config.data,
+        data_config=data_config,
         model_name=model_name,
     )
     val_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "validation",
         tokenizer=tokenizer,
-        data_config=config.data,
+        data_config=data_config,
         model_name=model_name,
     )
     test_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "test",
         tokenizer=tokenizer,
-        data_config=config.data,
+        data_config=data_config,
         model_name=model_name,
     )
 
@@ -167,21 +162,13 @@ def train_model(config: Word2VecConfig) -> None:
 def train_cbow():
     config = Word2VecConfig(
         model_name="cbow",
-        dataset=DatasetConfig(
-            path="Salesforce/wikitext",
-            name="wikitext-103-raw-v1",
-        ),
-        model=ModelConfig(
-            embedding_dim=100,
-        ),
-        optimizer=OptimizerConfig(
-            learning_rate=0.01,
-        ),
-        data=DataConfig(
-            batch_size=512,
-            num_workers=8,
-        ),
-        training=TrainingConfig(epochs=10),
+        dataset_path="Salesforce/wikitext",
+        dataset_name="wikitext-103-raw-v1",
+        embedding_dim=100,
+        learning_rate=0.01,
+        batch_size=512,
+        num_workers=8,
+        epochs=10,
     )
 
     train_tokenizer(config)
@@ -191,27 +178,38 @@ def train_cbow():
 def train_skip_gram():
     config = Word2VecConfig(
         model_name="skip_gram",
-        dataset=DatasetConfig(
-            path="Salesforce/wikitext",
-            name="wikitext-103-raw-v1",
-        ),
-        model=ModelConfig(
-            embedding_dim=100,
-        ),
-        optimizer=OptimizerConfig(
-            learning_rate=0.01,
-        ),
-        data=DataConfig(
-            batch_size=64,
-            num_workers=8,
-        ),
-        training=TrainingConfig(epochs=5),
+        dataset_path="Salesforce/wikitext",
+        dataset_name="wikitext-103-raw-v1",
+        embedding_dim=100,
+        learning_rate=0.01,
+        batch_size=64,
+        num_workers=8,
+        epochs=5,
     )
 
     train_tokenizer(config)
     train_model(config)
 
 
+def main() -> None:
+    """CLI entry point for training word2vec model using tyro configuration."""
+    # Load configuration from command line using tyro
+    config = create_config_from_cli()
+
+    print("=" * 60)
+    print("Word2Vec Training Configuration")
+    print("=" * 60)
+    print(f"Model: {config.model_name}")
+    print(f"Dataset: {config.dataset_path}")
+    print(f"Embedding dimension: {config.embedding_dim}")
+    print(f"Learning rate: {config.learning_rate}")
+    print(f"Epochs: {config.epochs}")
+    print("=" * 60)
+
+    train_tokenizer(config)
+    train_model(config)
+
+
 if __name__ == "__main__":
-    # train_cbow()
-    train_skip_gram()
+    # Use the new main function with tyro CLI
+    main()

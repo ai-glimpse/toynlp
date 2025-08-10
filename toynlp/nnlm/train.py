@@ -8,13 +8,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 from toynlp.util import current_device
-from toynlp.nnlm.config import (
-    DataConfig,
-    ModelConfig,
-    NNLMConfig,
-    OptimizerConfig,
-    TrainingConfig,
-)
+from toynlp.nnlm.config import NNLMConfig, create_config_from_cli
 from toynlp.nnlm.model import NNLM
 from toynlp.nnlm.tokenizer import NNLMTokenizer
 
@@ -22,18 +16,19 @@ from toynlp.nnlm.tokenizer import NNLMTokenizer
 class NNLMTrainer:
     def __init__(self, config: NNLMConfig) -> None:
         self.config = config
-        self.model = NNLM(config.model)
+        model_config = config.get_model_config()
+        self.model = NNLM(model_config)
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
-            lr=config.optimizer.learning_rate,
-            weight_decay=config.optimizer.weight_decay,
+            lr=config.learning_rate,
+            weight_decay=config.weight_decay,
         )
 
     @property
     def model_path(self) -> Path:
-        return self.config.paths.model_path
+        return self.config.model_path
 
     def train(
         self,
@@ -42,7 +37,7 @@ class NNLMTrainer:
         test_dataloader: DataLoader,
     ) -> None:
         best_val_loss = float("inf")
-        for epoch in range(self.config.training.epochs):
+        for epoch in range(self.config.epochs):
             self.model.train()
             for _, batch in enumerate(train_dataloader):
                 input_batch, target_batch = batch[:, :-1], batch[:, -1]
@@ -118,18 +113,18 @@ def get_split_dataloader(
 def run(config: NNLMConfig) -> None:
     wandb.init(
         # set the wandb project where this run will be logged
-        project=config.wandb.project,
-        name=config.wandb.name,
+        project=config.wandb_project,
+        name=config.wandb_name,
         # track hyperparameters and run metadata
         config=asdict(config),
     )
 
     dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
-    tokenizer_model_path = config.paths.tokenizer_path
+    tokenizer_model_path = config.tokenizer_path
     if not Path(tokenizer_model_path).exists():
         nnlm_tokenizer = NNLMTokenizer(
             model_path=tokenizer_model_path,
-            vocab_size=config.model.vocab_size,
+            vocab_size=config.vocab_size,
         )
         nnlm_tokenizer.train(dataset["train"])  # type: ignore[unknown-argument]
     tokenizer = NNLMTokenizer(model_path=tokenizer_model_path).load()
@@ -137,46 +132,47 @@ def run(config: NNLMConfig) -> None:
         tokenizer,
         dataset,  # type: ignore[unknown-argument]
         "train",
-        context_size=config.model.context_size,
-        batch_size=config.data.batch_size,
+        context_size=config.context_size,
+        batch_size=config.batch_size,
     )
     val_dataloader = get_split_dataloader(
         tokenizer,
         dataset,  # type: ignore[unknown-argument]
         "validation",
-        context_size=config.model.context_size,
-        batch_size=config.data.batch_size,
+        context_size=config.context_size,
+        batch_size=config.batch_size,
     )
     test_dataloader = get_split_dataloader(
         tokenizer,
         dataset,  # type: ignore[unknown-argument]
         "test",
-        context_size=config.model.context_size,
-        batch_size=config.data.batch_size,
+        context_size=config.context_size,
+        batch_size=config.batch_size,
     )
 
     trainer = NNLMTrainer(config)
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
-if __name__ == "__main__":
-    config = NNLMConfig(
-        model=ModelConfig(
-            context_size=6,
-            vocab_size=20000,
-            embedding_dim=100,
-            hidden_dim=60,
-            with_direct_connection=False,
-            with_dropout=True,
-            dropout_rate=0.2,
-        ),
-        optimizer=OptimizerConfig(
-            learning_rate=1e-4,
-            weight_decay=1e-4,
-        ),
-        data=DataConfig(
-            batch_size=128,
-        ),
-        training=TrainingConfig(epochs=100),
-    )
+def main() -> None:
+    """CLI entry point for training NNLM model using tyro configuration."""
+    # Load configuration from command line using tyro
+    config = create_config_from_cli()
+
+    print("=" * 60)
+    print("NNLM Training Configuration")
+    print("=" * 60)
+    print(f"Context size: {config.context_size}")
+    print(f"Vocab size: {config.vocab_size}")
+    print(f"Embedding dimension: {config.embedding_dim}")
+    print(f"Hidden dimension: {config.hidden_dim}")
+    print(f"Learning rate: {config.learning_rate}")
+    print(f"Epochs: {config.epochs}")
+    print("=" * 60)
+
     run(config)
+
+
+if __name__ == "__main__":
+    # Use the new main function with tyro CLI
+    main()
