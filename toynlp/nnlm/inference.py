@@ -1,14 +1,14 @@
 import torch
 
 from toynlp.util import current_device
-from toynlp.nnlm.config import NNLMPathConfig
+from toynlp.nnlm.config import NNLMConfig
 from toynlp.nnlm.tokenizer import NNLMTokenizer
 
 
 def evaluate_prompt(text: str) -> None:
-    path_config = NNLMPathConfig()
-    tokenizer_model_path = path_config.tokenizer_path
-    nnlm_model_path = path_config.model_path
+    config = NNLMConfig()
+    tokenizer_model_path = config.tokenizer_path
+    nnlm_model_path = config.model_path
 
     tokenizer = NNLMTokenizer(tokenizer_model_path).load()
     token_ids = tokenizer.encode(text).ids

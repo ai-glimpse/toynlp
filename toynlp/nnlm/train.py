@@ -16,8 +16,7 @@ from toynlp.nnlm.tokenizer import NNLMTokenizer
 class NNLMTrainer:
     def __init__(self, config: NNLMConfig) -> None:
         self.config = config
-        model_config = config.get_model_config()
-        self.model = NNLM(model_config)
+        self.model = NNLM(config)
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(

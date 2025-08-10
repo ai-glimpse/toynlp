@@ -37,9 +37,9 @@ class NNLMTokenizer:
 if __name__ == "__main__":
     from datasets import load_dataset
 
-    from toynlp.nnlm.config import NNLMPathConfig
+    from toynlp.nnlm.config import NNLMConfig
 
-    tokenizer_path = NNLMPathConfig().tokenizer_path
+    tokenizer_path = NNLMConfig().tokenizer_path
 
     tokenizer = NNLMTokenizer(model_path=tokenizer_path, vocab_size=20000)
     dataset = load_dataset("wikitext", "wikitext-2-raw-v1")

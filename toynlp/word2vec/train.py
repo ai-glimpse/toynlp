@@ -17,12 +17,11 @@ from toynlp.word2vec.tokenizer import Word2VecTokenizer
 class Word2VecTrainer:
     def __init__(self, config: Word2VecConfig) -> None:
         self.config = config
-        model_config = config.get_model_config()
         if self.config.model_name == "cbow":
-            self.model = CbowModel(model_config)
+            self.model = CbowModel(config)
             self.model_path = CBOW_MODEL_PATH
         else:
-            self.model = SkipGramModel(model_config)  # type: ignore[assignment]
+            self.model = SkipGramModel(config)  # type: ignore[assignment]
             self.model_path = SKIP_GRAM_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
@@ -48,7 +47,7 @@ class Word2VecTrainer:
                 print(f"Saved best model to {self.model_path}")
 
             print(
-                f"Epoch {epoch + 1}/{self.config.training.epochs} - "
+                f"Epoch {epoch + 1}/{self.config.epochs} - "
                 f"Train Loss: {train_loss:.4f}, "
                 f"Val Loss: {val_loss:.4f}, "
                 f"Test Loss: {test_loss:.4f}",
@@ -132,26 +131,25 @@ def train_model(config: Word2VecConfig) -> None:
     )
     dataset = load_dataset(path=config.dataset_path, name=config.dataset_name)
     tokenizer = Word2VecTokenizer().load()
-    data_config = config.get_data_config()
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "train",
         tokenizer=tokenizer,
-        data_config=data_config,
+        data_config=config,
         model_name=model_name,
     )
     val_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "validation",
         tokenizer=tokenizer,
-        data_config=data_config,
+        data_config=config,
         model_name=model_name,
     )
     test_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "test",
         tokenizer=tokenizer,
-        data_config=data_config,
+        data_config=config,
         model_name=model_name,
     )
 
