@@ -1,6 +1,6 @@
 import torch
 import random
-from toynlp.seq2seq.config import ModelConfig
+from toynlp.seq2seq.config import Seq2SeqConfig
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 from toynlp.util import current_device
 
@@ -81,7 +81,7 @@ class Decoder(torch.nn.Module):
 
 
 class Seq2SeqModel(torch.nn.Module):
-    def __init__(self, config: ModelConfig) -> None:
+    def __init__(self, config: Seq2SeqConfig) -> None:
         super().__init__()
         self.config = config
         self.force_teacher_ratio = self.config.teacher_forcing_ratio
@@ -133,17 +133,17 @@ class Seq2SeqModel(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    from toynlp.seq2seq.config import get_config
+    from toynlp.seq2seq.config import Seq2SeqConfig
 
-    config = get_config()
-    model = Seq2SeqModel(config.model)
+    config = Seq2SeqConfig()
+    model = Seq2SeqModel(config)
     model.to(current_device)
     print(model)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters())}")
 
     # Example input
-    input_tensor = torch.randint(0, config.model.source_vocab_size, (2, 10)).to(current_device)
-    target_tensor = torch.randint(0, config.model.target_vocab_size, (2, 8)).to(current_device)
+    input_tensor = torch.randint(0, config.source_vocab_size, (2, 10)).to(current_device)
+    target_tensor = torch.randint(0, config.target_vocab_size, (2, 8)).to(current_device)
     print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
     output = model(input_tensor, target_tensor)

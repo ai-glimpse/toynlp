@@ -1,12 +1,11 @@
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
-import argparse
 
 import wandb
 from toynlp.util import current_device
 from toynlp.paths import SEQ2SEQ_MODEL_PATH
-from toynlp.seq2seq.config import get_config, load_config
+from toynlp.seq2seq.config import Seq2SeqConfig, create_config_from_cli
 from toynlp.seq2seq.dataset import get_split_dataloader
 from toynlp.seq2seq.model import Seq2SeqModel
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
@@ -17,19 +16,19 @@ set_deterministic_mode()  # Set deterministic mode for reproducibility
 
 
 class Seq2SeqTrainer:
-    def __init__(self, pad_token_id: int) -> None:
-        self.config = get_config()
-        self.model = Seq2SeqModel(self.config.model)
+    def __init__(self, config: Seq2SeqConfig, pad_token_id: int) -> None:
+        self.config = config
+        self.model = Seq2SeqModel(self.config)
         self.model_path = SEQ2SEQ_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
-            lr=self.config.optimizer.learning_rate,
-            weight_decay=self.config.optimizer.weight_decay,
+            lr=self.config.learning_rate,
+            weight_decay=self.config.weight_decay,
         )
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=pad_token_id)
-        self.clip_norm = self.config.training.clip_norm
+        self.clip_norm = self.config.clip_norm
         if self.clip_norm:
             print(f"Gradient clipping enabled with norm {self.clip_norm}")
 
@@ -40,12 +39,12 @@ class Seq2SeqTrainer:
         test_dataloader: DataLoader,
     ) -> None:
         best_val_loss = float("inf")
-        for epoch in range(self.config.training.epochs):
+        for epoch in range(self.config.epochs):
             train_loss = self._train_epoch(train_dataloader)
             val_loss, test_loss = self._validate_epoch(val_dataloader, test_dataloader)
 
             print(
-                f"Epoch {epoch + 1}/{self.config.training.epochs} - "
+                f"Epoch {epoch + 1}/{self.config.epochs} - "
                 f"Train Loss: {train_loss:.4f}, "
                 f"Val Loss: {val_loss:.4f}, "
                 f"Test Loss: {test_loss:.4f}",
@@ -56,7 +55,7 @@ class Seq2SeqTrainer:
                 print(f"Saved best model({val_loss=:.4f}) from epoch {epoch + 1} to {self.model_path}")
 
             # log metrics to wandb
-            if self.config.wandb.enabled:
+            if self.config.wandb_enabled:
                 wandb.log(
                     {
                         "TrainLoss": train_loss,
@@ -122,57 +121,60 @@ class Seq2SeqTrainer:
         return total_loss / total_samples  # Correct average
 
 
-def train_model() -> None:
-    config = get_config()
-    if config.wandb.enabled:
+def train_model(config: Seq2SeqConfig) -> None:
+    """Train the seq2seq model with the given configuration."""
+    if config.wandb_enabled:
         wandb.init(
-            project=config.wandb.project,
-            name=config.wandb.name,
+            project=config.wandb_project,
+            name=config.wandb_name,
             config=config.to_dict(),
         )
 
-    dataset = load_dataset(path=config.dataset.path, name=config.dataset.name)
-    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source_lang).load()
-    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target_lang).load()
+    dataset = load_dataset(path=config.dataset_path, name=config.dataset_name)
+    source_tokenizer = Seq2SeqTokenizer(lang=config.source_lang).load()
+    target_tokenizer = Seq2SeqTokenizer(lang=config.target_lang).load()
 
     train_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "train",
         source_tokenizer=source_tokenizer,
         target_tokenizer=target_tokenizer,
-        dataset_config=config.dataset,
+        dataset_config=config,
     )
     val_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "validation",
         source_tokenizer=source_tokenizer,
         target_tokenizer=target_tokenizer,
-        dataset_config=config.dataset,
+        dataset_config=config,
     )
     test_dataloader = get_split_dataloader(
         dataset,  # type: ignore[unknown-argument]
         "test",
         source_tokenizer=source_tokenizer,
         target_tokenizer=target_tokenizer,
-        dataset_config=config.dataset,
+        dataset_config=config,
     )
 
-    trainer = Seq2SeqTrainer(pad_token_id=target_tokenizer.token_to_id("[PAD]"))
+    trainer = Seq2SeqTrainer(config=config, pad_token_id=target_tokenizer.token_to_id("[PAD]"))
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
 def main() -> None:
-    """CLI entry point for training seq2seq model."""
-    parser = argparse.ArgumentParser(description="Train Seq2Seq model")
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to YAML configuration file (e.g., configs/seq2seq/default.yml)",
-    )
-    args = parser.parse_args()
-    load_config(args.config)
-    train_model()
+    """CLI entry point for training seq2seq model using tyro configuration."""
+    # Load configuration from command line using tyro
+    config = create_config_from_cli()
+
+    print("=" * 60)
+    print("SEQ2SEQ MODEL TRAINING")
+    print("=" * 60)
+    print(f"Dataset: {config.dataset_path}")
+    print(f"Languages: {config.source_lang} -> {config.target_lang}")
+    print(f"Training: {config.epochs} epochs, lr={config.learning_rate}")
+    print(f"WandB: {'enabled' if config.wandb_enabled else 'disabled'}")
+    print("=" * 60)
+
+    train_model(config)
 
 
 if __name__ == "__main__":

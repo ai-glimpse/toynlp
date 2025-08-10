@@ -1,7 +1,7 @@
 import torch
 from pathlib import Path
 
-from toynlp.seq2seq.config import get_config
+from toynlp.seq2seq.config import Seq2SeqConfig
 from toynlp.seq2seq.model import Seq2SeqModel
 from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 from toynlp.util import current_device
@@ -11,21 +11,22 @@ from toynlp.paths import SEQ2SEQ_MODEL_PATH
 class Seq2SeqInference:
     """Seq2Seq model inference class for translation tasks."""
 
-    def __init__(self, model_path: Path = SEQ2SEQ_MODEL_PATH) -> None:
+    def __init__(self, config: Seq2SeqConfig, model_path: Path = SEQ2SEQ_MODEL_PATH) -> None:
         """Initialize the inference class with model and tokenizers.
 
         Args:
+            config: Configuration object
             model_path: Path to the saved model file
         """
-        self.config = get_config()
+        self.config = config
         self.device = current_device
 
         # Load tokenizers
-        self.source_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.source_lang).load()
-        self.target_tokenizer = Seq2SeqTokenizer(lang=self.config.dataset.target_lang).load()
+        self.source_tokenizer = Seq2SeqTokenizer(lang=self.config.source_lang).load()
+        self.target_tokenizer = Seq2SeqTokenizer(lang=self.config.target_lang).load()
 
         # Load model
-        self.model = Seq2SeqModel(self.config.model)
+        self.model = Seq2SeqModel(self.config)
         if model_path.exists():
             # Try to load the complete model first, if it fails, load state_dict
             try:
@@ -83,7 +84,7 @@ class Seq2SeqInference:
             Translated text
         """
         if max_length is None:
-            max_length = self.config.inference.max_length
+            max_length = self.config.inference_max_length
         with torch.no_grad():
             # Preprocess input
             input_tensor = self.preprocess_text(text)
@@ -131,7 +132,7 @@ class Seq2SeqInference:
             List of translated texts
         """
         if max_length is None:
-            max_length = self.config.inference.max_length
+            max_length = self.config.inference_max_length
         translations = []
         for text in texts:
             translation = self.translate(text, max_length)
@@ -143,8 +144,9 @@ def test_translation() -> None:
     """Test function to demonstrate translation capabilities."""
     print("Loading Seq2Seq model for translation testing...")
 
-    # Initialize inference
-    inference = Seq2SeqInference()
+    # Initialize inference with default config
+    config = Seq2SeqConfig()
+    inference = Seq2SeqInference(config)
 
     # Test sentences (German to English)
     test_sentences = [
@@ -156,7 +158,7 @@ def test_translation() -> None:
         "Kannst du mir helfen?",
     ]
 
-    print(f"\nTranslating from {inference.config.dataset.source_lang} to {inference.config.dataset.target_lang}:")
+    print(f"\nTranslating from {inference.config.source_lang} to {inference.config.target_lang}:")
     print("=" * 60)
 
     for i, sentence in enumerate(test_sentences, 1):
