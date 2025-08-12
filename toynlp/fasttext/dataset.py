@@ -1,5 +1,5 @@
 import torch
-from datasets import DatasetDict, load_dataset
+from datasets import DatasetDict, load_dataset, Dataset
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
@@ -33,13 +33,12 @@ def collate_fn(
 
 
 def get_split_dataloader(
-    dataset: DatasetDict,
-    split: str,
+    dataset: Dataset,
     tokenizer: Tokenizer,
     config: FastTextConfig,
 ) -> DataLoader:
     dataloader = DataLoader(
-        dataset=dataset[split],  # type: ignore[arg-type]
+        dataset=dataset,  # type: ignore[arg-type]
         batch_size=config.batch_size,
         num_workers=config.num_workers,
         shuffle=config.shuffle,
@@ -64,7 +63,7 @@ if __name__ == "__main__":
     )
 
     tokenizer = FastTextTokenizer().load()
-    train_dataloader = get_split_dataloader(dataset, "train", tokenizer, config)
+    train_dataloader = get_split_dataloader(dataset["train"], tokenizer, config)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)
         # print(batch_input[0], batch_target[0])

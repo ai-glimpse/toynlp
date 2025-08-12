@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 import tyro
 
 
@@ -9,9 +9,10 @@ class FastTextConfig:
     # dataset configs
     dataset_path: str = "stanfordnlp/imdb"
     dataset_name: str | None = None
+    training_percentage: float = 80
 
     max_length: int = 2500
-    batch_size: int = 256
+    batch_size: int = 512
     num_workers: int = 4
     shuffle: bool = True
     # tokenizer configs
@@ -22,19 +23,23 @@ class FastTextConfig:
     )
     # model configs
     vocab_size: int = 100000
-    embedding_dim: int = 512
-    dropout_ratio: float = 0.5
+    num_classes: int = 2
+    hidden_dim: int = 10
+    embedding_dim: int = 300
+    dropout_ratio: float = 0.8
     # optimizer configs
     learning_rate: float = 0.001
     weight_decay: float = 0.01
     # training configs
-    epochs: int = 20
+    epochs: int = 30
     clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "FastText"
     wandb_enabled: bool = True
 
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 def create_config_from_cli() -> FastTextConfig:
     """Create configuration from command line arguments using tyro."""

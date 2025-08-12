@@ -3,6 +3,13 @@ test:
     uv run pytest --doctest-modules -v --cov=toynlp --cov-fail-under 0 --cov-report=term --cov-report=xml --cov-report=html toynlp tests
 
 
+# FastText model
+fasttext-train *args:
+    uv run python toynlp/fasttext/train.py {{args}}
+
+fasttext-eval:
+    uv run python toynlp/fasttext/evaluation.py
+
 # Attention-based Seq2Seq Model Tasks
 attention-train *args:
     uv run python toynlp/attention/train.py {{args}}
