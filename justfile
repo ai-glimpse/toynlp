@@ -4,6 +4,9 @@ test:
 
 
 # FastText model
+fasttext-tokenize:
+    uv run python toynlp/fasttext/tokenizer.py
+
 fasttext-train *args:
     uv run python toynlp/fasttext/train.py {{args}}
 
@@ -19,7 +22,7 @@ attention-infer:
 
 attention-eval:
     uv run python toynlp/attention/evaluation.py
-    
+
 attention-train-eval: attention-train attention-eval
 
 
