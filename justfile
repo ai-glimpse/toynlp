@@ -4,15 +4,15 @@ test:
 
 
 # Attention-based Seq2Seq Model Tasks
-attention-train:
-    uv run python toynlp/attention/train.py
+attention-train *args:
+    uv run python toynlp/attention/train.py {{args}}
 
 attention-infer:
     uv run python toynlp/attention/inference.py
 
 attention-eval:
     uv run python toynlp/attention/evaluation.py
-
+    
 attention-train-eval: attention-train attention-eval
 
 
@@ -20,8 +20,8 @@ attention-train-eval: attention-train attention-eval
 seq2seq-tokenize:
     uv run python toynlp/seq2seq/tokenizer.py
 
-seq2seq-train:
-    uv run python toynlp/seq2seq/train.py
+seq2seq-train *args:
+    uv run python toynlp/seq2seq/train.py {{args}}
 
 seq2seq-infer:
     uv run python toynlp/seq2seq/inference.py
