@@ -5,7 +5,7 @@ from tokenizers.normalizers import NFD, Lowercase
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import WordLevelTrainer
-from toynlp.seq2seq.config import Seq2SeqConfig
+from toynlp.seq2seq.config import Seq2SeqConfig, create_config_from_cli
 
 from toynlp.paths import SEQ2SEQ_TOKENIZER_PATH_MAP
 
@@ -125,8 +125,7 @@ def test_tokenizers(config: Seq2SeqConfig) -> None:
 def main() -> None:
     """CLI entry point for training tokenizers using tyro configuration."""
     # Load configuration from command line using tyro
-    config = Seq2SeqConfig()
-
+    config = create_config_from_cli()
     print("=" * 60)
     print("SEQ2SEQ TOKENIZER TRAINING")
     print("=" * 60)
