@@ -24,3 +24,8 @@ ATTENTION_TOKENIZER_PATH_MAP = {
     "de": _MODEL_PATH / "attention" / "tokenizer_de.json",
 }
 ATTENTION_MODEL_PATH = _MODEL_PATH / "attention" / "attention_model.pt"
+
+
+# Fasttext paths
+FASTTEXT_TOKENIZER_PATH = _MODEL_PATH / "fasttext" / "tokenizer.json"
+FASTTEXT_MODEL_PATH = _MODEL_PATH / "fasttext" / "fasttext_model.pt"
