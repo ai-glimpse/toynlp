@@ -3,7 +3,7 @@ from datasets import DatasetDict, load_dataset
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
-from toynlp.seq2seq.config import DatasetConfig
+from toynlp.seq2seq.config import Seq2SeqConfig
 
 
 def get_dataset(
@@ -42,7 +42,7 @@ def get_split_dataloader(
     split: str,
     source_tokenizer: Tokenizer,
     target_tokenizer: Tokenizer,
-    dataset_config: DatasetConfig,
+    dataset_config: Seq2SeqConfig,
 ) -> DataLoader:
     dataloader = DataLoader(
         dataset=dataset[split],  # type: ignore[arg-type]
@@ -62,19 +62,19 @@ def get_split_dataloader(
 
 
 if __name__ == "__main__":
-    from toynlp.seq2seq.config import get_config
+    from toynlp.seq2seq.config import Seq2SeqConfig
     from toynlp.seq2seq.tokenizer import Seq2SeqTokenizer
 
-    config = get_config()
+    config = Seq2SeqConfig()
 
     dataset = get_dataset(
-        dataset_path=config.dataset.path,
-        dataset_name=config.dataset.name,
+        dataset_path=config.dataset_path,
+        dataset_name=config.dataset_name,
     )
 
-    source_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source_lang).load()
-    target_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target_lang).load()
-    train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, config.dataset)
+    source_tokenizer = Seq2SeqTokenizer(lang=config.source_lang).load()
+    target_tokenizer = Seq2SeqTokenizer(lang=config.target_lang).load()
+    train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, config)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)
         print(batch_input[0], batch_target[0])

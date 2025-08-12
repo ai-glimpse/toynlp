@@ -18,12 +18,10 @@ attention-train-eval: attention-train attention-eval
 
 # Sequence-to-Sequence (Seq2Seq) Model Tasks
 seq2seq-tokenize:
-    uv run python toynlp/seq2seq/tokenizer.py \
-        --config configs/seq2seq/default.yml
+    uv run python toynlp/seq2seq/tokenizer.py
 
 seq2seq-train:
-    uv run python toynlp/seq2seq/train.py \
-        --config configs/seq2seq/default.yml
+    uv run python toynlp/seq2seq/train.py
 
 seq2seq-infer:
     uv run python toynlp/seq2seq/inference.py

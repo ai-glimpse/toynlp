@@ -5,8 +5,7 @@ from tokenizers.normalizers import NFD, Lowercase
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import WordLevelTrainer
-from toynlp.seq2seq.config import get_config, load_config
-import argparse
+from toynlp.seq2seq.config import Seq2SeqConfig, create_config_from_cli
 
 from toynlp.paths import SEQ2SEQ_TOKENIZER_PATH_MAP
 
@@ -53,13 +52,13 @@ class Seq2SeqTokenizer:
         return self.tokenizer
 
 
-def train_tokenizer(lang: str) -> None:
-    """Train a tokenizer for the specified language using the global config.
+def train_tokenizer(lang: str, config: Seq2SeqConfig) -> None:
+    """Train a tokenizer for the specified language using the provided config.
 
     Args:
         lang: Language code (e.g., 'en', 'de')
+        config: Configuration object
     """
-    config = get_config()
     tokenizer_path = SEQ2SEQ_TOKENIZER_PATH_MAP[lang]
 
     if not tokenizer_path.exists():
@@ -67,25 +66,25 @@ def train_tokenizer(lang: str) -> None:
 
         # Load dataset
         dataset = load_dataset(
-            path=config.dataset.path,
-            name=config.dataset.name,
+            path=config.dataset_path,
+            name=config.dataset_name,
             split="train",
         )
 
         # Prepare text data
         lang_dataset = dataset.map(
             lambda batch: {"text": list(batch[lang])},
-            remove_columns=[config.dataset.source_lang, config.dataset.target_lang],
+            remove_columns=[config.source_lang, config.target_lang],
             batched=True,
-            num_proc=config.tokenizer.num_proc,  # type: ignore[unknown-argument]
+            num_proc=config.num_proc,  # type: ignore[unknown-argument]
         )
 
         # Train tokenizer
         vocab_size = config.get_lang_vocab_size(lang)
         trainer = WordLevelTrainer(
             vocab_size=vocab_size,  # type: ignore[unknown-argument]
-            min_frequency=config.tokenizer.min_frequency,  # type: ignore[unknown-argument]
-            special_tokens=config.tokenizer.special_tokens,  # type: ignore[unknown-argument]
+            min_frequency=config.min_frequency,  # type: ignore[unknown-argument]
+            special_tokens=config.special_tokens,  # type: ignore[unknown-argument]
         )
         seq2seq_tokenizer.tokenizer.train_from_iterator(lang_dataset["text"], trainer=trainer)
         seq2seq_tokenizer.tokenizer.save(str(tokenizer_path))
@@ -94,71 +93,51 @@ def train_tokenizer(lang: str) -> None:
         print(f"Tokenizer already exists at {tokenizer_path}")
 
 
-def train_all_tokenizers() -> None:
+def train_all_tokenizers(config: Seq2SeqConfig) -> None:
     """Train tokenizers for both source and target languages."""
-    config = get_config()
-    train_tokenizer(config.dataset.source_lang)
-    train_tokenizer(config.dataset.target_lang)
+    train_tokenizer(config.source_lang, config)
+    train_tokenizer(config.target_lang, config)
 
 
-def test_tokenizers() -> None:
+def test_tokenizers(config: Seq2SeqConfig) -> None:
     """Test the trained tokenizers with sample texts."""
-    config = get_config()
     print("\nTesting tokenizers:")
 
     # Test source language tokenizer
-    src_tokenizer = Seq2SeqTokenizer(lang=config.dataset.source_lang).load()
+    src_tokenizer = Seq2SeqTokenizer(lang=config.source_lang).load()
     src_text = "Zwei Männer stehen am Herd und bereiten Essen zu."
     src_tokens = src_tokenizer.encode(src_text).ids
-    print(f"\n{config.dataset.source_lang.upper()}:")
+    print(f"\n{config.source_lang.upper()}:")
     print(f"Text: {src_text}")
     print(f"Tokens: {src_tokens}")
     print(f"Decoded: {src_tokenizer.decode(src_tokens)}")
 
     # Test target language tokenizer
-    tgt_tokenizer = Seq2SeqTokenizer(lang=config.dataset.target_lang).load()
+    tgt_tokenizer = Seq2SeqTokenizer(lang=config.target_lang).load()
     tgt_text = "Two men are at the stove preparing food."
     tgt_tokens = tgt_tokenizer.encode(tgt_text).ids
-    print(f"\n{config.dataset.target_lang.upper()}:")
+    print(f"\n{config.target_lang.upper()}:")
     print(f"Text: {tgt_text}")
     print(f"Tokens: {tgt_tokens}")
     print(f"Decoded: {tgt_tokenizer.decode(tgt_tokens)}")
 
 
 def main() -> None:
-    """CLI entry point for training tokenizers."""
-    parser = argparse.ArgumentParser(description="Train sequence-to-sequence tokenizers")
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to YAML configuration file",
-    )
-    parser.add_argument(
-        "--lang",
-        type=str,
-        choices=["en", "de"],
-        help="Train tokenizer for specific language only",
-    )
-    parser.add_argument(
-        "--no-test",
-        action="store_true",
-        help="Skip testing the trained tokenizers",
-    )
-    args = parser.parse_args()
+    """CLI entry point for training tokenizers using tyro configuration."""
+    # Load configuration from command line using tyro
+    config = create_config_from_cli()
+    print("=" * 60)
+    print("SEQ2SEQ TOKENIZER TRAINING")
+    print("=" * 60)
+    print(f"Dataset: {config.dataset_path}")
+    print(f"Languages: {config.source_lang}, {config.target_lang}")
+    print("=" * 60)
 
-    # Load configuration
-    load_config(args.config)
-
-    # Train tokenizers
-    if args.lang:
-        train_tokenizer(args.lang)
-    else:
-        train_all_tokenizers()
+    # Train tokenizers for both languages
+    train_all_tokenizers(config)
 
     # Test tokenizers
-    if not args.no_test:
-        test_tokenizers()
+    test_tokenizers(config)
 
 
 if __name__ == "__main__":

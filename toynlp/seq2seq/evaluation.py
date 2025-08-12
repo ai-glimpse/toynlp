@@ -1,7 +1,7 @@
 from evaluate import load
 from tqdm import tqdm
 
-from toynlp.seq2seq.config import get_config
+from toynlp.seq2seq.config import Seq2SeqConfig
 from toynlp.seq2seq.inference import Seq2SeqInference
 from toynlp.seq2seq.dataset import get_dataset
 from typing import TYPE_CHECKING
@@ -13,22 +13,23 @@ if TYPE_CHECKING:
 class Seq2SeqEvaluator:
     """Evaluation class for computing BLEU scores on seq2seq translation model."""
 
-    def __init__(self, inference: Seq2SeqInference | None = None) -> None:
+    def __init__(self, config: Seq2SeqConfig, inference: Seq2SeqInference | None = None) -> None:
         """Initialize the evaluator.
 
         Args:
+            config: Configuration object
             inference: Seq2SeqInference instance. If None, creates a new one.
         """
-        self.config = get_config()
-        self.inference = inference if inference is not None else Seq2SeqInference()
+        self.config = config
+        self.inference = inference if inference is not None else Seq2SeqInference(config)
 
         # Load BLEU metric
         self.bleu_metric = load("bleu")
 
         # Load dataset
         self.dataset = get_dataset(
-            dataset_path=self.config.dataset.path,
-            dataset_name=self.config.dataset.name,
+            dataset_path=self.config.dataset_path,
+            dataset_name=self.config.dataset_name,
         )
 
         print(f"Loaded dataset with splits: {list(self.dataset.keys())}")
@@ -96,9 +97,9 @@ class Seq2SeqEvaluator:
             Dictionary containing BLEU scores and other metrics
         """
         if max_samples is None:
-            max_samples = self.config.evaluation.max_samples
+            max_samples = self.config.evaluation_max_samples
         if batch_size is None:
-            batch_size = self.config.evaluation.batch_size
+            batch_size = self.config.evaluation_batch_size
         if split not in self.dataset:
             available_splits = list(self.dataset.keys())
             msg = f"Split '{split}' not found in dataset. Available: {available_splits}"
@@ -116,8 +117,8 @@ class Seq2SeqEvaluator:
         print(f"Evaluating on {total_samples} samples...")
 
         # Extract source and target texts
-        source_texts = split_data[self.config.dataset.source_lang]
-        target_texts = split_data[self.config.dataset.target_lang]
+        source_texts = split_data[self.config.source_lang]
+        target_texts = split_data[self.config.target_lang]
 
         # Generate translations in batches
         predictions = []
@@ -218,13 +219,13 @@ class Seq2SeqEvaluator:
         print("=" * 60)
 
         for i in range(start_idx, end_idx):
-            source_text = split_data[i][self.config.dataset.source_lang]
-            target_text = split_data[i][self.config.dataset.target_lang]
+            source_text = split_data[i][self.config.source_lang]
+            target_text = split_data[i][self.config.target_lang]
             prediction = self.inference.translate(source_text)
 
             print(f"\nSample {i + 1}:")
-            print(f"Source ({self.config.dataset.source_lang}): {source_text}")
-            print(f"Target ({self.config.dataset.target_lang}): {target_text}")
+            print(f"Source ({self.config.source_lang}): {source_text}")
+            print(f"Target ({self.config.target_lang}): {target_text}")
             print(f"Prediction: {prediction}")
 
             # Compute BLEU for this single sample
@@ -243,8 +244,9 @@ def run_evaluation() -> None:
     """Run comprehensive evaluation on the seq2seq model."""
     print("Starting Seq2Seq Model Evaluation...")
 
-    # Initialize evaluator
-    evaluator = Seq2SeqEvaluator()
+    # Initialize config and evaluator
+    config = Seq2SeqConfig()
+    evaluator = Seq2SeqEvaluator(config)
 
     # Show some sample translations first
     print("\n" + "=" * 60)
