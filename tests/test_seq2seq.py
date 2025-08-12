@@ -2,7 +2,6 @@
 
 import pytest
 import torch
-from unittest.mock import Mock, patch
 from toynlp.seq2seq.config import Seq2SeqConfig
 from toynlp.seq2seq.model import Seq2SeqModel
 
@@ -37,13 +36,9 @@ def test_seq2seq_config():
         config.get_lang_vocab_size("fr")
 
 
-@patch("toynlp.seq2seq.model.Seq2SeqTokenizer")
-def test_seq2seq_model_with_config(mock_tokenizer_class):
+def test_seq2seq_model_with_config():
     """Test that the seq2seq model works with the new config."""
     # Mock the tokenizer
-    mock_tokenizer = Mock()
-    mock_tokenizer.get_vocab.return_value = {f"token_{i}": i for i in range(100)}
-    mock_tokenizer_class.return_value.load.return_value = mock_tokenizer
 
     config = Seq2SeqConfig(
         source_vocab_size=100,
@@ -54,6 +49,7 @@ def test_seq2seq_model_with_config(mock_tokenizer_class):
     )
 
     model = Seq2SeqModel(config)
+    model.device = torch.device("cpu")  # type: ignore[unresolved-attribute]
 
     # Check model attributes
     assert model.config.source_vocab_size == 100

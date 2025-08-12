@@ -124,7 +124,7 @@ class Seq2SeqModel(torch.nn.Module):
             else:
                 # Use the predicted token for the next input
                 # Convert token ids back to tensor
-                decoder_input_tensor = torch.tensor(top_token_index, dtype=torch.long).unsqueeze(1).to(self.device)
+                decoder_input_tensor = torch.tensor(top_token_index, dtype=torch.long, device=self.device).unsqueeze(1)
         return outputs
 
 
