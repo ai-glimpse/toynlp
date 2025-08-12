@@ -663,7 +663,7 @@
 
 
 <a href="#toynlp.nnlm.model.NNLM" class="headerlink" title="Permanent link">&para;</a></h2>
-<div class="doc-signature highlight"><pre><span></span><code><span class="nf">NNLM</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n"><span title="toynlp.nnlm.config.ModelConfig">ModelConfig</span></span><span class="p">)</span>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">NNLM</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n"><span title="toynlp.nnlm.config.NNLMConfig">NNLMConfig</span></span><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -687,12 +687,12 @@
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>ModelConfig, the model configuration.</p>
+                <p>NNLMConfig, the model configuration.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><span title="toynlp.nnlm.config.ModelConfig">ModelConfig</span></code>
+                      <code><span title="toynlp.nnlm.config.NNLMConfig">NNLMConfig</span></code>
                   </span>
               </p>
             </td>
@@ -740,12 +740,12 @@
 <span class="normal">36</span>
 <span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
-    <span class="n">config</span><span class="p">:</span> <span class="n">ModelConfig</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">NNLMConfig</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The Neural Network Language Model (NNLM) model.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        config: ModelConfig, the model configuration.</span>
+<span class="sd">        config: NNLMConfig, the model configuration.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">with_direct_connection</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">with_direct_connection</span>
