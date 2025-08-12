@@ -144,11 +144,11 @@ class AttentionInference:
     ) -> None:
         # Convert attention weights to numpy arrays
         attention_weights_np = attention_weight.cpu().numpy()
-        print(f"Attention weights shape: {attention_weights_np.shape}")
+        # print(f"Attention weights shape: {attention_weights_np.shape}")
         source_tokens = self.source_tokenizer.decode(source_token_ids, skip_special_tokens=False).split()
-        print(f"source_tokens: {source_tokens}, source_token_ids: {source_token_ids}")
+        # print(f"source_tokens: {source_tokens}, source_token_ids: {source_token_ids}")
         predict_tokens = self.target_tokenizer.decode(predict_token_ids, skip_special_tokens=False).split()
-        print(f"predict_tokens: {predict_tokens}, predict_token_ids: {predict_token_ids}")
+        # print(f"predict_tokens: {predict_tokens}, predict_token_ids: {predict_token_ids}")
 
         # Plot each attention weight matrix
         plt.figure(figsize=(12, 12))
@@ -203,8 +203,8 @@ def run_translation(config: AttentionConfig, plot_attention: bool = False) -> No
 
     for i, sentence in enumerate(test_sentences, 1):
         translation = inference.translate(sentence, plot_attention=plot_attention)
-        print(f"{i}. Source: {sentence}")
-        print(f"   Target: {translation}")
+        print(f"{i}. Source(input): {sentence}")
+        print(f"   Target(output): {translation}")
 
     # Test batch translation
     print("Testing batch translation...")
