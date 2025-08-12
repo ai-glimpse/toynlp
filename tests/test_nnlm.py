@@ -1,6 +1,6 @@
 import torch
 
-from toynlp.nnlm.config import ModelConfig
+from toynlp.nnlm.config import NNLMConfig
 from toynlp.nnlm.model import NNLM
 
 
@@ -9,7 +9,7 @@ def test_nnlm_model_architecture() -> None:
     vocab_size = 17964
     m = 100
     h = 60
-    config = ModelConfig(
+    config = NNLMConfig(
         context_size=n,
         vocab_size=vocab_size,
         embedding_dim=m,

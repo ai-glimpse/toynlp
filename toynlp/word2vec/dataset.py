@@ -5,7 +5,7 @@ from datasets import DatasetDict, load_dataset
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
-from toynlp.word2vec.config import DataConfig
+from toynlp.word2vec.config import Word2VecConfig
 
 
 def get_dataset(
@@ -19,7 +19,7 @@ def get_dataset(
 def collate_cbow_fn(
     batch: dict[str, list[str]],
     tokenizer: Tokenizer,
-    data_config: DataConfig,
+    data_config: Word2VecConfig,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     cbow_n_words = data_config.cbow_n_words
     batch_input = []
@@ -43,7 +43,7 @@ def collate_cbow_fn(
 def collate_skip_gram_fn(
     batch: dict[str, list[str]],
     tokenizer: Tokenizer,
-    data_config: DataConfig,
+    data_config: Word2VecConfig,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     skip_gram_n_words = data_config.skip_gram_n_words
     batch_input = []
@@ -69,7 +69,7 @@ def get_split_dataloader(
     dataset: DatasetDict,
     split: str,
     tokenizer: Tokenizer,
-    data_config: DataConfig,
+    data_config: Word2VecConfig,
     model_name: Literal["cbow", "skip_gram"] = "cbow",
 ) -> DataLoader:
     if model_name == "cbow":
@@ -93,19 +93,18 @@ def get_split_dataloader(
 
 
 if __name__ == "__main__":
-    from toynlp.word2vec.config import DataConfig, DatasetConfig
+    from toynlp.word2vec.config import Word2VecConfig
     from toynlp.word2vec.tokenizer import Word2VecTokenizer
 
-    data_config = DataConfig()
-    dataset_config = DatasetConfig()
+    config = Word2VecConfig()
 
     dataset = get_dataset(
-        dataset_path=dataset_config.path,
-        dataset_name=dataset_config.name,
+        dataset_path=config.dataset_path,
+        dataset_name=config.dataset_name,
     )
 
     tokenizer = Word2VecTokenizer().load()
-    train_dataloader = get_split_dataloader(dataset, "train", tokenizer, data_config, model_name="skip_gram")
+    train_dataloader = get_split_dataloader(dataset, "train", tokenizer, config, model_name="skip_gram")
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)
         break

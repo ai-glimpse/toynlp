@@ -1,6 +1,6 @@
 import torch
 
-from toynlp.word2vec.config import ModelConfig
+from toynlp.word2vec.config import Word2VecConfig
 from toynlp.word2vec.model import CbowModel, SkipGramModel
 
 
@@ -9,7 +9,7 @@ def test_cbow_model_architecture() -> None:
     vocab_size = 1000
     embedding_dim = 100
 
-    config = ModelConfig(
+    config = Word2VecConfig(
         vocab_size=vocab_size,
         embedding_dim=embedding_dim,
     )
@@ -37,7 +37,7 @@ def test_skip_gram_model_architecture() -> None:
     vocab_size = 1000
     embedding_dim = 100
 
-    config = ModelConfig(
+    config = Word2VecConfig(
         vocab_size=vocab_size,
         embedding_dim=embedding_dim,
     )
@@ -64,7 +64,7 @@ def test_cbow_model_forward_pass() -> None:
     vocab_size = 50
     embedding_dim = 10
 
-    config = ModelConfig(
+    config = Word2VecConfig(
         vocab_size=vocab_size,
         embedding_dim=embedding_dim,
     )
@@ -99,7 +99,7 @@ def test_skip_gram_model_forward_pass() -> None:
     vocab_size = 50
     embedding_dim = 10
 
-    config = ModelConfig(
+    config = Word2VecConfig(
         vocab_size=vocab_size,
         embedding_dim=embedding_dim,
     )
@@ -130,7 +130,7 @@ def test_skip_gram_model_forward_pass() -> None:
 
 def test_model_config() -> None:
     """Test model configuration."""
-    config = ModelConfig(
+    config = Word2VecConfig(
         vocab_size=5000,
         embedding_dim=128,
     )

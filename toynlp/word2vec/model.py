@@ -1,11 +1,11 @@
 from huggingface_hub import PyTorchModelHubMixin
 from torch import Tensor, nn
 
-from toynlp.word2vec.config import ModelConfig
+from toynlp.word2vec.config import Word2VecConfig
 
 
 class CbowModel(nn.Module, PyTorchModelHubMixin):
-    def __init__(self, config: ModelConfig) -> None:
+    def __init__(self, config: Word2VecConfig) -> None:
         super().__init__()
         self.config = config
         self.embedding = nn.Embedding(
@@ -33,7 +33,7 @@ class CbowModel(nn.Module, PyTorchModelHubMixin):
 
 
 class SkipGramModel(nn.Module, PyTorchModelHubMixin):
-    def __init__(self, config: ModelConfig) -> None:
+    def __init__(self, config: Word2VecConfig) -> None:
         super().__init__()
         self.config = config
         self.embedding = nn.Embedding(
@@ -61,7 +61,7 @@ class SkipGramModel(nn.Module, PyTorchModelHubMixin):
 
 if __name__ == "__main__":
     # Example usage
-    config = ModelConfig(
+    config = Word2VecConfig(
         vocab_size=20000,
         embedding_dim=100,
     )

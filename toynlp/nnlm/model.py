@@ -1,17 +1,17 @@
 import torch
 
-from toynlp.nnlm.config import ModelConfig
+from toynlp.nnlm.config import NNLMConfig
 
 
 class NNLM(torch.nn.Module):
     def __init__(
         self,
-        config: ModelConfig,
+        config: NNLMConfig,
     ) -> None:
         """The Neural Network Language Model (NNLM) model.
 
         Args:
-            config: ModelConfig, the model configuration.
+            config: NNLMConfig, the model configuration.
         """
         super().__init__()
         self.with_direct_connection = config.with_direct_connection
@@ -69,7 +69,7 @@ class NNLM(torch.nn.Module):
 if __name__ == "__main__":
     from toynlp.util import current_device
 
-    config = ModelConfig(
+    config = NNLMConfig(
         context_size=6,
         vocab_size=20000,
         embedding_dim=100,
