@@ -1,7 +1,6 @@
 import torch
 import random
 from toynlp.attention.config import AttentionConfig, create_config_from_cli
-from toynlp.attention.tokenizer import AttentionTokenizer
 from toynlp.util import current_device
 
 
@@ -152,8 +151,6 @@ class Seq2SeqAttentionModel(torch.nn.Module):
             decoder_hidden_dim=config.decoder_hidden_dim,
             dropout_ratio=config.dropout_ratio,
         )
-        self.target_tokenizer = AttentionTokenizer(lang=self.config.target_lang).load()
-        self.target_vocab_ids = list(self.target_tokenizer.get_vocab().values())
         self.device = current_device
 
     def forward(self, input_ids: torch.Tensor, target_ids: torch.Tensor) -> torch.Tensor:
@@ -181,8 +178,7 @@ class Seq2SeqAttentionModel(torch.nn.Module):
             else:
                 # Use the predicted token for the next input
                 # Convert token ids back to tensor
-                token_ids = [self.target_vocab_ids[i] for i in top_token_index]
-                decoder_input_ids = torch.tensor(token_ids, dtype=torch.long, device=self.device).unsqueeze(1)
+                decoder_input_ids = torch.tensor(top_token_index, dtype=torch.long, device=self.device).unsqueeze(1)
         return outputs
 
 
