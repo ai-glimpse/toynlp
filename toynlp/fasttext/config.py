@@ -9,7 +9,7 @@ class FastTextConfig:
     # dataset configs
     dataset_path: str = "stanfordnlp/imdb"
     dataset_name: str | None = None
-    training_percentage: float = 80
+    training_percentage: float = 70
 
     max_length: int = 2500
     batch_size: int = 512
@@ -19,7 +19,7 @@ class FastTextConfig:
     min_frequency: int = 1
     num_proc: int = 8
     special_tokens: list[str] = field(
-        default_factory=lambda: ["[UNK]", "[BOS]", "[EOS]", "[PAD]"],
+        default_factory=lambda: ["[UNK]", "[PAD]"],
     )
     # model configs
     vocab_size: int = 100000
@@ -40,6 +40,7 @@ class FastTextConfig:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
 
 def create_config_from_cli() -> FastTextConfig:
     """Create configuration from command line arguments using tyro."""
