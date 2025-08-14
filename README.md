@@ -28,7 +28,7 @@ NLP models with clean implementation.
 - [x] Word2Vec(2013)
 - [x] Seq2Seq(2014)
 - [x] Attention(2015)
-- [ ] fastText(2016)
+- [x] fastText(2016)
 - [ ] Transformer(2017)
 - [ ] BERT(2018)
 - [ ] GPT(2018)
