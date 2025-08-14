@@ -48,6 +48,7 @@ dev = [
     "types-pyyaml>=6.0.12.20250516",
     "matplotlib>=3.10.5",
     "seaborn>=0.13.2",
+    "scikit-learn>=1.7.1",
 ]
 docs = [
     "mkdocs",

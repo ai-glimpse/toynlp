@@ -1,4 +1,4 @@
-<center>
+
 
 [![Python](https://img.shields.io/pypi/pyversions/toynlp.svg?color=%2334D058)](https://pypi.org/project/toynlp/)
 [![PyPI](https://img.shields.io/pypi/v/toynlp?color=%2334D058&label=pypi%20package)](https://pypi.org/project/toynlp/)
@@ -13,7 +13,6 @@
 [![Codecov](https://codecov.io/gh/ai-glimpse/toynlp/branch/master/graph/badge.svg)](https://codecov.io/gh/ai-glimpse/toynlp)
 [![GitHub License](https://img.shields.io/github/license/ai-glimpse/toynlp)](https://github.com/ai-glimpse/toynlp/blob/master/LICENSE)
 
-</center>
 
 # ToyNLP
 
@@ -28,7 +27,7 @@ NLP models with clean implementation.
 - [x] Word2Vec(2013)
 - [x] Seq2Seq(2014)
 - [x] Attention(2015)
-- [ ] fastText(2016)
+- [x] fastText(2016)
 - [ ] Transformer(2017)
 - [ ] BERT(2018)
 - [ ] GPT(2018)
