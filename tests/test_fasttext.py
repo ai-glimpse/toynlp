@@ -176,9 +176,9 @@ def test_fasttext_parameter_count() -> None:
     # FC1: (embedding_dim + 1) * hidden_dim  # +1 for bias
     # FC2: (hidden_dim + 1) * num_classes    # +1 for bias
     expected_params = (
-        config.vocab_size * config.embedding_dim +  # embedding
-        (config.embedding_dim + 1) * config.hidden_dim +  # fc1
-        (config.hidden_dim + 1) * config.num_classes  # fc2
+        config.vocab_size * config.embedding_dim  # embedding
+        + (config.embedding_dim + 1) * config.hidden_dim  # fc1
+        + (config.hidden_dim + 1) * config.num_classes  # fc2
     )
 
     actual_params = sum(p.numel() for p in model.parameters())

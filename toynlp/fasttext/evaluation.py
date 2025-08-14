@@ -74,11 +74,11 @@ class FastTextEvaluator:
         true_labels = eval_dataset["label"]
 
         # Get predictions
-        predictions = []
+        predictions = []  # type: ignore[var-annotated]
 
         # Process in batches for memory efficiency
         for i in tqdm(range(0, len(texts), batch_size), desc="Evaluating"):
-            batch_texts = texts[i:i + batch_size]
+            batch_texts = texts[i : i + batch_size]
             batch_predictions = classify_text(
                 batch_texts,
                 model=self.model,
@@ -114,18 +114,25 @@ class FastTextEvaluator:
 
         # Precision, recall, F1 (macro and weighted averages)
         precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(
-            true_labels, predictions, average="macro", zero_division=0,
+            true_labels,
+            predictions,
+            average="macro",
+            zero_division=0,
         )
 
         precision_weighted, recall_weighted, f1_weighted, _ = precision_recall_fscore_support(
-            true_labels, predictions, average="weighted", zero_division=0,
+            true_labels,
+            predictions,
+            average="weighted",
+            zero_division=0,
         )
 
         # Per-class metrics
-        precision_per_class, recall_per_class, f1_per_class, support_per_class = (
-            precision_recall_fscore_support(
-                true_labels, predictions, average=None, zero_division=0,
-            )
+        precision_per_class, recall_per_class, f1_per_class, support_per_class = precision_recall_fscore_support(
+            true_labels,
+            predictions,
+            average=None,
+            zero_division=0,
         )
 
         # Confusion matrix
@@ -133,7 +140,10 @@ class FastTextEvaluator:
 
         # Classification report
         class_report = classification_report(
-            true_labels, predictions, output_dict=True, zero_division=0,
+            true_labels,
+            predictions,
+            output_dict=True,
+            zero_division=0,
         )
 
         # Organize metrics

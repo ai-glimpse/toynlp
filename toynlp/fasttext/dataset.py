@@ -15,7 +15,7 @@ def get_dataset(
 
 
 def collate_fn(
-    batch: dict[str, list[str]],
+    batch: list[dict[str, str | int]],
     tokenizer: Tokenizer,
     max_length: int = 1000,
 ) -> tuple[torch.Tensor, torch.Tensor]:

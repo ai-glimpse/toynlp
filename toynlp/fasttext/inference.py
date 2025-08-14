@@ -125,12 +125,15 @@ def predict_single_text(
     Returns:
         dict: Dictionary containing prediction details
     """
-    result = classify_text(
-        text, model, tokenizer, return_probabilities=True,
+    predictions_list = classify_text(
+        text,
+        model,
+        tokenizer,
+        return_probabilities=True,
     )
     # When return_probabilities=True, we get a tuple
-    assert isinstance(result, tuple)
-    predictions, probabilities = result
+    assert isinstance(predictions_list, tuple)
+    predictions, probabilities = predictions_list
 
     prediction = predictions[0]
     probs = probabilities[0]
@@ -144,9 +147,7 @@ def predict_single_text(
 
     if class_names is not None:
         result["predicted_class_name"] = class_names[prediction]
-        result["class_probabilities"] = {
-            class_names[i]: prob for i, prob in enumerate(probs)
-        }
+        result["class_probabilities"] = {class_names[i]: prob for i, prob in enumerate(probs)}
 
     return result
 
@@ -173,12 +174,15 @@ def batch_inference(
     if model is None or tokenizer is None:
         model, tokenizer = load_model_and_tokenizer()
 
-    all_predictions = []
+    all_predictions = []  # type: ignore[var-annotated]
 
     for i in range(0, len(texts), batch_size):
-        batch_texts = texts[i:i + batch_size]
+        batch_texts = texts[i : i + batch_size]
         batch_predictions = classify_text(
-            batch_texts, model, tokenizer, max_length=max_length,
+            batch_texts,
+            model,
+            tokenizer,
+            max_length=max_length,
         )
         all_predictions.extend(batch_predictions)
 

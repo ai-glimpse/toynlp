@@ -14,6 +14,7 @@ from toynlp.util import setup_seed, set_deterministic_mode
 setup_seed(1234)  # Set a random seed for reproducibility
 set_deterministic_mode()  # Set deterministic mode for reproducibility
 
+
 class FastTextTrainer:
     def __init__(self, config: FastTextConfig) -> None:
         self.config = config
@@ -123,7 +124,7 @@ def train_model(config: FastTextConfig) -> None:
         path=config.dataset_path,
         name=config.dataset_name,
         split=f"train[0%:{config.training_percentage}%]",
-        )
+    )
 
     val_dataset = load_dataset(
         path=config.dataset_path,
