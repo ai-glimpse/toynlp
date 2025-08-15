@@ -49,6 +49,7 @@ dev = [
     "matplotlib>=3.10.5",
     "seaborn>=0.13.2",
     "scikit-learn>=1.7.1",
+    "marimo>=0.14.17",
 ]
 docs = [
     "mkdocs",
@@ -177,6 +178,7 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "playground",
 ]
 
 # Same as Black.
