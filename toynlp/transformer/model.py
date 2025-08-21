@@ -35,6 +35,8 @@ class MultiHeadSelfAttention(torch.nn.Module):
         self.Wq = torch.nn.Linear(config.d_model, config.attention_d_k)
         self.Wk = torch.nn.Linear(config.d_model, config.attention_d_k)
         self.Wv = torch.nn.Linear(config.d_model, config.attention_d_v)
+        self.Wo = torch.nn.Linear(config.attention_d_v, config.d_model)
+        self.dropout = torch.nn.Dropout(p=config.dropout_ratio)
 
         assert config.attention_d_k % config.head_num == 0
         assert config.attention_d_v % config.head_num == 0
@@ -67,14 +69,16 @@ class MultiHeadSelfAttention(torch.nn.Module):
         attention = attention.permute(0, 2, 1, 3)
         # (b, s, h, dv/h) -> (b, s, dv)
         attention = attention.contiguous().view(batch_size, seq_length, self.config.attention_d_v)
+        attention = self.dropout(attention)
 
         # TODO: Question：can we set dv != d_model?
         # make sure: d_k = d_v = d_model/h
         assert q_k_head_dim * self.config.head_num == self.config.d_model
         assert v_head_dim * self.config.head_num == self.config.d_model
+        output = self.Wo(attention)  # (b, s, d_model)
 
         # (b, s, d_model)
-        return attention
+        return output
 
 
 class EncoderTransformerBlock(torch.nn.Module):
@@ -132,8 +136,18 @@ class MultiHeadCrossAttention(torch.nn.Module):
     def __init__(self, config: TransformerConfig) -> None:
         super().__init__()
         self.config = config
+        self.Wq = torch.nn.Linear(config.d_model, config.attention_d_k)
+        self.Wk = torch.nn.Linear(config.d_model, config.attention_d_k)
+        self.Wv = torch.nn.Linear(config.d_model, config.attention_d_v)
+        self.Wo = torch.nn.Linear(config.attention_d_v, config.d_model)
+        self.dropout = torch.nn.Dropout(p=config.dropout_ratio)
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+    def forward(self, encoder_output: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        q = self.Wq(x)
+        # k and v are from the encoder output
+        k = self.Wk(encoder_output)
+        v = self.Wv(encoder_output)
+
         # x shape: (batch_size, seq_length, d_model)
         batch_size, target_seq_length = q.size(0), q.size(1)
         source_seq_length = k.size(1)
@@ -160,14 +174,17 @@ class MultiHeadCrossAttention(torch.nn.Module):
         attention = attention.permute(0, 2, 1, 3)
         # (b, target_seq_len, h, dv/h) -> (b, target_seq_len, dv)
         attention = attention.contiguous().view(batch_size, target_seq_length, self.config.attention_d_v)
+        attention = self.dropout(attention)
 
         # TODO: Question：can we set dv != d_model?
         # make sure: d_k = d_v = d_model/h
         assert q_k_head_dim * self.config.head_num == self.config.d_model
         assert v_head_dim * self.config.head_num == self.config.d_model
 
+        output = self.Wo(attention)
+
         # (b, s, d_model)
-        return attention
+        return output
 
 
 class DecoderTransformerBlock(torch.nn.Module):
