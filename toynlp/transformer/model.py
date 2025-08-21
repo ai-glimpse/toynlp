@@ -177,11 +177,6 @@ class MultiHeadCrossAttention(torch.nn.Module):
         # (b, target_seq_len, h, dv/h) -> (b, target_seq_len, dv)
         attention = attention.contiguous().view(batch_size, target_seq_length, self.config.attention_d_v)
 
-        # TODO: Question：can we set dv != d_model?
-        # make sure: d_k = d_v = d_model/h
-        assert q_k_head_dim * self.config.head_num == self.config.d_model
-        assert v_head_dim * self.config.head_num == self.config.d_model
-
         output = self.Wo(attention)
 
         # (b, s, d_model)

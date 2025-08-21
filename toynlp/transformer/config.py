@@ -13,7 +13,7 @@ class TransformerConfig:
     source_lang: str = "de"
     target_lang: str = "en"
     max_length: int = 1000
-    batch_size: int = 256
+    batch_size: int = 32
     num_workers: int = 4
     shuffle: bool = True
     # tokenizer configs
