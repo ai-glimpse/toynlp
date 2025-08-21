@@ -4,6 +4,8 @@ import random
 from toynlp.transformer.config import TransformerConfig
 from toynlp.util import current_device
 
+# TODO: attention mask out pad id
+
 
 class PositionalEncoding:
     def __init__(self, max_length: int, d_model: int) -> None:
@@ -192,7 +194,9 @@ class DecoderTransformerBlock(torch.nn.Module):
         self.ffn = torch.nn.Sequential(
             torch.nn.Linear(config.d_model, config.d_feed_forward),
             torch.nn.ReLU(),
+            torch.nn.Dropout(p=config.dropout_ratio),
             torch.nn.Linear(config.d_feed_forward, config.d_model),
+            torch.nn.Dropout(p=config.dropout_ratio),
         )
         self.layernorm_masked_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_cross_mha = torch.nn.LayerNorm(config.d_model)
