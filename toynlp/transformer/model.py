@@ -43,7 +43,7 @@ class MultiHeadSelfAttention(torch.nn.Module):
         assert config.attention_d_k % config.head_num == 0
         assert config.attention_d_v % config.head_num == 0
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, pad_mask: torch.Tensor | None = None) -> torch.Tensor:
         # x shape: (batch_size, seq_length, d_model)
         batch_size, seq_length = x.size(0), x.size(1)
         # q, k shape: (batch_size, seq_length, attention_d_k)
@@ -59,6 +59,9 @@ class MultiHeadSelfAttention(torch.nn.Module):
 
         # (b, h, s, dK/h) @ (b, h, dK/h, s) -> (b, h, s, s)
         attention_weight = q @ k.transpose(-2, -1) / (q_k_head_dim**0.5)
+        # pad mask
+        if pad_mask is not None:
+            attention_weight = attention_weight.masked_fill(pad_mask == 0, float("-inf"))
         if self.masked:
             tril = torch.tril(torch.ones_like(attention_weight), diagonal=0)
             attention_weight = attention_weight.masked_fill(tril == 0, float("-inf"))
@@ -96,8 +99,8 @@ class EncoderTransformerBlock(torch.nn.Module):
         self.layernorm_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        h1 = self.mha(x)
+    def forward(self, x: torch.Tensor, pad_mask: torch.Tensor | None = None) -> torch.Tensor:
+        h1 = self.mha(x, pad_mask)
         y1 = self.layernorm_mha(x + h1)
 
         h2 = self.ffn(y1)
@@ -110,6 +113,7 @@ class Encoder(torch.nn.Module):
     def __init__(self, config: TransformerConfig, padding_idx: int) -> None:
         super().__init__()
         self.config = config
+        self.padding_idx = padding_idx
         self.embedding = torch.nn.Embedding(
             num_embeddings=config.vocab_size,
             embedding_dim=config.d_model,
@@ -127,11 +131,13 @@ class Encoder(torch.nn.Module):
         # we apply dropout to the sums of the embeddings and the positional encodings
         # in both the encoder and decoder stacks
         x = self.embedding_dropout(embeddings)
+        pad_mask = (input_ids != self.padding_idx).unsqueeze(1).unsqueeze(2)
 
         for layer in self.layers:
-            x = layer(x)
+            x = layer(x, pad_mask)
 
         return x
+
 
 
 class MultiHeadCrossAttention(torch.nn.Module):
@@ -144,7 +150,7 @@ class MultiHeadCrossAttention(torch.nn.Module):
         self.Wo = torch.nn.Linear(config.attention_d_v, config.d_model)
         self.dropout = torch.nn.Dropout(p=config.dropout_ratio)
 
-    def forward(self, x: torch.Tensor, encoder_output: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, encoder_output: torch.Tensor, pad_mask: torch.Tensor | None = None) -> torch.Tensor:
         q = self.Wq(x)
         # k and v are from the encoder output
         k = self.Wk(encoder_output)
@@ -168,6 +174,8 @@ class MultiHeadCrossAttention(torch.nn.Module):
 
         # (b, h, target_seq_len, dK/h) @ (b, h, dK/h, source_seq_len) -> (b, h, target_seq_len, source_seq_len)
         attention_weight = q @ k.transpose(-2, -1) / (q_k_head_dim**0.5)
+        if pad_mask is not None:
+            attention_weight = attention_weight.masked_fill(pad_mask == 0, float("-inf"))
         attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
         attention_score = self.dropout(attention_score)
 
@@ -202,12 +210,12 @@ class DecoderTransformerBlock(torch.nn.Module):
         self.layernorm_cross_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
 
-    def forward(self, x: torch.Tensor, encoder_output: torch.Tensor) -> torch.Tensor:
-        h1 = self.masked_mha(x)
+    def forward(self, x: torch.Tensor, encoder_output: torch.Tensor, pad_mask: torch.Tensor | None = None) -> torch.Tensor:
+        h1 = self.masked_mha(x, pad_mask)
         y1 = self.layernorm_masked_mha(x + h1)
 
         # q: y1(masked attention output), k: encoder output, v: encoder output
-        h2 = self.cross_mha(y1, encoder_output)
+        h2 = self.cross_mha(y1, encoder_output, pad_mask)
         y2 = self.layernorm_cross_mha(y1 + h2)
 
         h3 = self.ffn(y2)
@@ -220,6 +228,7 @@ class Decoder(torch.nn.Module):
     def __init__(self, config: TransformerConfig, padding_idx: int) -> None:
         super().__init__()
         self.config = config
+        self.padding_idx = padding_idx
         self.embedding = torch.nn.Embedding(
             num_embeddings=config.vocab_size,
             embedding_dim=config.d_model,
@@ -236,9 +245,10 @@ class Decoder(torch.nn.Module):
         embeddings = self.embedding(input_ids)
         embeddings = self.pe.apply(embeddings)
         x = self.embedding_dropout(embeddings)
+        pad_mask = (input_ids != self.padding_idx).unsqueeze(1).unsqueeze(2)
 
         for layer in self.layers:
-            x = layer(x, encoder_output)
+            x = layer(x, encoder_output, pad_mask)
 
         y = self.output_layer(x)
         return y
@@ -302,12 +312,12 @@ if __name__ == "__main__":
     # print(y_masked.shape)
 
     # test encoder shapes
-    encoder = Encoder(config, padding_idx=0).to(device=current_device)
+    encoder = Encoder(config, padding_idx=3).to(device=current_device)
     x = torch.randint(0, config.vocab_size, (2, 10), device=current_device)
     z = encoder(x)
     print(z.shape)
 
     # test decoder shapes
-    decoder = Decoder(config, padding_idx=0).to(device=current_device)
+    decoder = Decoder(config, padding_idx=3).to(device=current_device)
     y = decoder(x, z)
     print(y.shape)

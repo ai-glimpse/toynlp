@@ -41,7 +41,7 @@ class TransformerConfig:
     dropout_ratio: float = 0.5
     teacher_forcing_ratio: float = 0.5
     # optimizer configs
-    learning_rate: float = 0.001
+    learning_rate: float = 0.0001
     weight_decay: float = 0.01
     # training configs
     epochs: int = 20
@@ -54,7 +54,7 @@ class TransformerConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Transformer"
-    wandb_enabled: bool = True
+    wandb_enabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""

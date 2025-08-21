@@ -105,6 +105,7 @@ class TransformerTrainer:
         pred = logits[:, 1:, :].reshape(-1, logits.shape[-1])
         target_batch = target_batch[:, 1:].reshape(-1)
         loss = self.criterion(pred, target_batch)
+        print(loss)
         return loss
 
     def calc_loss_loader(self, data_loader: DataLoader) -> float:
@@ -122,7 +123,7 @@ class TransformerTrainer:
 
 
 def train_model(config: TransformerConfig) -> None:
-    """Train the seq2seq model with the given configuration."""
+    """Train the transformer model with the given configuration."""
     if config.wandb_enabled:
         wandb.init(
             project=config.wandb_project,
@@ -157,12 +158,12 @@ def train_model(config: TransformerConfig) -> None:
 
 
 def main() -> None:
-    """CLI entry point for training seq2seq model using tyro configuration."""
+    """CLI entry point for training transformer model using tyro configuration."""
     # Load configuration from command line using tyro
     config = create_config_from_cli()
 
     print("=" * 60)
-    print("SEQ2SEQ MODEL TRAINING")
+    print("Transformer MODEL TRAINING")
     print("=" * 60)
     print(f"Dataset: {config.dataset_path}")
     print(f"Languages: {config.source_lang} -> {config.target_lang}")
