@@ -44,7 +44,7 @@ class TransformerConfig:
     learning_rate: float = 0.001
     weight_decay: float = 0.01
     # training configs
-    epochs: int = 2
+    epochs: int = 20
     clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
     # inference configs
     inference_max_length: int = 50
@@ -54,7 +54,7 @@ class TransformerConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Transformer"
-    wandb_enabled: bool = False
+    wandb_enabled: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
