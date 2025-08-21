@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field, asdict
-from json import encoder
 import tyro
 from typing import Any
 
@@ -24,8 +23,7 @@ class TransformerConfig:
         default_factory=lambda: ["[UNK]", "[BOS]", "[EOS]", "[PAD]"],
     )
     # model configs
-    source_vocab_size: int = 8000
-    target_vocab_size: int = 6000
+    vocab_size: int = 30000
     # model arch configs
     max_source_seq_length: int = 1000
     max_target_seq_length: int = 1000
@@ -57,15 +55,6 @@ class TransformerConfig:
     wandb_name: str | None = None
     wandb_project: str = "Transformer"
     wandb_enabled: bool = True
-
-    def get_lang_vocab_size(self, lang: str) -> int:
-        """Get vocabulary size for a specific language."""
-        if lang == self.source_lang:
-            return self.source_vocab_size
-        if lang == self.target_lang:
-            return self.target_vocab_size
-        msg = f"Language '{lang}' not supported. Use '{self.source_lang}' or '{self.target_lang}'"
-        raise ValueError(msg)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""

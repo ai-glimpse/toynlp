@@ -1,24 +1,23 @@
 from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer, normalizers
-from tokenizers.models import WordLevel
+from tokenizers.models import BPE
 from tokenizers.normalizers import NFD, Lowercase
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
-from tokenizers.trainers import WordLevelTrainer
+from tokenizers.trainers import BpeTrainer
 from toynlp.transformer.config import TransformerConfig, create_config_from_cli
 
-from toynlp.paths import TRANSFORMER_TOKENIZER_PATH_MAP
+from toynlp.paths import TRANSFORMER_TOKENIZER_PATH
 
 
 class TransformerTokenizer:
     def __init__(
         self,
-        lang: str,
     ) -> None:
-        self.model_path = TRANSFORMER_TOKENIZER_PATH_MAP[lang]
+        self.model_path = TRANSFORMER_TOKENIZER_PATH
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.tokenizer = Tokenizer(WordLevel(vocab=None, unk_token="[UNK]"))
+        self.tokenizer = Tokenizer(BPE(vocab=None, unk_token="[UNK]"))
         self.tokenizer.pre_tokenizer = Sequence(
             [
                 Punctuation(behavior="isolated"),
@@ -37,7 +36,7 @@ class TransformerTokenizer:
         )  # type: ignore[assignment]
 
     def train(self, dataset: Dataset, vocab_size: int) -> Tokenizer:
-        trainer = WordLevelTrainer(
+        trainer = BpeTrainer(
             vocab_size=vocab_size,  # type: ignore[unknown-argument]
             min_frequency=1,  # type: ignore[unknown-argument]
             special_tokens=["[UNK]", "[BOS]", "[EOS]", "[PAD]"],  # type: ignore[unknown-argument]
@@ -52,17 +51,16 @@ class TransformerTokenizer:
         return self.tokenizer
 
 
-def train_tokenizer(lang: str, config: TransformerConfig) -> None:
+def train_tokenizer(config: TransformerConfig) -> None:
     """Train a tokenizer for the specified language using the provided config.
 
     Args:
-        lang: Language code (e.g., 'en', 'de')
         config: Configuration instance
     """
-    tokenizer_path = TRANSFORMER_TOKENIZER_PATH_MAP[lang]
+    tokenizer_path = TRANSFORMER_TOKENIZER_PATH
 
     if not tokenizer_path.exists():
-        transformer_tokenizer = TransformerTokenizer(lang=lang)
+        transformer_tokenizer = TransformerTokenizer()
 
         # Load dataset
         dataset = load_dataset(
@@ -73,15 +71,15 @@ def train_tokenizer(lang: str, config: TransformerConfig) -> None:
 
         # Prepare text data
         lang_dataset = dataset.map(
-            lambda batch: {"text": list(batch[lang])},
+            lambda batch: {"text": list(batch[config.source_lang]) + list(batch[config.target_lang])},
             remove_columns=[config.source_lang, config.target_lang],
             batched=True,
             num_proc=config.num_proc,  # type: ignore[unknown-argument]
         )
 
         # Train tokenizer
-        vocab_size = config.get_lang_vocab_size(lang)
-        trainer = WordLevelTrainer(
+        vocab_size = config.vocab_size
+        trainer = BpeTrainer(
             vocab_size=vocab_size,  # type: ignore[unknown-argument]
             min_frequency=config.min_frequency,  # type: ignore[unknown-argument]
             special_tokens=config.special_tokens,  # type: ignore[unknown-argument]
@@ -93,33 +91,26 @@ def train_tokenizer(lang: str, config: TransformerConfig) -> None:
         print(f"Tokenizer already exists at {tokenizer_path}")
 
 
-def train_all_tokenizers(config: TransformerConfig) -> None:
-    """Train tokenizers for both source and target languages."""
-    train_tokenizer(config.source_lang, config)
-    train_tokenizer(config.target_lang, config)
-
-
 def test_tokenizers(config: TransformerConfig) -> None:
     """Test the trained tokenizers with sample texts."""
     print("\nTesting tokenizers:")
+    tokenizer = TransformerTokenizer().load()
 
     # Test source language tokenizer
-    src_tokenizer = TransformerTokenizer(lang=config.source_lang).load()
     src_text = "Zwei Männer stehen am Herd und bereiten Essen zu."
-    src_tokens = src_tokenizer.encode(src_text).ids
+    src_tokens = tokenizer.encode(src_text).ids
     print(f"\n{config.source_lang.upper()}:")
     print(f"Text: {src_text}")
     print(f"Tokens: {src_tokens}")
-    print(f"Decoded: {src_tokenizer.decode(src_tokens)}")
+    print(f"Decoded: {tokenizer.decode(src_tokens)}")
 
     # Test target language tokenizer
-    tgt_tokenizer = TransformerTokenizer(lang=config.target_lang).load()
     tgt_text = "Two men are at the stove preparing food."
-    tgt_tokens = tgt_tokenizer.encode(tgt_text).ids
+    tgt_tokens = tokenizer.encode(tgt_text).ids
     print(f"\n{config.target_lang.upper()}:")
     print(f"Text: {tgt_text}")
     print(f"Tokens: {tgt_tokens}")
-    print(f"Decoded: {tgt_tokenizer.decode(tgt_tokens)}")
+    print(f"Decoded: {tokenizer.decode(tgt_tokens)}")
 
 
 def main() -> None:
@@ -131,7 +122,7 @@ def main() -> None:
     print(f"Dataset: {config.dataset_path}")
 
     # Train tokenizers for both languages
-    train_all_tokenizers(config)
+    train_tokenizer(config)
 
     # Test tokenizers
     test_tokenizers(config)

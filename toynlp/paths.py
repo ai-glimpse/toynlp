@@ -31,8 +31,5 @@ FASTTEXT_TOKENIZER_PATH = _MODEL_PATH / "fasttext" / "tokenizer.json"
 FASTTEXT_MODEL_PATH = _MODEL_PATH / "fasttext" / "fasttext_model.pt"
 
 # Transformer paths
-TRANSFORMER_TOKENIZER_PATH_MAP = {
-    "en": _MODEL_PATH / "transformer" / "tokenizer_en.json",
-    "de": _MODEL_PATH / "transformer" / "tokenizer_de.json",
-}
+TRANSFORMER_TOKENIZER_PATH = _MODEL_PATH / "transformer" / "tokenizer.json"
 TRANSFORMER_MODEL_PATH = _MODEL_PATH / "transformer" / "transformer_model.pt"
