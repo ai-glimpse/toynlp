@@ -16,20 +16,19 @@ def get_dataset(
 
 def collate_fn(
     batch: dict[str, list[str]],
-    source_tokenizer: Tokenizer,
-    target_tokenizer: Tokenizer,
+    tokenizer: Tokenizer,
     source_lang: str,
     target_lang: str,
     max_length: int = 1000,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     batch_input = []
     batch_target = []
-    input_pad_id = source_tokenizer.token_to_id("[PAD]")
-    target_pad_id = target_tokenizer.token_to_id("[PAD]")
+    input_pad_id = tokenizer.token_to_id("[PAD]")
+    target_pad_id = tokenizer.token_to_id("[PAD]")
 
     for item in batch:
-        src_tensor = source_tokenizer.encode(item[source_lang]).ids  # type: ignore[call-arg,index]
-        tgt_tensor = target_tokenizer.encode(item[target_lang]).ids  # type: ignore[call-arg,index]
+        src_tensor = tokenizer.encode(item[source_lang]).ids  # type: ignore[call-arg,index]
+        tgt_tensor = tokenizer.encode(item[target_lang]).ids  # type: ignore[call-arg,index]
         batch_input.append(torch.tensor(src_tensor[:max_length], dtype=torch.long))
         batch_target.append(torch.tensor(tgt_tensor[:max_length], dtype=torch.long))
     batch_input_tensor = pad_sequence(batch_input, padding_value=input_pad_id, batch_first=True)
@@ -40,8 +39,7 @@ def collate_fn(
 def get_split_dataloader(
     dataset: DatasetDict,
     split: str,
-    source_tokenizer: Tokenizer,
-    target_tokenizer: Tokenizer,
+    tokenizer: Tokenizer,
     config: TransformerConfig,
 ) -> DataLoader:
     dataloader = DataLoader(
@@ -51,8 +49,7 @@ def get_split_dataloader(
         shuffle=config.shuffle,
         collate_fn=lambda batch: collate_fn(
             batch,  # type: ignore[arg-type]
-            source_tokenizer,
-            target_tokenizer,
+            tokenizer,
             config.source_lang,
             config.target_lang,
             config.max_length,
@@ -72,9 +69,8 @@ if __name__ == "__main__":
         dataset_name=config.dataset_name,
     )
 
-    source_tokenizer = TransformerTokenizer(lang=config.source_lang).load()
-    target_tokenizer = TransformerTokenizer(lang=config.target_lang).load()
-    train_dataloader = get_split_dataloader(dataset, "train", source_tokenizer, target_tokenizer, config)
+    tokenizer = TransformerTokenizer().load()
+    train_dataloader = get_split_dataloader(dataset, "train", tokenizer, config)
     for batch_input, batch_target in train_dataloader:
         print(batch_input.shape, batch_target.shape)
         print(batch_input[0], batch_target[0])

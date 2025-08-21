@@ -1,13 +1,15 @@
 import torch
+import random
 
 from toynlp.transformer.config import TransformerConfig
+from toynlp.util import current_device
 
 
 class PositionalEncoding:
     def __init__(self, max_length: int, d_model: int) -> None:
         self.max_length = max_length
         self.d_model = d_model
-        self.pe = self._pe_calculation()
+        self.pe = self._pe_calculation().to(device=current_device, dtype=torch.float32)
 
     def _pe_calculation(self) -> torch.Tensor:
         position = torch.arange(self.max_length).unsqueeze(1)
@@ -133,29 +135,31 @@ class MultiHeadCrossAttention(torch.nn.Module):
 
     def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
         # x shape: (batch_size, seq_length, d_model)
-        batch_size, seq_length = x.size(0), x.size(1)
+        batch_size, target_seq_length = q.size(0), q.size(1)
+        source_seq_length = k.size(1)
 
         q_k_head_dim = self.config.attention_d_k // self.config.head_num
         v_head_dim = self.config.attention_d_v // self.config.head_num
         # view as multi head
-        q = q.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
-        k = k.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
-        v = v.view(batch_size, self.config.head_num, seq_length, v_head_dim)
+        q = q.view(
+            batch_size,
+            self.config.head_num,
+            target_seq_length,
+            self.config.attention_d_k // self.config.head_num,
+        )
+        k = k.view(batch_size, self.config.head_num, source_seq_length, q_k_head_dim)
+        v = v.view(batch_size, self.config.head_num, source_seq_length, v_head_dim)
 
-        # (b, h, s, dK/h) @ (b, h, dK/h, s) -> (b, h, s, s)
+        # (b, h, target_seq_len, dK/h) @ (b, h, dK/h, source_seq_len) -> (b, h, target_seq_len, source_seq_len)
         attention_weight = q @ k.transpose(-2, -1) / (q_k_head_dim**0.5)
-        if self.masked:
-            tril = torch.tril(torch.ones_like(attention_weight), diagonal=0)
-            attention_weight = attention_weight.masked_fill(tril == 0, float("-inf"))
-
         attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
-        # (b, h, s, s) @ (b, h, s, dv/h) -> (b, h, s, dv/h)
+        # (b, h, target_seq_len, source_seq_len) @ (b, h, source_seq_len, dv/h) -> (b, h, target_seq_len, dv/h)
         attention = attention_score @ v
-        # (b, h, s, dv/h) -> (b, s, h, dv/h)
+        # (b, h, target_seq_len, dv/h) -> (b, target_seq_len, h, dv/h)
         # TODO: Question: is the permute neccesary?
         attention = attention.permute(0, 2, 1, 3)
-        # (b, s, h, dv/h) -> (b, s, dv)
-        attention = attention.contiguous().view(batch_size, seq_length, self.config.attention_d_v)
+        # (b, target_seq_len, h, dv/h) -> (b, target_seq_len, dv)
+        attention = attention.contiguous().view(batch_size, target_seq_length, self.config.attention_d_v)
 
         # TODO: Question：can we set dv != d_model?
         # make sure: d_k = d_v = d_model/h
@@ -186,7 +190,7 @@ class DecoderTransformerBlock(torch.nn.Module):
         y1 = self.layernorm_masked_mha(x + h1)
 
         # q: y1(masked attention output), k: encoder output, v: encoder output
-        h2 = self.cross_mha(y1, encoder_output, encoder_output)
+        h2 = self.cross_mha(q=y1, k=encoder_output, v=encoder_output)
         y2 = self.layernorm_cross_mha(y1 + h2)
 
         h3 = self.ffn(y2)
@@ -223,11 +227,53 @@ class Decoder(torch.nn.Module):
         return y
 
 
+class TransformerModel(torch.nn.Module):
+    def __init__(self, config: TransformerConfig, padding_idx: int) -> None:
+        super().__init__()
+        self.config = config
+        self.force_teacher_ratio = self.config.teacher_forcing_ratio
+        self.encoder = Encoder(
+            config=self.config,
+            padding_idx=padding_idx,
+        )
+        self.decoder = Decoder(
+            config=self.config,
+            padding_idx=padding_idx,
+        )
+        self.device = current_device
+
+    def forward(self, input_ids: torch.Tensor, target_ids: torch.Tensor) -> torch.Tensor:
+        encoder_memory = self.encoder(input_ids)
+        batch_size, seq_length = target_ids.shape
+        # Prepare the first input for the decoder, usually the start token
+        # (batch_size, squence_length) -> (batch_size, 1)
+        decoder_input_tensor = target_ids[:, 0].unsqueeze(1)  # Get the first token for the decoder
+        outputs = torch.zeros(batch_size, seq_length, self.config.vocab_size).to(self.device)
+        for t in range(seq_length):
+            # decoder output: (batch_size, 1, target_vocab_size)
+            decoder_output = self.decoder(decoder_input_tensor, encoder_memory)
+            # Get the output for the current time step
+            outputs[:, t, :] = decoder_output.squeeze(1)
+            # (batch_size, target_vocab_size) -> (batch_size, 1)
+            # Get the index of the highest probability token
+            top_token_index = decoder_output.argmax(dim=-1).squeeze(1).tolist()
+            # decide if we are going to use teacher forcing or not
+            teacher_force = random.random() < self.force_teacher_ratio
+            if teacher_force:
+                # Use the actual target token for the next input
+                decoder_input_tensor = target_ids[:, t].unsqueeze(1)
+            else:
+                # Use the predicted token for the next input
+                # Convert token ids back to tensor
+                decoder_input_tensor = torch.tensor(top_token_index, dtype=torch.long, device=self.device).unsqueeze(1)
+        return outputs
+
+
 if __name__ == "__main__":
     # test mha shapes
     config = TransformerConfig()
-    mha = MultiHeadSelfAttention(config)
-    x = torch.randn(2, 10, config.d_model)
+    mha = MultiHeadSelfAttention(config).to(device=current_device)
+    x = torch.randn(2, 10, config.d_model, device=current_device)
     y = mha(x)
     print(y.shape)
 
@@ -239,12 +285,12 @@ if __name__ == "__main__":
     # print(y_masked.shape)
 
     # test encoder shapes
-    encoder = Encoder(config, padding_idx=0)
-    x = torch.randint(0, config.vocab_size, (2, 10))
+    encoder = Encoder(config, padding_idx=0).to(device=current_device)
+    x = torch.randint(0, config.vocab_size, (2, 10), device=current_device)
     z = encoder(x)
     print(z.shape)
 
     # test decoder shapes
-    decoder = Decoder(config, padding_idx=0)
+    decoder = Decoder(config, padding_idx=0).to(device=current_device)
     y = decoder(x, z)
     print(y.shape)

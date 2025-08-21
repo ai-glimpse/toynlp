@@ -29,14 +29,14 @@ class TransformerConfig:
     max_target_seq_length: int = 1000
 
     # For each of these we use dk = dv = dmodel/h = 64
-    d_model: int = 512
-    attention_d_k: int = 512  # query & key
-    attention_d_v: int = 512  # value
+    d_model: int = 256  # model hidden dimension, paper setting: 512
+    attention_d_k: int = 256  # query & key, paper setting: 512
+    attention_d_v: int = 256  # value, paper setting: 512
     # we employ h = 8 parallel attention layers, or heads
-    head_num: int = 8
-    d_feed_forward: int = 2048
-    encoder_layers: int = 6
-    decoder_layers: int = 6
+    head_num: int = 4  # paper setting: 8
+    d_feed_forward: int = 1024  # paper setting: 2048
+    encoder_layers: int = 6  # paper setting: 6
+    decoder_layers: int = 6  # paper setting: 6
 
     dropout_ratio: float = 0.5
     teacher_forcing_ratio: float = 0.5
@@ -44,7 +44,7 @@ class TransformerConfig:
     learning_rate: float = 0.001
     weight_decay: float = 0.01
     # training configs
-    epochs: int = 20
+    epochs: int = 2
     clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
     # inference configs
     inference_max_length: int = 50
@@ -54,7 +54,7 @@ class TransformerConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Transformer"
-    wandb_enabled: bool = True
+    wandb_enabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
