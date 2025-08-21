@@ -142,7 +142,7 @@ class MultiHeadCrossAttention(torch.nn.Module):
         self.Wo = torch.nn.Linear(config.attention_d_v, config.d_model)
         self.dropout = torch.nn.Dropout(p=config.dropout_ratio)
 
-    def forward(self, encoder_output: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, encoder_output: torch.Tensor) -> torch.Tensor:
         q = self.Wq(x)
         # k and v are from the encoder output
         k = self.Wk(encoder_output)
