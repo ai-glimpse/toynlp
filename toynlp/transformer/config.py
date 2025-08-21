@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field, asdict
+from json import encoder
 import tyro
 from typing import Any
 
@@ -31,10 +32,13 @@ class TransformerConfig:
 
     # For each of these we use dk = dv = dmodel/h = 64
     d_model: int = 512
-    attention_d_k: int = 64  # query & key
-    attention_d_v: int = 64  # value
+    attention_d_k: int = 512  # query & key
+    attention_d_v: int = 512  # value
     # we employ h = 8 parallel attention layers, or heads
     head_num: int = 8
+    d_feed_forward: int = 2048
+    encoder_layers: int = 6
+    decoder_layers: int = 6
 
     dropout_ratio: float = 0.5
     teacher_forcing_ratio: float = 0.5
