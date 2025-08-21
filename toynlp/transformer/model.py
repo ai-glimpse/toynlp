@@ -25,7 +25,6 @@ class PositionalEncoding:
         return x + self.pe[: x.size(1), :]
 
 
-
 class MultiHeadSelfAttention(torch.nn.Module):
     def __init__(self, config: TransformerConfig, masked: bool = False) -> None:
         super().__init__()
@@ -201,7 +200,7 @@ class Decoder(torch.nn.Module):
         super().__init__()
         self.config = config
         self.embedding = torch.nn.Embedding(
-            num_embeddings=config.target_vocab_size,
+            num_embeddings=config.vocab_size,
             embedding_dim=config.d_model,
             padding_idx=padding_idx,
         )
@@ -210,7 +209,7 @@ class Decoder(torch.nn.Module):
         self.layers = torch.nn.ModuleList(
             [DecoderTransformerBlock(config) for _ in range(config.decoder_layers)],
         )
-        self.output_layer = torch.nn.Linear(config.d_model, config.target_vocab_size)
+        self.output_layer = torch.nn.Linear(config.d_model, config.vocab_size)
 
     def forward(self, input_ids: torch.Tensor, encoder_output: torch.Tensor) -> torch.Tensor:
         embeddings = self.embedding(input_ids)
@@ -244,7 +243,6 @@ if __name__ == "__main__":
     x = torch.randint(0, config.vocab_size, (2, 10))
     z = encoder(x)
     print(z.shape)
-
 
     # test decoder shapes
     decoder = Decoder(config, padding_idx=0)
