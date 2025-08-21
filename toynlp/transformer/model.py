@@ -62,6 +62,7 @@ class MultiHeadSelfAttention(torch.nn.Module):
             attention_weight = attention_weight.masked_fill(tril == 0, float("-inf"))
 
         attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
+        attention_score = self.dropout(attention_score)
         # (b, h, s, s) @ (b, h, s, dv/h) -> (b, h, s, dv/h)
         attention = attention_score @ v
         # (b, h, s, dv/h) -> (b, s, h, dv/h)
@@ -69,7 +70,6 @@ class MultiHeadSelfAttention(torch.nn.Module):
         attention = attention.permute(0, 2, 1, 3)
         # (b, s, h, dv/h) -> (b, s, dv)
         attention = attention.contiguous().view(batch_size, seq_length, self.config.attention_d_v)
-        attention = self.dropout(attention)
 
         # TODO: Question：can we set dv != d_model?
         # make sure: d_k = d_v = d_model/h
@@ -167,6 +167,8 @@ class MultiHeadCrossAttention(torch.nn.Module):
         # (b, h, target_seq_len, dK/h) @ (b, h, dK/h, source_seq_len) -> (b, h, target_seq_len, source_seq_len)
         attention_weight = q @ k.transpose(-2, -1) / (q_k_head_dim**0.5)
         attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
+        attention_score = self.dropout(attention_score)
+
         # (b, h, target_seq_len, source_seq_len) @ (b, h, source_seq_len, dv/h) -> (b, h, target_seq_len, dv/h)
         attention = attention_score @ v
         # (b, h, target_seq_len, dv/h) -> (b, target_seq_len, h, dv/h)
@@ -174,7 +176,6 @@ class MultiHeadCrossAttention(torch.nn.Module):
         attention = attention.permute(0, 2, 1, 3)
         # (b, target_seq_len, h, dv/h) -> (b, target_seq_len, dv)
         attention = attention.contiguous().view(batch_size, target_seq_length, self.config.attention_d_v)
-        attention = self.dropout(attention)
 
         # TODO: Question：can we set dv != d_model?
         # make sure: d_k = d_v = d_model/h
@@ -207,7 +208,7 @@ class DecoderTransformerBlock(torch.nn.Module):
         y1 = self.layernorm_masked_mha(x + h1)
 
         # q: y1(masked attention output), k: encoder output, v: encoder output
-        h2 = self.cross_mha(q=y1, k=encoder_output, v=encoder_output)
+        h2 = self.cross_mha(y1, encoder_output)
         y2 = self.layernorm_cross_mha(y1 + h2)
 
         h3 = self.ffn(y2)

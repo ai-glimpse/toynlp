@@ -54,7 +54,7 @@ class TransformerConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Transformer"
-    wandb_enabled: bool = True
+    wandb_enabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
