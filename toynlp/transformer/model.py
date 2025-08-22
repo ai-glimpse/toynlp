@@ -4,8 +4,6 @@ import random
 from toynlp.transformer.config import TransformerConfig
 from toynlp.util import current_device
 
-# TODO: attention mask out pad id
-
 
 class PositionalEncoding:
     def __init__(self, max_length: int, d_model: int) -> None:
@@ -70,9 +68,10 @@ class MultiHeadSelfAttention(torch.nn.Module):
         attention_score = self.dropout(attention_score)
         # check nan
         if torch.isnan(attention_score).any():
-            print("[MultiHeadSelfAttention] NaN detected in attention_score")
+            print(f"[SelfAttn{self.masked}] NaN detected in attention_score")
 
-        # print(f"[MultiHeadSelfAttention]attention_score shape: {attention_score.shape}, attention_weight shape: {attention_weight.shape}, v shape: {v.shape}")
+        # print(f"[MultiHeadSelfAttention]attention_score shape: {attention_score.shape},
+        # attention_weight shape: {attention_weight.shape}, v shape: {v.shape}")
         # (b, h, s, s) @ (b, h, s, dv/h) -> (b, h, s, dv/h)
         attention = attention_score @ v
         # (b, h, s, dv/h) -> (b, s, h, dv/h)
@@ -137,14 +136,14 @@ class Encoder(torch.nn.Module):
         # in both the encoder and decoder stacks
         x = self.embedding_dropout(embeddings)
         _, seq_length = input_ids.shape
-        pad_mask = (input_ids != self.padding_idx).unsqueeze(1).unsqueeze(2)  # (batch_size, 1, seq_length, 1)
-        pad_mask = pad_mask.expand(-1, -1, seq_length, seq_length)  # (batch_size, 1, seq_length, seq_length)
+        # (batch_size, seq_length)
+        pad_mask = input_ids != self.padding_idx
+        pad_mask = pad_mask.unsqueeze(1).unsqueeze(3)  # (batch_size, 1, seq_length, 1)
 
         for layer in self.layers:
             x = layer(x, pad_mask)
 
         return x
-
 
 
 class MultiHeadCrossAttention(torch.nn.Module):
@@ -157,7 +156,9 @@ class MultiHeadCrossAttention(torch.nn.Module):
         self.Wo = torch.nn.Linear(config.attention_d_v, config.d_model)
         self.dropout = torch.nn.Dropout(p=config.dropout_ratio)
 
-    def forward(self, x: torch.Tensor, encoder_output: torch.Tensor, pad_mask: torch.Tensor | None = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, encoder_output: torch.Tensor, pad_mask: torch.Tensor | None = None
+    ) -> torch.Tensor:
         q = self.Wq(x)
         # k and v are from the encoder output
         k = self.Wk(encoder_output)
@@ -218,17 +219,16 @@ class DecoderTransformerBlock(torch.nn.Module):
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
 
     def forward(
-            self,
-            x: torch.Tensor,
-            encoder_output: torch.Tensor,
-            self_pad_mask: torch.Tensor | None = None,
-            cross_pad_mask: torch.Tensor | None = None,
-        ) -> torch.Tensor:
-        h1 = self.masked_mha(x, self_pad_mask)
+        self,
+        x: torch.Tensor,
+        encoder_output: torch.Tensor,
+        pad_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        h1 = self.masked_mha(x, pad_mask)
         y1 = self.layernorm_masked_mha(x + h1)
 
         # q: y1(masked attention output), k: encoder output, v: encoder output
-        h2 = self.cross_mha(y1, encoder_output, cross_pad_mask)
+        h2 = self.cross_mha(y1, encoder_output, pad_mask)
         y2 = self.layernorm_cross_mha(y1 + h2)
 
         h3 = self.ffn(y2)
@@ -259,18 +259,12 @@ class Decoder(torch.nn.Module):
         embeddings = self.pe.apply(embeddings)
         x = self.embedding_dropout(embeddings)
 
-        # Create self-attention padding mask: (batch_size, 1, target_seq_length, target_seq_length)
-        batch_size, target_seq_length = input_ids.shape
-        self_pad_mask = (input_ids != self.padding_idx).unsqueeze(1).unsqueeze(2)  # (batch_size, 1, target_seq_length, 1)
-        self_pad_mask = self_pad_mask.expand(-1, -1, target_seq_length, target_seq_length)  # (batch_size, 1, target_seq_length, target_seq_length)
-
-        # Create cross-attention padding mask: (batch_size, 1, target_seq_length, source_seq_length)
-        source_seq_length = encoder_output.shape[1]
-        cross_pad_mask = (input_ids != self.padding_idx).unsqueeze(1).unsqueeze(3)  # (batch_size, 1, target_seq_length, 1)
-        cross_pad_mask = cross_pad_mask.expand(-1, -1, target_seq_length, source_seq_length)  # (batch_size, 1, target_seq_length, source_seq_length)
+        # (batch_size, seq_length)
+        pad_mask = input_ids != self.padding_idx
+        pad_mask = pad_mask.unsqueeze(1).unsqueeze(3)  # (batch_size, 1, seq_length, 1)
 
         for layer in self.layers:
-            x = layer(x, encoder_output, self_pad_mask, cross_pad_mask)
+            x = layer(x, encoder_output, pad_mask)
 
         y = self.output_layer(x)
         return y
@@ -302,20 +296,23 @@ class TransformerModel(torch.nn.Module):
             # decoder output: (batch_size, 1, target_vocab_size)
             decoder_output = self.decoder(decoder_input_tensor, encoder_memory)
             # Get the output for the current time step
-            outputs[:, t, :] = decoder_output.squeeze(1)
+            outputs[:, t, :] = decoder_output[:, -1, :]
             # (batch_size, target_vocab_size) -> (batch_size, 1)
             # Get the index of the highest probability token
-            top_token_index = decoder_output.argmax(dim=-1).squeeze(1).tolist()
+            top_token_index = decoder_output[:, -1, :].argmax(dim=-1).tolist()
             # decide if we are going to use teacher forcing or not
             teacher_force = random.random() < self.force_teacher_ratio
             # TODO: model input with next token or all previous tokens
             if teacher_force:
                 # Use the actual target token for the next input
-                decoder_input_tensor = target_ids[:, t].unsqueeze(1)
+                decoder_input_next_tensor = target_ids[:, t].unsqueeze(1)
             else:
                 # Use the predicted token for the next input
                 # Convert token ids back to tensor
-                decoder_input_tensor = torch.tensor(top_token_index, dtype=torch.long, device=self.device).unsqueeze(1)
+                decoder_input_next_tensor = torch.tensor(
+                    top_token_index, dtype=torch.long, device=self.device
+                ).unsqueeze(1)
+            decoder_input_tensor = torch.cat((decoder_input_tensor, decoder_input_next_tensor), dim=1)
         return outputs
 
 

@@ -53,7 +53,6 @@ class TransformerTrainer:
                 best_val_loss = val_loss
                 torch.save(self.model, self.model_path)
                 print(f"Saved best model({val_loss=:.4f}) from epoch {epoch + 1} to {self.model_path}")
-
             # log metrics to wandb
             if self.config.wandb_enabled:
                 wandb.log(
