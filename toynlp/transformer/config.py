@@ -45,7 +45,7 @@ class TransformerConfig:
     weight_decay: float = 0.01
     # training configs
     epochs: int = 20
-    clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
+    clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping
     # inference configs
     inference_max_length: int = 50
     # evaluation configs
