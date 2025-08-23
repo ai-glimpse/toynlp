@@ -34,7 +34,7 @@ class TransformerConfig:
     attention_d_v: int = 256  # value, paper setting: 512
     # we employ h = 8 parallel attention layers, or heads
     head_num: int = 4  # paper setting: 8
-    d_feed_forward: int = 1024  # paper setting: 2048
+    d_feed_forward: int = 512  # paper setting: 2048
     encoder_layers: int = 6  # paper setting: 6
     decoder_layers: int = 6  # paper setting: 6
 

@@ -26,6 +26,17 @@ class PositionalEncoding:
         return x + self.pe[: x.size(1), :]
 
 
+class PositionwiseFeedForward(torch.nn.Module):
+    def __init__(self, d_model: int, d_feed_forward: int, dropout: float) -> None:
+        super().__init__()
+        self.linear1 = torch.nn.Linear(d_model, d_feed_forward)
+        self.linear2 = torch.nn.Linear(d_feed_forward, d_model)
+        self.dropout = torch.nn.Dropout(p=dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.linear2(self.dropout(torch.nn.functional.relu(self.linear1(x))))
+
+
 class ScaleDotProductionAttention(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -37,7 +48,7 @@ class ScaleDotProductionAttention(torch.nn.Module):
             v: torch.Tensor,
             mask: torch.Tensor | None = None,
         ) -> torch.Tensor:
-        batch_size, head_num, seq_length, head_dim = q.shape
+        head_dim = q.size(3)
         # (b, h, s, dK/h) @ (b, h, dK/h, s) -> (b, h, s, s)
         attention_weight = q @ k.transpose(-2, -1) / (head_dim**0.5)
         # pad mask
@@ -111,11 +122,7 @@ class EncoderTransformerBlock(torch.nn.Module):
         super().__init__()
         self.config = config
         self.mha = MultiHeadAttention(config)
-        self.ffn = torch.nn.Sequential(
-            torch.nn.Linear(config.d_model, config.d_feed_forward),
-            torch.nn.ReLU(),
-            torch.nn.Linear(config.d_feed_forward, config.d_model),
-        )
+        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
         self.layernorm_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
 
@@ -164,13 +171,7 @@ class DecoderTransformerBlock(torch.nn.Module):
         self.config = config
         self.causal_mha = MultiHeadAttention(config=config)
         self.cross_mha = MultiHeadAttention(config)
-        self.ffn = torch.nn.Sequential(
-            torch.nn.Linear(config.d_model, config.d_feed_forward),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(p=config.dropout_ratio),
-            torch.nn.Linear(config.d_feed_forward, config.d_model),
-            torch.nn.Dropout(p=config.dropout_ratio),
-        )
+        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
         self.layernorm_causal_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_cross_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
