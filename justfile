@@ -40,3 +40,19 @@ seq2seq-eval:
     uv run python toynlp/seq2seq/evaluation.py
 
 seq2seq-train-eval: seq2seq-train seq2seq-eval
+
+
+# Transformer Model Tasks
+transformer-tokenize:
+    uv run python toynlp/transformer/tokenizer.py
+
+transformer-train *args:
+    uv run python toynlp/transformer/train.py {{args}}
+
+transformer-infer:
+    uv run python toynlp/transformer/inference.py
+
+transformer-eval:
+    uv run python toynlp/transformer/evaluation.py
+
+transformer-train-eval: transformer-train transformer-eval

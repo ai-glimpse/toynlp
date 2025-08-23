@@ -24,7 +24,7 @@ class TransformerInference:
         self.model = TransformerModel(self.config, padding_idx=pad_token_id)
         if model_path.exists():
             try:
-                loaded = torch.load(model_path, map_location=self.device)
+                loaded = torch.load(model_path, map_location=self.device, weights_only=False)
                 if isinstance(loaded, TransformerModel):
                     self.model = loaded
                 else:
