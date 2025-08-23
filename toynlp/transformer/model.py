@@ -1,5 +1,4 @@
 import torch
-import random
 
 from toynlp.transformer.config import TransformerConfig
 from toynlp.util import current_device
@@ -27,10 +26,41 @@ class PositionalEncoding:
         return x + self.pe[: x.size(1), :]
 
 
-class MultiHeadSelfAttention(torch.nn.Module):
+class ScaleDotProductionAttention(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(
+            self,
+            q: torch.Tensor,
+            k: torch.Tensor,
+            v: torch.Tensor,
+            mask: torch.Tensor | None = None,
+        ) -> torch.Tensor:
+        batch_size, head_num, seq_length, head_dim = q.shape
+        # (b, h, s, dK/h) @ (b, h, dK/h, s) -> (b, h, s, s)
+        attention_weight = q @ k.transpose(-2, -1) / (head_dim**0.5)
+        # pad mask
+        if mask is not None:
+            # TODO: -inf?
+            attention_weight = attention_weight.masked_fill(mask == 0, float("-10000"))
+
+        attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
+
+        # check nan
+        # if torch.isnan(attention_score).any():
+        #     print("[SelfAttention] NaN detected in attention_score")
+
+        # (b, h, s, s) @ (b, h, s, dv/h) -> (b, h, s, dv/h)
+        value = attention_score @ v
+        return value
+
+
+class MultiHeadAttention(torch.nn.Module):
     def __init__(self, config: TransformerConfig) -> None:
         super().__init__()
         self.config = config
+        self.spda = ScaleDotProductionAttention()
         self.Wq = torch.nn.Linear(config.d_model, config.attention_d_k)
         self.Wk = torch.nn.Linear(config.d_model, config.attention_d_k)
         self.Wv = torch.nn.Linear(config.d_model, config.attention_d_v)
@@ -40,48 +70,37 @@ class MultiHeadSelfAttention(torch.nn.Module):
         assert config.attention_d_k % config.head_num == 0
         assert config.attention_d_v % config.head_num == 0
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
+    def forward(
+            self,
+            q: torch.Tensor,
+            k: torch.Tensor,
+            v: torch.Tensor,
+            mask: torch.Tensor | None = None,
+            ) -> torch.Tensor:
         # x shape: (batch_size, seq_length, d_model)
-        batch_size, seq_length = x.size(0), x.size(1)
+        batch_size = q.size(0)
         # q, k shape: (batch_size, seq_length, attention_d_k)
         # v shape: (batch_size, seq_length, attention_d_v)
-        q, k, v = self.Wq(x), self.Wk(x), self.Wv(x)
+        q, k, v = self.Wq(q), self.Wk(k), self.Wv(v)
 
         q_k_head_dim = self.config.attention_d_k // self.config.head_num
         v_head_dim = self.config.attention_d_v // self.config.head_num
         # view as multi head
-        q = q.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
-        k = k.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
-        v = v.view(batch_size, self.config.head_num, seq_length, v_head_dim)
+        # TODO: warning: this is WRONG!!!
+        # q = q.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
+        # k = k.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
+        # v = v.view(batch_size, self.config.head_num, seq_length, v_head_dim)
 
-        # (b, h, s, dK/h) @ (b, h, dK/h, s) -> (b, h, s, s)
-        attention_weight = q @ k.transpose(-2, -1) / (q_k_head_dim**0.5)
-        # pad mask
-        if mask is not None:
-            # TODO: -inf?
-            attention_weight = attention_weight.masked_fill(mask == 0, float("-10000"))
+        q = q.view(batch_size, q.size(1), self.config.head_num, q_k_head_dim).transpose(1, 2)
+        k = k.view(batch_size, k.size(1), self.config.head_num, q_k_head_dim).transpose(1, 2)
+        v = v.view(batch_size, v.size(1), self.config.head_num, v_head_dim).transpose(1, 2)
 
-        attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
-        attention_score = self.dropout(attention_score)
-        # check nan
-        if torch.isnan(attention_score).any():
-            print("[SelfAttention] NaN detected in attention_score")
-
-        # print(f"[MultiHeadSelfAttention]attention_score shape: {attention_score.shape},
-        # attention_weight shape: {attention_weight.shape}, v shape: {v.shape}")
-        # (b, h, s, s) @ (b, h, s, dv/h) -> (b, h, s, dv/h)
-        attention = attention_score @ v
+        spda_value = self.spda(q, k, v, mask)
         # (b, h, s, dv/h) -> (b, s, h, dv/h)
-        # TODO: Question: is the permute neccesary?
-        attention = attention.permute(0, 2, 1, 3)
+        spda_value = spda_value.transpose(1, 2)
         # (b, s, h, dv/h) -> (b, s, dv)
-        attention = attention.contiguous().view(batch_size, seq_length, self.config.attention_d_v)
-
-        # TODO: Question：can we set dv != d_model?
-        # make sure: d_k = d_v = d_model/h
-        assert q_k_head_dim * self.config.head_num == self.config.d_model
-        assert v_head_dim * self.config.head_num == self.config.d_model
-        output = self.Wo(attention)  # (b, s, d_model)
+        spda_value = spda_value.contiguous().view(batch_size, spda_value.size(1), self.config.attention_d_v)
+        output = self.Wo(spda_value)  # (b, s, d_model)
 
         # (b, s, d_model)
         return output
@@ -91,7 +110,7 @@ class EncoderTransformerBlock(torch.nn.Module):
     def __init__(self, config: TransformerConfig) -> None:
         super().__init__()
         self.config = config
-        self.mha = MultiHeadSelfAttention(config)
+        self.mha = MultiHeadAttention(config)
         self.ffn = torch.nn.Sequential(
             torch.nn.Linear(config.d_model, config.d_feed_forward),
             torch.nn.ReLU(),
@@ -101,7 +120,7 @@ class EncoderTransformerBlock(torch.nn.Module):
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
-        h1 = self.mha(x, mask)
+        h1 = self.mha(x, x, x, mask)
         y1 = self.layernorm_mha(x + h1)
 
         h2 = self.ffn(y1)
@@ -139,67 +158,12 @@ class Encoder(torch.nn.Module):
         return x
 
 
-class MultiHeadCrossAttention(torch.nn.Module):
-    def __init__(self, config: TransformerConfig) -> None:
-        super().__init__()
-        self.config = config
-        self.Wq = torch.nn.Linear(config.d_model, config.attention_d_k)
-        self.Wk = torch.nn.Linear(config.d_model, config.attention_d_k)
-        self.Wv = torch.nn.Linear(config.d_model, config.attention_d_v)
-        self.Wo = torch.nn.Linear(config.attention_d_v, config.d_model)
-        self.dropout = torch.nn.Dropout(p=config.dropout_ratio)
-
-    def forward(
-        self, x: torch.Tensor, encoder_output: torch.Tensor, mask: torch.Tensor | None = None
-    ) -> torch.Tensor:
-        q = self.Wq(x)
-        # k and v are from the encoder output
-        k = self.Wk(encoder_output)
-        v = self.Wv(encoder_output)
-
-        # x shape: (batch_size, seq_length, d_model)
-        batch_size, target_seq_length = q.size(0), q.size(1)
-        source_seq_length = k.size(1)
-
-        q_k_head_dim = self.config.attention_d_k // self.config.head_num
-        v_head_dim = self.config.attention_d_v // self.config.head_num
-        # view as multi head
-        q = q.view(
-            batch_size,
-            self.config.head_num,
-            target_seq_length,
-            self.config.attention_d_k // self.config.head_num,
-        )
-        k = k.view(batch_size, self.config.head_num, source_seq_length, q_k_head_dim)
-        v = v.view(batch_size, self.config.head_num, source_seq_length, v_head_dim)
-
-        # (b, h, target_seq_len, dK/h) @ (b, h, dK/h, source_seq_len) -> (b, h, target_seq_len, source_seq_len)
-        attention_weight = q @ k.transpose(-2, -1) / (q_k_head_dim**0.5)
-        if mask is not None:
-            attention_weight = attention_weight.masked_fill(mask == 0, float("-inf"))
-        attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
-        attention_score = self.dropout(attention_score)
-
-        # (b, h, target_seq_len, source_seq_len) @ (b, h, source_seq_len, dv/h) -> (b, h, target_seq_len, dv/h)
-        attention = attention_score @ v
-        # (b, h, target_seq_len, dv/h) -> (b, target_seq_len, h, dv/h)
-        # TODO: Question: is the permute neccesary?
-        attention = attention.permute(0, 2, 1, 3)
-        # (b, target_seq_len, h, dv/h) -> (b, target_seq_len, dv)
-        attention = attention.contiguous().view(batch_size, target_seq_length, self.config.attention_d_v)
-
-        output = self.Wo(attention)
-
-        # (b, s, d_model)
-        return output
-
-
 class DecoderTransformerBlock(torch.nn.Module):
     def __init__(self, config: TransformerConfig) -> None:
         super().__init__()
         self.config = config
-        self.causal_mha = MultiHeadSelfAttention(config=config)
-        self.cross_mha = MultiHeadCrossAttention(config)
+        self.causal_mha = MultiHeadAttention(config=config)
+        self.cross_mha = MultiHeadAttention(config)
         self.ffn = torch.nn.Sequential(
             torch.nn.Linear(config.d_model, config.d_feed_forward),
             torch.nn.ReLU(),
@@ -218,11 +182,11 @@ class DecoderTransformerBlock(torch.nn.Module):
         source_mask: torch.Tensor | None = None,
         target_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
-        h1 = self.causal_mha(x, target_mask)
+        h1 = self.causal_mha(x, x, x, target_mask)
         y1 = self.layernorm_causal_mha(x + h1)
 
         # q: y1(masked attention output), k: encoder output, v: encoder output
-        h2 = self.cross_mha(y1, encoder_output, source_mask)
+        h2 = self.cross_mha(y1, encoder_output, encoder_output, source_mask)
         y2 = self.layernorm_cross_mha(y1 + h2)
 
         h3 = self.ffn(y2)
@@ -282,9 +246,9 @@ class TransformerModel(torch.nn.Module):
         self.device = current_device
 
     def forward(self, source_token_ids: torch.Tensor, target_token_ids: torch.Tensor) -> torch.Tensor:
-        encoder_output = self.encoder(source_token_ids)
         source_mask = self._get_source_mask(source_token_ids)
         target_mask = self._get_target_mask(target_token_ids)
+        encoder_output = self.encoder(source_token_ids, source_mask)
         decoder_output = self.decoder(target_token_ids, encoder_output, source_mask, target_mask)
         return decoder_output
 
@@ -305,9 +269,9 @@ class TransformerModel(torch.nn.Module):
 if __name__ == "__main__":
     # test mha shapes
     config = TransformerConfig()
-    mha = MultiHeadSelfAttention(config).to(device=current_device)
+    mha = MultiHeadAttention(config).to(device=current_device)
     x = torch.randn(2, 10, config.d_model, device=current_device)
-    y = mha(x)
+    y = mha(x, x, x)
     print(y.shape)
 
     # test masked mha shapes
