@@ -20,6 +20,7 @@ Implementing classic NLP models from scratch with clean code and easy-to-underst
 
 > This library is for educational purposes only. It is not optimized for production use.
 > And it may contain bugs CURRENTLY, so feel free to contribute and report issues.
+>
 > Until now, we only do simple tests, which is not enough. But we will do much more rigorous testing in the FUTURE.
 > And we will add more docs for you can RUN it easily, add more playgrounds for you to experiment with the models and look inside the model implementations.
 
