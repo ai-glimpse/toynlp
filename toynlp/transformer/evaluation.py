@@ -64,7 +64,7 @@ class TransformerEvaluator:
         predictions = []
         for i in tqdm(range(0, len(source_texts), batch_size), desc="Translating"):
             batch_sources = source_texts[i : i + batch_size]
-            batch_predictions = self.inference.translate_batch(batch_sources)
+            batch_predictions = self.inference.translate(batch_sources)
             predictions.extend(batch_predictions)
         references = self._prepare_references(target_texts)
         predictions = self._prepare_predictions(predictions)

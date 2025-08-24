@@ -20,7 +20,7 @@ class TransformerTokenizer:
         self.tokenizer = Tokenizer(BPE(vocab=None, unk_token="[UNK]"))
         self.tokenizer.pre_tokenizer = Sequence(
             [
-                Punctuation(behavior="merged_with_previous"),
+                Punctuation(behavior="isolated"),
                 Whitespace(),
             ],
         )

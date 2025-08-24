@@ -23,7 +23,7 @@ class TransformerConfig:
         default_factory=lambda: ["[UNK]", "[BOS]", "[EOS]", "[PAD]"],
     )
     # model configs
-    vocab_size: int = 30000
+    vocab_size: int = 37000
     # model arch configs
     max_source_seq_length: int = 1000
     max_target_seq_length: int = 1000
@@ -53,7 +53,7 @@ class TransformerConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Transformer"
-    wandb_enabled: bool = False
+    wandb_enabled: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
