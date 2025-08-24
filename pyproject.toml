@@ -192,6 +192,7 @@ ignore = [
     "FIX002",  # TODO checker
     "TD002",  # TODO checker
     "TD003",   # TODO checker
+    "COM812",
     "ANN201",  # Missing return type annotation for public function
     "ANN001",  # Missing type annotation for function argument
     "TRY003",  # Avoid specifying long messages outside the exception class
