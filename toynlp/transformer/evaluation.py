@@ -61,7 +61,7 @@ class TransformerEvaluator:
         print(f"Evaluating on {total_samples} samples...")
         source_texts = split_data[self.config.source_lang]
         target_texts = split_data[self.config.target_lang]
-        predictions = []
+        predictions: list[str] = []
         for i in tqdm(range(0, len(source_texts), batch_size), desc="Translating"):
             batch_sources = source_texts[i : i + batch_size]
             batch_predictions = self.inference.translate(batch_sources)
@@ -130,7 +130,7 @@ class TransformerEvaluator:
         for i in range(start_idx, end_idx):
             source_text = split_data[i][self.config.source_lang]
             target_text = split_data[i][self.config.target_lang]
-            prediction = self.inference.translate(source_text)
+            prediction = self.inference.translate([source_text])[0]
             print(f"\nSample {i + 1}:")
             print(f"Source ({self.config.source_lang}): {source_text}")
             print(f"Target ({self.config.target_lang}): {target_text}")

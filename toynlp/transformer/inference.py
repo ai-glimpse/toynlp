@@ -66,19 +66,14 @@ class TransformerInference:
         texts = []
         for token_ids in batch_token_ids:
             text = self.tokenizer.decode(token_ids)
-            text = text.replace("[BOS]", "").replace("[EOS]", "").replace("[PAD]", "").strip()
+            text = text.replace("[BOS]", "").replace("[EOS]", "").replace("[PAD]", "").replace(" .", ".").strip()
             texts.append(text)
         return texts
 
-    def translate(self, texts: str | list[str], max_length: int | None = None) -> str | list[str]:
+    def translate(self, texts: list[str], max_length: int | None = None) -> list[str]:
         """Translate text(s) using greedy decoding with early stopping for completed sequences."""
         if max_length is None:
             max_length = self.config.inference_max_length
-
-        # Ensure input is a list for batch processing
-        is_single = isinstance(texts, str)
-        if is_single:
-            texts = [texts]
 
         with torch.no_grad():
             input_tensor = self.preprocess_texts(texts)
@@ -118,9 +113,7 @@ class TransformerInference:
                 batch_output_tokens.append(truncated_tokens)
 
             results = self.postprocess_batch_tokens(batch_output_tokens)
-
-        # Return a single string if input was a single string
-        return results[0] if is_single else results
+        return results
 
 
 def test_translation() -> None:
@@ -138,24 +131,10 @@ def test_translation() -> None:
     ]
     print(f"\nTranslating from {inference.config.source_lang} to {inference.config.target_lang}:")
     print("=" * 60)
-    for i, sentence in enumerate(test_sentences, 1):
-        try:
-            translation = inference.translate(sentence)
-            print(f"{i}. Source: {sentence}")
-            print(f"   Target: {translation}")
-            print()
-        except (RuntimeError, ValueError, KeyError, FileNotFoundError) as e:
-            print(f"{i}. Source: {sentence}")
-            print(f"   Error: {e}")
-            print()
-    print("Testing batch translation...")
-    try:
-        batch_translations = inference.translate(test_sentences[:3])
-        print("Batch translation results:")
-        for src, tgt in zip(test_sentences[:3], batch_translations, strict=True):
-            print(f"  {src} -> {tgt}")
-    except (RuntimeError, ValueError, KeyError, FileNotFoundError) as e:
-        print(f"Batch translation error: {e}")
+    batch_translations = inference.translate(test_sentences)
+    print("Batch translation results:")
+    for src, tgt in zip(test_sentences, batch_translations, strict=True):
+        print(f"  {src} -> {tgt}")
 
 
 if __name__ == "__main__":
