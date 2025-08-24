@@ -1,7 +1,7 @@
 from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer, normalizers
 from tokenizers.models import BPE
-from tokenizers.normalizers import NFD, Lowercase
+from tokenizers.normalizers import NFD
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import BpeTrainer

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any
 
+
 class TransformerEvaluator:
     """Evaluation class for computing BLEU scores on transformer translation model."""
 
@@ -24,7 +25,7 @@ class TransformerEvaluator:
     def _normalize_text(self, text: str) -> str:
         text = text.strip()
         special_tokens = ["[BOS]", "[EOS]", "[PAD]", "[UNK]"]
-        for token in  special_tokens:
+        for token in special_tokens:
             text = text.replace(token, "")
         text = " ".join(text.split())
         text = text.replace(" .", ".")  # remove the space before punctuation
@@ -143,6 +144,7 @@ class TransformerEvaluator:
             print(f"Sample BLEU: {sample_bleu['bleu']:.4f}")
             print("-" * 40)
 
+
 def run_evaluation() -> None:
     print("Starting Transformer Model Evaluation...")
     config = TransformerConfig()
@@ -179,6 +181,7 @@ def run_evaluation() -> None:
             print(f"{split.upper()}: BLEU = {metrics['bleu']:.4f} ({metrics['num_samples']} samples)")
         else:
             print(f"{split.upper()}: Error - {metrics['error']}")
+
 
 if __name__ == "__main__":
     run_evaluation()

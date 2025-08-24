@@ -42,12 +42,12 @@ class ScaleDotProductionAttention(torch.nn.Module):
         super().__init__()
 
     def forward(
-            self,
-            q: torch.Tensor,
-            k: torch.Tensor,
-            v: torch.Tensor,
-            mask: torch.Tensor | None = None,
-        ) -> torch.Tensor:
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         head_dim = q.size(3)
         # (b, h, s, dK/h) @ (b, h, dK/h, s) -> (b, h, s, s)
         attention_weight = q @ k.transpose(-2, -1) / (head_dim**0.5)
@@ -82,12 +82,12 @@ class MultiHeadAttention(torch.nn.Module):
         assert config.attention_d_v % config.head_num == 0
 
     def forward(
-            self,
-            q: torch.Tensor,
-            k: torch.Tensor,
-            v: torch.Tensor,
-            mask: torch.Tensor | None = None,
-            ) -> torch.Tensor:
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         # x shape: (batch_size, seq_length, d_model)
         batch_size = q.size(0)
         # q, k shape: (batch_size, seq_length, attention_d_k)
@@ -181,7 +181,7 @@ class DecoderTransformerBlock(torch.nn.Module):
         x: torch.Tensor,
         encoder_output: torch.Tensor,
         source_mask: torch.Tensor | None = None,
-        target_mask: torch.Tensor | None = None
+        target_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         h1 = self.causal_mha(x, x, x, target_mask)
         y1 = self.layernorm_causal_mha(x + h1)
@@ -214,12 +214,12 @@ class Decoder(torch.nn.Module):
         self.output_layer = torch.nn.Linear(config.d_model, config.vocab_size)
 
     def forward(
-            self,
-            target_input_ids: torch.Tensor,
-            encoder_output: torch.Tensor,
-            source_mask: torch.Tensor | None = None,
-            target_mask: torch.Tensor | None = None
-            ) -> torch.Tensor:
+        self,
+        target_input_ids: torch.Tensor,
+        encoder_output: torch.Tensor,
+        source_mask: torch.Tensor | None = None,
+        target_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         embeddings = self.embedding(target_input_ids)
         embeddings = self.pe.apply(embeddings)
         x = self.embedding_dropout(embeddings)
