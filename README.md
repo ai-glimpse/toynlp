@@ -16,7 +16,13 @@
 
 # ToyNLP
 
-NLP models with clean implementation.
+Implementing classic NLP models from scratch with clean code and easy-to-understand architecture.
+
+> This library is for educational purposes only. It is not optimized for production use.
+> And it may contain bugs CURRENTLY, so feel free to contribute and report issues.
+
+> Until now, we only do simple tests, which is not enough. But we will do much more rigorous testing in the FUTURE.
+> And we will add more docs for you can RUN it easily, add more playgrounds for you to experiment with the models and look inside the model implementations.
 
 
 ## Models
@@ -28,16 +34,22 @@ NLP models with clean implementation.
 - [x] Seq2Seq(2014)
 - [x] Attention(2015)
 - [x] fastText(2016)
-- [ ] Transformer(2017)
+- [x] Transformer(2017)
 - [ ] BERT(2018)
 - [ ] GPT(2018)
 - [ ] XLNet(2019)
 - [ ] T5(2020)
 
 
+
 ## FAQ
 
 ### Where is GPT-2 and other LLMs?
 
- Well, it's in [toyllm](https://github.com/ai-glimpse/toyllm)!
+Well, it's in [toyllm](https://github.com/ai-glimpse/toyllm)!
 I separated the models into two libraries, `toynlp` for traditional "small" NLP models and `toyllm` for LLMs, which are typically larger and more complex.
+
+### Like the "toy" style, anything else?
+
+Glad you asked! The "toy" style is all about simplicity and educational value. 
+We have another two toys besides toynlp and toyllm: [toyml](https://github.com/ai-glimpse/toyml) for traditional machine learning models; [toyrl](https://github.com/ai-glimpse/toyrl) for deep reinforcement learning models.
