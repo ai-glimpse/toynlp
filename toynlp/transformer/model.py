@@ -97,11 +97,6 @@ class MultiHeadAttention(torch.nn.Module):
         q_k_head_dim = self.config.attention_d_k // self.config.head_num
         v_head_dim = self.config.attention_d_v // self.config.head_num
         # view as multi head
-        # TODO: warning: this is WRONG!!!
-        # q = q.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
-        # k = k.view(batch_size, self.config.head_num, seq_length, q_k_head_dim)
-        # v = v.view(batch_size, self.config.head_num, seq_length, v_head_dim)
-
         q = q.view(batch_size, q.size(1), self.config.head_num, q_k_head_dim).transpose(1, 2)
         k = k.view(batch_size, k.size(1), self.config.head_num, q_k_head_dim).transpose(1, 2)
         v = v.view(batch_size, v.size(1), self.config.head_num, v_head_dim).transpose(1, 2)
