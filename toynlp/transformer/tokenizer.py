@@ -20,14 +20,14 @@ class TransformerTokenizer:
         self.tokenizer = Tokenizer(BPE(vocab=None, unk_token="[UNK]"))
         self.tokenizer.pre_tokenizer = Sequence(
             [
-                Punctuation(behavior="isolated"),
+                Punctuation(behavior="merged_with_previous"),
                 Whitespace(),
             ],
         )
         self.tokenizer.normalizer = normalizers.Sequence(
             [
                 NFD(),
-                Lowercase(),
+                # Lowercase(),
             ],  # type: ignore[assignment]
         )
         self.tokenizer.post_processor = TemplateProcessing(

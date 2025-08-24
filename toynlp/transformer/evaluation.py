@@ -22,11 +22,12 @@ class TransformerEvaluator:
         print(f"Loaded dataset with splits: {list(self.dataset.keys())}")
 
     def _normalize_text(self, text: str) -> str:
-        text = text.strip().lower()
+        text = text.strip()
         special_tokens = ["[BOS]", "[EOS]", "[PAD]", "[UNK]"]
-        for token in special_tokens:
-            text = text.replace(token.lower(), "")
+        for token in  special_tokens:
+            text = text.replace(token, "")
         text = " ".join(text.split())
+        text = text.replace(" .", ".")  # remove the space before punctuation
         return text
 
     def _prepare_references(self, references: list[str]) -> list[list[str]]:
