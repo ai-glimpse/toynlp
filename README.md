@@ -44,6 +44,15 @@ Implementing classic NLP models from scratch with clean code and easy-to-underst
 
 ## FAQ
 
+### I find there are DIFFERENCES between the implementations in toynlp and original papers.
+
+Yes, there are some differences in the implementations. The goal of toynlp is to provide a simple and educational implementation of these models, which may not include all the optimizations and features in original papers.
+
+The reason is that I want to focus on the core ideas and concepts behind each model, rather than getting bogged down in implementation details. Especially when the original papers may introduce complexities that are not essential for understanding the main contributions of the work.
+
+But, I do need to add docs for each model to clarify these differences and provide guidance on how to use the implementations effectively. I'll do this later. Let's first make it work and then make it better.
+
+
 ### Where is GPT-2 and other LLMs?
 
 Well, it's in [toyllm](https://github.com/ai-glimpse/toyllm)!
@@ -51,5 +60,5 @@ I separated the models into two libraries, `toynlp` for traditional "small" NLP 
 
 ### Like the "toy" style, anything else?
 
-Glad you asked! The "toy" style is all about simplicity and educational value. 
+Glad you asked! The "toy" style is all about simplicity and educational value.
 We have another two toys besides toynlp and toyllm: [toyml](https://github.com/ai-glimpse/toyml) for traditional machine learning models; [toyrl](https://github.com/ai-glimpse/toyrl) for deep reinforcement learning models.
