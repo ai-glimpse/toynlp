@@ -15,10 +15,10 @@ class BertConfig:
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
-    min_frequency: int = 1
-    num_proc: int = 8
+    # min_frequency: int = 1
+    num_proc: int = 12
     special_tokens: list[str] = field(
-        default_factory=lambda: ["[UNK]", "[SEP]", "[MASK]", "[PAD]"],
+        default_factory=lambda: ["[CLS]", "[SEP]", "[MASK]", "[PAD]", "[UNK]"],
     )
     # model configs
     vocab_size: int = 30000

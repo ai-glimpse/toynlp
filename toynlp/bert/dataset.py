@@ -21,16 +21,15 @@ def collate_fn(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     batch_input = []
     batch_target = []
-    input_pad_id = tokenizer.token_to_id("[PAD]")
-    target_pad_id = tokenizer.token_to_id("[PAD]")
+    pad_id = tokenizer.token_to_id("[PAD]")
 
     for item in batch:
         src_tensor = tokenizer.encode(item["text"]).ids  # type: ignore[call-arg,index]
         tgt_tensor = tokenizer.encode(item["text"]).ids  # type: ignore[call-arg,index]
         batch_input.append(torch.tensor(src_tensor[:max_length], dtype=torch.long))
         batch_target.append(torch.tensor(tgt_tensor[:max_length], dtype=torch.long))
-    batch_input_tensor = pad_sequence(batch_input, padding_value=input_pad_id, batch_first=True)
-    batch_target_tensor = pad_sequence(batch_target, padding_value=target_pad_id, batch_first=True)
+    batch_input_tensor = pad_sequence(batch_input, padding_value=pad_id, batch_first=True)
+    batch_target_tensor = pad_sequence(batch_target, padding_value=pad_id, batch_first=True)
     return batch_input_tensor, batch_target_tensor
 
 

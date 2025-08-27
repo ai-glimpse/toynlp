@@ -1,10 +1,10 @@
 from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer, normalizers
-from tokenizers.models import BPE
-from tokenizers.normalizers import NFD, Lowercase
+from tokenizers.models import WordPiece
+from tokenizers.normalizers import BertNormalizer
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
-from tokenizers.trainers import BpeTrainer
+from tokenizers.trainers import WordPieceTrainer
 from toynlp.bert.config import BertConfig, create_config_from_cli
 
 from toynlp.paths import BERT_TOKENIZER_PATH
@@ -17,7 +17,7 @@ class BertTokenizer:
         self.model_path = BERT_TOKENIZER_PATH
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.tokenizer = Tokenizer(BPE(vocab=None, unk_token="[UNK]"))
+        self.tokenizer = Tokenizer(WordPiece(vocab=None, unk_token="[UNK]", max_input_chars_per_word=20))
         self.tokenizer.pre_tokenizer = Sequence(
             [
                 Punctuation(behavior="isolated"),
@@ -26,20 +26,22 @@ class BertTokenizer:
         )
         self.tokenizer.normalizer = normalizers.Sequence(
             [
-                NFD(),
-                Lowercase(),
+                BertNormalizer(),
             ],  # type: ignore[assignment]
         )
         self.tokenizer.post_processor = TemplateProcessing(
-            single="[BOS] $A [EOS]",
-            special_tokens=[("[BOS]", 1), ("[EOS]", 2)],
+            single="[CLS] $A [SEP]",
+            pair="[CLS] $A [SEP] $B:1 [SEP]:1",
+            special_tokens=[
+                ("[CLS]", 0),
+                ("[SEP]", 1),
+            ],
         )  # type: ignore[assignment]
 
-    def train(self, dataset: Dataset, vocab_size: int) -> Tokenizer:
-        trainer = BpeTrainer(
+    def train(self, dataset: Dataset, vocab_size: int, special_tokens: list[str]) -> Tokenizer:
+        trainer = WordPieceTrainer(
             vocab_size=vocab_size,  # type: ignore[unknown-argument]
-            min_frequency=1,  # type: ignore[unknown-argument]
-            special_tokens=["[UNK]", "[BOS]", "[EOS]", "[PAD]"],  # type: ignore[unknown-argument]
+            special_tokens=special_tokens,  # type: ignore[unknown-argument]
         )
         self.tokenizer.train_from_iterator(dataset["text"], trainer=trainer)
         self.tokenizer.save(str(self.model_path))
@@ -66,27 +68,22 @@ def train_tokenizer(config: BertConfig) -> None:
         dataset = load_dataset(
             path=config.dataset_path,
             name=config.dataset_name,
-            split="train",
+            split="train[:1000]",  # TODO: remove the sample
         )
 
         # Prepare text data
-        lang_dataset = dataset.map(
-            lambda batch: {"text": batch},
+        train_dataset = dataset.map(
+            lambda batch: {"text": batch["text"]},
             remove_columns=["title"],
             batched=True,
             num_proc=config.num_proc,  # type: ignore[unknown-argument]
         )
-
         # Train tokenizer
-        vocab_size = config.vocab_size
-        trainer = BpeTrainer(
-            vocab_size=vocab_size,  # type: ignore[unknown-argument]
-            min_frequency=config.min_frequency,  # type: ignore[unknown-argument]
-            special_tokens=config.special_tokens,  # type: ignore[unknown-argument]
-        )
-        bert_tokenizer.tokenizer.train_from_iterator(lang_dataset["text"], trainer=trainer)
-        bert_tokenizer.tokenizer.save(str(tokenizer_path))
-        print(f"Tokenizer saved to {tokenizer_path}")
+        bert_tokenizer.train(
+            train_dataset,  # type: ignore[unknown-argument]
+            config.vocab_size,
+            config.special_tokens,
+            )
     else:
         print(f"Tokenizer already exists at {tokenizer_path}")
 
@@ -97,11 +94,17 @@ def test_tokenizers() -> None:
     tokenizer = BertTokenizer().load()
 
     # Test target language tokenizer
-    text = "Two men are at the stove preparing food."
-    tokens = tokenizer.encode(text).ids
+    text = "Two men are at the stove preparing food and vibecoding."
+    output = tokenizer.encode(text)
     print(f"Text: {text}")
-    print(f"Tokens: {tokens}")
-    print(f"Decoded: {tokenizer.decode(tokens)}")
+    print(f"Tokens: {output.tokens}")
+    print(f"Type Ids: {output.type_ids}")
+
+    texts = ("Hello, y'all!", "How are you 😁 ?")
+    output = tokenizer.encode(*texts)
+    print(f"Texts: {texts}")
+    print(f"Tokens: {output.tokens}")
+    print(f"Type Ids: {output.type_ids}")
 
 
 def main() -> None:
