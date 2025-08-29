@@ -1,7 +1,6 @@
 from datasets import DatasetDict, load_dataset
 
 
-
 def get_dataset(
     dataset_path: str,
     dataset_name: str | None,
@@ -13,7 +12,6 @@ def get_dataset(
 def dataset_transform(dataset: DatasetDict) -> DatasetDict:
     # Apply any necessary transformations to the dataset here
     return dataset
-
 
 
 if __name__ == "__main__":

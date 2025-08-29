@@ -51,5 +51,5 @@ I separated the models into two libraries, `toynlp` for traditional "small" NLP 
 
 ### Like the "toy" style, anything else?
 
-Glad you asked! The "toy" style is all about simplicity and educational value. 
+Glad you asked! The "toy" style is all about simplicity and educational value.
 We have another two toys besides toynlp and toyllm: [toyml](https://github.com/ai-glimpse/toyml) for traditional machine learning models; [toyrl](https://github.com/ai-glimpse/toyrl) for deep reinforcement learning models.

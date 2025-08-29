@@ -140,6 +140,9 @@ ignore_missing_imports = true
 check_untyped_defs = true
 disallow_untyped_decorators = false
 strict = false
+exclude = [
+    "playground",
+]
 
 [[tool.mypy.overrides]]
 module = ["wandb", "wandb.*"]
@@ -152,6 +155,7 @@ follow_imports = "skip"
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
+    "playground",
     ".bzr",
     ".direnv",
     ".eggs",

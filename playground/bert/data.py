@@ -7,6 +7,7 @@ app = marimo.App(width="full")
 @app.cell(hide_code=True)
 def _():
     import marimo as mo
+
     return (mo,)
 
 
@@ -19,6 +20,7 @@ def _():
     from datasets import Dataset, DatasetDict, load_dataset
 
     from toynlp.bert.tokenizer import BertTokenizer
+
     return BertTokenizer, Dataset, collections, load_dataset, random
 
 
@@ -99,7 +101,6 @@ def _(bert_tokenizer, random):
         else:
             raise ValueError("Unsupported string type: %s" % (type(text)))
 
-
     def text_to_documents(text: str) -> list[list[str]]:
         all_documents = [[]]
         lines = text.split("\n")
@@ -118,13 +119,13 @@ def _(bert_tokenizer, random):
         random.shuffle(all_documents)
         return all_documents
 
-
     def batch_text_to_documents(batch: list[str]) -> list[list[str]]:
         all_documents = []
         for text in batch:
             for doc in text_to_documents(text):
                 all_documents.append(doc)
         return all_documents
+
     return batch_text_to_documents, text_to_documents
 
 
@@ -191,10 +192,7 @@ def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
 
 @app.cell
 def _(collections):
-    MaskedLmInstance = collections.namedtuple(
-        "MaskedLmInstance", ["index", "label"]
-    )
-
+    MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
     def create_masked_lm_predictions(
         tokens,
@@ -219,11 +217,7 @@ def _(collections):
             # Note that Whole Word Masking does *not* change the training code
             # at all -- we still predict each WordPiece independently, softmaxed
             # over the entire vocabulary.
-            if (
-                do_whole_word_mask
-                and len(cand_indexes) >= 1
-                and token.startswith("##")
-            ):
+            if do_whole_word_mask and len(cand_indexes) >= 1 and token.startswith("##"):
                 cand_indexes[-1].append(i)
             else:
                 cand_indexes.append([i])
@@ -266,15 +260,11 @@ def _(collections):
                         masked_token = tokens[index]
                     # 10% of the time, replace with random word
                     else:
-                        masked_token = vocab_words[
-                            rng.randint(0, len(vocab_words) - 1)
-                        ]
+                        masked_token = vocab_words[rng.randint(0, len(vocab_words) - 1)]
 
                 output_tokens[index] = masked_token
 
-                masked_lms.append(
-                    MaskedLmInstance(index=index, label=tokens[index])
-                )
+                masked_lms.append(MaskedLmInstance(index=index, label=tokens[index]))
         assert len(masked_lms) <= num_to_predict
         masked_lms = sorted(masked_lms, key=lambda x: x.index)
 
@@ -285,6 +275,7 @@ def _(collections):
             masked_lm_labels.append(p.label)
 
         return (output_tokens, masked_lm_positions, masked_lm_labels)
+
     return (create_masked_lm_predictions,)
 
 
@@ -351,21 +342,12 @@ def _(Dataset, create_masked_lm_predictions, random):
                         # the random document is not the same as the document
                         # we're processing.
                         for _ in range(10):
-                            random_document_index = rng.randint(
-                                0, len(documents_dataset) - 1
-                            )
+                            random_document_index = rng.randint(0, len(documents_dataset) - 1)
                             # if random_document_index != document_index:
-                            if (
-                                documents_dataset["document"][
-                                    random_document_index
-                                ][0]
-                                != document
-                            ):
+                            if documents_dataset["document"][random_document_index][0] != document:
                                 break
 
-                        random_document = documents_dataset["document"][
-                            random_document_index
-                        ]
+                        random_document = documents_dataset["document"][random_document_index]
                         random_start = rng.randint(0, len(random_document) - 1)
                         for j in range(random_start, len(random_document)):
                             tokens_b.extend(random_document[j])
@@ -402,14 +384,12 @@ def _(Dataset, create_masked_lm_predictions, random):
                     tokens.append("[SEP]")
                     segment_ids.append(1)
 
-                    (tokens, masked_lm_positions, masked_lm_labels) = (
-                        create_masked_lm_predictions(
-                            tokens,
-                            masked_lm_prob,
-                            max_predictions_per_seq,
-                            vocab_words,
-                            rng,
-                        )
+                    (tokens, masked_lm_positions, masked_lm_labels) = create_masked_lm_predictions(
+                        tokens,
+                        masked_lm_prob,
+                        max_predictions_per_seq,
+                        vocab_words,
+                        rng,
                     )
                     # instance = TrainingInstance(
                     #     tokens=tokens,
@@ -431,6 +411,7 @@ def _(Dataset, create_masked_lm_predictions, random):
             i += 1
 
         return instances
+
     return (create_pretraining_examples_from_documents,)
 
 
@@ -500,7 +481,6 @@ def _(
             )
             all_instances.extend(document_instances)
         return all_instances
-
 
     simple_batch_instances = batch_create_pretraining_examples_from_documents(
         documents_dataset,

@@ -83,7 +83,7 @@ def train_tokenizer(config: BertConfig) -> None:
             train_dataset,  # type: ignore[unknown-argument]
             config.vocab_size,
             config.special_tokens,
-            )
+        )
     else:
         print(f"Tokenizer already exists at {tokenizer_path}")
 
