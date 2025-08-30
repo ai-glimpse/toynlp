@@ -18,14 +18,13 @@ class BertConfig:
     # min_frequency: int = 1
     num_proc: int = 12
     special_tokens: list[str] = field(
-        default_factory=lambda: ["[CLS]", "[SEP]", "[PAD]", "[MASK]", "[UNK]"],
+        default_factory=lambda: ["[PAD]", "[CLS]", "[SEP]", "[MASK]", "[UNK]"],
     )
     # model configs
     vocab_size: int = 30522
     # model arch configs
-    max_seq_length: int = 1000
+    max_seq_length: int = 512
 
-    # For each of these we use dk = dv = dmodel/h = 64
     d_model: int = 256  # model hidden dimension, paper setting: 768
     attention_d_k: int = 256  # query & key, paper setting: 768
     attention_d_v: int = 256  # value, paper setting: 768

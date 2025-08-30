@@ -50,6 +50,7 @@ dev = [
     "seaborn>=0.13.2",
     "scikit-learn>=1.7.1",
     "marimo>=0.15.0",
+    "transformers>=4.55.4",
 ]
 docs = [
     "mkdocs",
