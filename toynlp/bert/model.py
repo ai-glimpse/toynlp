@@ -207,8 +207,8 @@ class BertModel(torch.nn.Module):
             self,
             source_token_ids: torch.Tensor,
             source_segments: torch.Tensor,
-            source_mask: torch.Tensor | None = None,
         ) -> tuple[torch.Tensor, torch.Tensor]:
+        source_mask = self._get_source_mask(source_token_ids)
         encoder_output = self.encoder(source_token_ids, source_segments, source_mask)
         nsp_output = self.nsp_head(encoder_output)
         mlm_output = self.mlm_head(encoder_output)
