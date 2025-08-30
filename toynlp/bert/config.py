@@ -18,22 +18,21 @@ class BertConfig:
     # min_frequency: int = 1
     num_proc: int = 12
     special_tokens: list[str] = field(
-        default_factory=lambda: ["[CLS]", "[SEP]", "[MASK]", "[PAD]", "[UNK]"],
+        default_factory=lambda: ["[CLS]", "[SEP]", "[PAD]", "[MASK]", "[UNK]"],
     )
     # model configs
-    vocab_size: int = 30000
+    vocab_size: int = 30522
     # model arch configs
     max_seq_length: int = 1000
 
     # For each of these we use dk = dv = dmodel/h = 64
-    d_model: int = 256  # model hidden dimension, paper setting: 512
-    attention_d_k: int = 256  # query & key, paper setting: 512
-    attention_d_v: int = 256  # value, paper setting: 512
+    d_model: int = 256  # model hidden dimension, paper setting: 768
+    attention_d_k: int = 256  # query & key, paper setting: 768
+    attention_d_v: int = 256  # value, paper setting: 768
     # we employ h = 8 parallel attention layers, or heads
-    head_num: int = 4  # paper setting: 8
+    head_num: int = 4  # paper setting: 12
     d_feed_forward: int = 512  # paper setting: 2048
-    encoder_layers: int = 6  # paper setting: 6
-    decoder_layers: int = 6  # paper setting: 6
+    encoder_layers: int = 6  # paper setting: 12
 
     dropout_ratio: float = 0.1
     # optimizer configs
