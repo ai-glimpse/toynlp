@@ -340,9 +340,9 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
             documents_dataset,
             batch["document"],
             max_seq_length=config.max_seq_length,
-            short_seq_prob=0.1,
-            masked_lm_prob=0.15,
-            max_predictions_per_seq=20,
+            short_seq_prob=config.short_seq_prob,
+            masked_lm_prob=config.masked_lm_prob,
+            max_predictions_per_seq=config.max_predictions_per_seq,
             vocab_words=list(bert_tokenizer.get_vocab().keys()),
             rng=random.Random(12345),
         )) else {},
@@ -400,7 +400,7 @@ def collate_fn(
     return {
         "tokens": batch_padded_token_id_tensor,
         "segment_ids": batch_segment_ids_tensor,
-        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.float),
+        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
         "masked_lm_labels": torch.stack(batch_masked_lm_labels),
     }
 
