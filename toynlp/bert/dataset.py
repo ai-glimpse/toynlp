@@ -1,8 +1,7 @@
 import random
 import collections
 
-from datasets import Dataset, load_dataset
-from datasets import Dataset, load_dataset
+from datasets import Dataset, load_dataset, DatasetDict
 
 from toynlp.bert.config import BertConfig
 from toynlp.bert.tokenizer import BertTokenizer
@@ -322,33 +321,58 @@ def dataset_transform(raw_dataset: Dataset) -> Dataset:
     documents_dataset = raw_dataset.map(
         lambda batch: {"document": batch_text_to_documents(batch["text"])},
         batched=True,
-        # batch_size=4,
+        batch_size=15,
+        num_proc=15,
         remove_columns=["text", "title"],
     )
     all_pretrain_instances = documents_dataset.map(
         lambda batch: {
-            "instances": batch_create_pretraining_examples_from_documents(
-                documents_dataset,
-                batch["document"],  # TODO: batch or batch["document"] ???
-                max_seq_length=128,
-                short_seq_prob=0.1,
-                masked_lm_prob=0.15,
-                max_predictions_per_seq=20,
-                vocab_words=list(bert_tokenizer.get_vocab().keys()),
-                rng=random.Random(12345),
-            )
-        },
+            "tokens": [instance["tokens"] for instance in batch_instances],
+            "segment_ids": [instance["segment_ids"] for instance in batch_instances],
+            "is_random_next": [instance["is_random_next"] for instance in batch_instances],
+            "masked_lm_positions": [instance["masked_lm_positions"] for instance in batch_instances],
+            "masked_lm_labels": [instance["masked_lm_labels"] for instance in batch_instances],
+        } if (batch_instances := batch_create_pretraining_examples_from_documents(
+            documents_dataset,
+            batch["document"],
+            max_seq_length=128,
+            short_seq_prob=0.1,
+            masked_lm_prob=0.15,
+            max_predictions_per_seq=20,
+            vocab_words=list(bert_tokenizer.get_vocab().keys()),
+            rng=random.Random(12345),
+        )) else {},
         batched=True,
-        batch_size=100,
+        batch_size=1000,
+        num_proc=15,
         remove_columns=["document"],
     )
 
     return all_pretrain_instances
 
 
+def upload_pretrain_instance(all_pretrain_instances: Dataset):
+    """Upload the pretraining dataset to Hugging Face dataset hub.
+
+    Args:
+        all_pretrain_instances (Dataset): The dataset to upload.
+    """
+    # Convert the dataset to a DatasetDict if not already
+    dataset_dict = DatasetDict({"train": all_pretrain_instances})
+
+    # Define the repository name on Hugging Face hub
+    repo_name = "AI-Glimpse/bookcorpusopen-bert"
+
+    # Push the dataset to the Hugging Face hub
+    dataset_dict.push_to_hub(repo_name)
+
+    print(f"Dataset successfully uploaded to Hugging Face hub under repository: {repo_name}")
+
+
 if __name__ == "__main__":
     config = BertConfig()
 
-    raw_dataset = get_dataset(config.dataset_path, config.dataset_name)
+    raw_dataset = get_dataset(config.dataset_path, config.dataset_name, split="train[:1790]")  # 10%
     all_pretrain_instances = dataset_transform(raw_dataset)
     print(f"Number of pre-training instances: {len(all_pretrain_instances)}")
+    upload_pretrain_instance(all_pretrain_instances)

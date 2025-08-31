@@ -512,19 +512,23 @@ def _(
 ):
     all_pretrain_instances = documents_dataset.map(
         lambda batch: {
-            "instances": batch_create_pretraining_examples_from_documents(
-                documents_dataset,
-                batch["document"],  # TODO: batch or batch["document"] ???
-                max_seq_length=128,
-                short_seq_prob=0.1,
-                masked_lm_prob=0.15,
-                max_predictions_per_seq=20,
-                vocab_words=list(bert_tokenizer.get_vocab().keys()),
-                rng=random.Random(12345),
-            )
-        },
+            "tokens": [instance["tokens"] for instance in batch_instances],
+            "segment_ids": [instance["segment_ids"] for instance in batch_instances],
+            "is_random_next": [instance["is_random_next"] for instance in batch_instances],
+            "masked_lm_positions": [instance["masked_lm_positions"] for instance in batch_instances],
+            "masked_lm_labels": [instance["masked_lm_labels"] for instance in batch_instances],
+        } if (batch_instances := batch_create_pretraining_examples_from_documents(
+            documents_dataset,
+            batch["document"],
+            max_seq_length=128,
+            short_seq_prob=0.1,
+            masked_lm_prob=0.15,
+            max_predictions_per_seq=20,
+            vocab_words=list(bert_tokenizer.get_vocab().keys()),
+            rng=random.Random(12345),
+        )) else {},
         batched=True,
-        batch_size=100,
+        batch_size=1000,
         remove_columns=["document"],
     )
 
@@ -534,7 +538,7 @@ def _(
 
 @app.cell
 def _(all_pretrain_instances):
-    all_pretrain_instances["instances"][0]
+    all_pretrain_instances[0]
     return
 
 
@@ -542,7 +546,7 @@ def _(all_pretrain_instances):
 def _(all_pretrain_instances):
     is_next_count, not_next_count = 0, 0
     for instance_item in all_pretrain_instances:
-        if instance_item["instances"]["is_random_next"]:
+        if instance_item["is_random_next"]:
             not_next_count += 1
         else:
             is_next_count += 1
