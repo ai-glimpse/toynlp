@@ -68,7 +68,7 @@ def train_tokenizer(config: BertConfig) -> None:
         dataset = load_dataset(
             path=config.dataset_path,
             name=config.dataset_name,
-            split="train[:1000]",  # TODO: remove the sample
+            split="train",
         )
 
         # Prepare text data
