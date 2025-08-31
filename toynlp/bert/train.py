@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 
 import wandb
 from toynlp.util import current_device
-from toynlp.paths import TRANSFORMER_MODEL_PATH
+from toynlp.paths import BERT_MODEL_PATH
 from toynlp.bert.config import BertConfig, create_config_from_cli
 from toynlp.bert.model import BertModel
 from toynlp.bert.tokenizer import BertTokenizer
@@ -18,7 +18,7 @@ class BertTrainer:
     def __init__(self, config: BertConfig, pad_token_id: int) -> None:
         self.config = config
         self.model = BertModel(self.config, pad_token_id)
-        self.model_path = TRANSFORMER_MODEL_PATH
+        self.model_path = BERT_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
         self.optimizer = torch.optim.AdamW(
@@ -26,8 +26,8 @@ class BertTrainer:
             lr=self.config.learning_rate,
             weight_decay=self.config.weight_decay,
         )
-        self.mlm_criterion = torch.nn.CrossEntropyLoss(ignore_index=pad_token_id)
-        self.nsp_criterion = torch.nn.CrossEntropyLoss()
+        self.mlm_criterion = torch.nn.CrossEntropyLoss(ignore_index=pad_token_id, reduction="mean")
+        self.nsp_criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         self.clip_norm = self.config.clip_norm
         if self.clip_norm:
             print(f"Gradient clipping enabled with norm {self.clip_norm}")
@@ -121,7 +121,8 @@ class BertTrainer:
             segment_batch_device = batch["segment_ids"].to(self.device)
             is_random_next_batch_device = batch["is_random_next"].to(self.device)
             target_batch_device = batch["masked_lm_labels"].to(self.device)
-            loss = self.calc_loss_batch(input_batch_device, segment_batch_device, is_random_next_batch_device, target_batch_device)
+            loss = self.calc_loss_batch(input_batch_device, segment_batch_device,
+                                        is_random_next_batch_device, target_batch_device)
             total_loss += loss.item() * input_batch_device.size(0)  # Multiply by batch size
             total_samples += input_batch_device.size(0)
         return total_loss / total_samples  # Correct average

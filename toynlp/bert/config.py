@@ -22,14 +22,14 @@ class BertConfig:
     # model configs
     vocab_size: int = 30522
     # model arch configs
-    max_seq_length: int = 512
+    max_seq_length: int = 128
 
-    d_model: int = 256  # model hidden dimension, paper setting: 768
-    attention_d_k: int = 256  # query & key, paper setting: 768
-    attention_d_v: int = 256  # value, paper setting: 768
+    d_model: int = 512  # model hidden dimension, paper setting: 768
+    attention_d_k: int = 512  # query & key, paper setting: 768
+    attention_d_v: int = 512  # value, paper setting: 768
     # we employ h = 8 parallel attention layers, or heads
-    head_num: int = 4  # paper setting: 12
-    d_feed_forward: int = 512  # paper setting: 2048
+    head_num: int = 8  # paper setting: 12
+    d_feed_forward: int = 2048  # paper setting: 2048
     encoder_layers: int = 6  # paper setting: 12
 
     dropout_ratio: float = 0.1

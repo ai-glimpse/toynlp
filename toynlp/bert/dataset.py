@@ -319,7 +319,7 @@ def get_dataset(
     return dataset  # type: ignore[return-value]
 
 
-def dataset_transform(raw_dataset: Dataset) -> Dataset:
+def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
     # Apply any necessary transformations to the dataset here
     # https://huggingface.co/docs/datasets/en/about_map_batch#input-size--output-size
     documents_dataset = raw_dataset.map(
@@ -339,7 +339,7 @@ def dataset_transform(raw_dataset: Dataset) -> Dataset:
         } if (batch_instances := batch_create_pretraining_examples_from_documents(
             documents_dataset,
             batch["document"],
-            max_seq_length=128,
+            max_seq_length=config.max_seq_length,
             short_seq_prob=0.1,
             masked_lm_prob=0.15,
             max_predictions_per_seq=20,
@@ -387,8 +387,8 @@ def collate_fn(
 
     for item in batch:
         batch_tokens.append(torch.tensor([tokenizer.token_to_id(token) for token in item["tokens"]]))
-        batch_segment_ids.append(torch.tensor(item["segment_ids"]))
-        batch_is_random_next.append(torch.tensor(item["is_random_next"]))
+        batch_segment_ids.append(item["segment_ids"])
+        batch_is_random_next.append(item["is_random_next"])
         # length batch_max_seq_length tensor for masked_lm_labels
         padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
         for i, pos in enumerate(item["masked_lm_positions"].tolist()):
@@ -411,7 +411,7 @@ def get_split_dataloader(
     config: BertConfig,
 ) -> DataLoader:
     raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
-    pretrain_dataset = dataset_transform(raw_dataset)
+    pretrain_dataset = dataset_transform(raw_dataset, config)
     dataloader = torch.utils.data.DataLoader(
         pretrain_dataset.with_format(type="torch"),
         batch_size=config.batch_size,
