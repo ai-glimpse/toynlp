@@ -40,12 +40,14 @@ class BertConfig:
     weight_decay: float = 0.01
     # training configs
     dataset_split_of_tokenizer: str = "train[:10%]"
-    # dataset_split_of_model_train: str = "train[:8%]"
-    # dataset_split_of_model_val: str = "train[8%:9%]"
-    # dataset_split_of_model_test: str = "train[9%:10%]"
-    dataset_split_of_model_train: str = "train[:8]"
-    dataset_split_of_model_val: str = "train[8:9]"
-    dataset_split_of_model_test: str = "train[9:10]"
+
+    dataset_split_of_model_train: str = "train[:8%]"
+    dataset_split_of_model_val: str = "train[8%:9%]"
+    dataset_split_of_model_test: str = "train[9%:10%]"
+
+    # dataset_split_of_model_train: str = "train[:8]"
+    # dataset_split_of_model_val: str = "train[8:9]"
+    # dataset_split_of_model_test: str = "train[9:10]"
 
     epochs: int = 40
     clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
