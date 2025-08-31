@@ -1,7 +1,7 @@
 from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer, normalizers
 from tokenizers.models import WordPiece
-from tokenizers.normalizers import BertNormalizer
+from tokenizers.normalizers import BertNormalizer, Lowercase
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import WordPieceTrainer
@@ -27,14 +27,15 @@ class BertTokenizer:
         self.tokenizer.normalizer = normalizers.Sequence(
             [
                 BertNormalizer(),
+                Lowercase(),
             ],  # type: ignore[assignment]
         )
         self.tokenizer.post_processor = TemplateProcessing(
             single="[CLS] $A [SEP]",
             pair="[CLS] $A [SEP] $B:1 [SEP]:1",
             special_tokens=[
-                ("[CLS]", 0),
-                ("[SEP]", 1),
+                ("[CLS]", 1),
+                ("[SEP]", 2),
             ],
         )  # type: ignore[assignment]
 
@@ -68,7 +69,7 @@ def train_tokenizer(config: BertConfig) -> None:
         dataset = load_dataset(
             path=config.dataset_path,
             name=config.dataset_name,
-            split="train",
+            split=config.dataset_split_of_tokenizer,
         )
 
         # Prepare text data
@@ -98,7 +99,13 @@ def test_tokenizers() -> None:
     output = tokenizer.encode(text)
     print(f"Text: {text}")
     print(f"Tokens: {output.tokens}")
+    print(f"Token Ids: {output.ids}")
     print(f"Type Ids: {output.type_ids}")
+
+    # encode tokens
+    # token_ids = tokenizer.encode(output.tokens, is_pretokenized=True, add_special_tokens=False).ids
+    token_ids = [tokenizer.token_to_id(token) for token in output.tokens]
+    print(f"Token Ids(from tokens): {token_ids}")
 
     texts = ("Hello, y'all!", "How are you 😁 ?")
     output = tokenizer.encode(*texts)

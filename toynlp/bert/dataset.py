@@ -2,6 +2,10 @@ import random
 import collections
 
 from datasets import Dataset, load_dataset, DatasetDict
+from tokenizers import Tokenizer
+import torch
+from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pad_sequence
 
 from toynlp.bert.config import BertConfig
 from toynlp.bert.tokenizer import BertTokenizer
@@ -309,7 +313,7 @@ def batch_create_pretraining_examples_from_documents(
 def get_dataset(
     dataset_path: str,
     dataset_name: str | None,
-    split: str = "train[:10]",
+    split: str,
 ) -> Dataset:
     dataset = load_dataset(path=dataset_path, name=dataset_name, split=split)
     return dataset  # type: ignore[return-value]
@@ -321,11 +325,11 @@ def dataset_transform(raw_dataset: Dataset) -> Dataset:
     documents_dataset = raw_dataset.map(
         lambda batch: {"document": batch_text_to_documents(batch["text"])},
         batched=True,
-        batch_size=15,
-        num_proc=15,
+        batch_size=12,
+        num_proc=12,
         remove_columns=["text", "title"],
     )
-    all_pretrain_instances = documents_dataset.map(
+    pre_train_dataset = documents_dataset.map(
         lambda batch: {
             "tokens": [instance["tokens"] for instance in batch_instances],
             "segment_ids": [instance["segment_ids"] for instance in batch_instances],
@@ -344,11 +348,11 @@ def dataset_transform(raw_dataset: Dataset) -> Dataset:
         )) else {},
         batched=True,
         batch_size=1000,
-        num_proc=15,
+        num_proc=12,
         remove_columns=["document"],
     )
 
-    return all_pretrain_instances
+    return  pre_train_dataset
 
 
 def upload_pretrain_instance(all_pretrain_instances: Dataset):
@@ -369,10 +373,74 @@ def upload_pretrain_instance(all_pretrain_instances: Dataset):
     print(f"Dataset successfully uploaded to Hugging Face hub under repository: {repo_name}")
 
 
+def collate_fn(
+    batch: list[dict],
+    tokenizer: Tokenizer,
+) -> dict[str, torch.Tensor]:
+    batch_tokens = []
+    batch_segment_ids = []
+    batch_is_random_next = []
+    batch_masked_lm_labels = []
+    pad_id = tokenizer.token_to_id("[PAD]")
+
+    batch_max_seq_length = max(len(item["tokens"]) for item in batch)
+
+    for item in batch:
+        batch_tokens.append(torch.tensor([tokenizer.token_to_id(token) for token in item["tokens"]]))
+        batch_segment_ids.append(torch.tensor(item["segment_ids"]))
+        batch_is_random_next.append(torch.tensor(item["is_random_next"]))
+        # length batch_max_seq_length tensor for masked_lm_labels
+        padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
+        for i, pos in enumerate(item["masked_lm_positions"].tolist()):
+            padded_masked_lm_label_token_ids[pos] = tokenizer.token_to_id(item["masked_lm_labels"][i])
+        batch_masked_lm_labels.append(padded_masked_lm_label_token_ids)
+    batch_padded_token_id_tensor = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
+    batch_segment_ids_tensor = pad_sequence(batch_segment_ids, padding_value=pad_id, batch_first=True)
+
+    return {
+        "tokens": batch_padded_token_id_tensor,
+        "segment_ids": batch_segment_ids_tensor,
+        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.float),
+        "masked_lm_labels": torch.stack(batch_masked_lm_labels),
+    }
+
+
+def get_split_dataloader(
+    dataset_path: str,
+    split: str,
+    config: BertConfig,
+) -> DataLoader:
+    raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
+    pretrain_dataset = dataset_transform(raw_dataset)
+    dataloader = torch.utils.data.DataLoader(
+        pretrain_dataset.with_format(type="torch"),
+        batch_size=config.batch_size,
+        collate_fn=lambda batch: collate_fn(batch, bert_tokenizer)
+    )
+
+    return dataloader
+
+
 if __name__ == "__main__":
     config = BertConfig()
 
-    raw_dataset = get_dataset(config.dataset_path, config.dataset_name, split="train[:1790]")  # 10%
-    all_pretrain_instances = dataset_transform(raw_dataset)
-    print(f"Number of pre-training instances: {len(all_pretrain_instances)}")
-    upload_pretrain_instance(all_pretrain_instances)
+    # raw_dataset = get_dataset(config.dataset_path, config.dataset_name, split="train[:1790]")  # 10%
+    # all_pretrain_instances = dataset_transform(raw_dataset)
+    # print(f"Number of pre-training instances: {len(all_pretrain_instances)}")
+    # upload_pretrain_instance(all_pretrain_instances)
+
+    val_dataset_loader = get_split_dataloader(
+        config.dataset_path,
+        # config.dataset_split_of_model_val,
+        "train[:10]",
+        config,
+        )
+    print(f"Number of training batches: {len(val_dataset_loader)}")
+    for batch in val_dataset_loader:
+        # Process each batch
+        print(batch)
+        print(batch["tokens"].shape)
+        print(batch["segment_ids"].shape)
+        print(batch["is_random_next"].shape)
+        print(batch["masked_lm_labels"].shape)
+        break

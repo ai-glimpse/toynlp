@@ -10,8 +10,7 @@ class BertConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    max_length: int = 1000
-    batch_size: int = 256
+    batch_size: int = 128  # paper setting: 265
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -38,12 +37,20 @@ class BertConfig:
     learning_rate: float = 0.001
     weight_decay: float = 0.01
     # training configs
+    dataset_split_of_tokenizer: str = "train[:10%]"
+    # dataset_split_of_model_train: str = "train[:8%]"
+    # dataset_split_of_model_val: str = "train[8%:9%]"
+    # dataset_split_of_model_test: str = "train[9%:10%]"
+    dataset_split_of_model_train: str = "train[:8]"
+    dataset_split_of_model_val: str = "train[8:9]"
+    dataset_split_of_model_test: str = "train[9:10]"
+
     epochs: int = 20
-    clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping
+    clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Bert"
-    wandb_enabled: bool = True
+    wandb_enabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
