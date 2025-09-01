@@ -10,7 +10,7 @@ class BertConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 256  # paper setting: 256
+    batch_size: int = 128  # paper setting: 256
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -32,7 +32,7 @@ class BertConfig:
     attention_d_v: int = 768  # value, paper setting: 768
     head_num: int = 12  # paper setting: 12
     d_feed_forward: int = 3072  # paper setting: 3072
-    encoder_layers: int = 6  # paper setting: 12
+    encoder_layers: int = 12  # paper setting: 12
 
     dropout_ratio: float = 0.1
     # optimizer configs
@@ -41,16 +41,16 @@ class BertConfig:
     # training configs
     dataset_split_of_tokenizer: str = "train[:10%]"
 
-    dataset_split_of_model_train: str = "train[:8%]"
-    dataset_split_of_model_val: str = "train[8%:9%]"
-    dataset_split_of_model_test: str = "train[9%:10%]"
+    # dataset_split_of_model_train: str = "train[:8%]"
+    # dataset_split_of_model_val: str = "train[8%:9%]"
+    # dataset_split_of_model_test: str = "train[9%:10%]"
 
-    # dataset_split_of_model_train: str = "train[:8]"
-    # dataset_split_of_model_val: str = "train[8:9]"
-    # dataset_split_of_model_test: str = "train[9:10]"
+    dataset_split_of_model_train: str = "train[:8]"
+    dataset_split_of_model_val: str = "train[8:9]"
+    dataset_split_of_model_test: str = "train[9:10]"
 
     epochs: int = 40
-    clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
+    clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Bert"
