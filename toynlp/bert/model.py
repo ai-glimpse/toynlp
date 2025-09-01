@@ -12,7 +12,9 @@ class BertEmbedding(torch.nn.Module):
             embedding_dim=d_model,
             padding_idx=padding_idx,
         )
-        self.position_embedding = torch.nn.Embedding(max_length, d_model, padding_idx=padding_idx)
+        # TODO: shall we sepcific padding_idx here?
+        # self.position_embedding = torch.nn.Embedding(max_length, d_model, padding_idx=padding_idx)
+        self.position_embedding = torch.nn.Embedding(max_length, d_model)
         # 2: sentence A, sentence B
         self.segment_embedding = torch.nn.Embedding(2, d_model)
         self.dropout = torch.nn.Dropout(dropout)

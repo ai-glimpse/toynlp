@@ -14,6 +14,7 @@ from toynlp.bert.dataset import get_split_dataloader
 setup_seed(1234)  # Set a random seed for reproducibility
 set_deterministic_mode()  # Set deterministic mode for reproducibility
 
+
 class BertTrainer:
     def __init__(self, config: BertConfig, pad_token_id: int) -> None:
         self.config = config
@@ -69,19 +70,15 @@ class BertTrainer:
                         "TrainLoss": train_stats["loss"],
                         "ValLoss": val_loss_stats["loss"],
                         "TestLoss": test_loss_stats["loss"],
-
                         "TrainMLMLoss": train_stats["mlm_loss"],
                         "ValMLMLoss": val_loss_stats["mlm_loss"],
                         "TestMLMLoss": test_loss_stats["mlm_loss"],
-
                         "TrainNSPLoss": train_stats["nsp_loss"],
                         "ValNSPLoss": val_loss_stats["nsp_loss"],
                         "TestNSPLoss": test_loss_stats["nsp_loss"],
-
                         "TrainNSPAccuracy": train_stats["nsp_accuracy"],
                         "ValNSPAccuracy": val_loss_stats["nsp_accuracy"],
                         "TestNSPAccuracy": test_loss_stats["nsp_accuracy"],
-
                         "TrainPerplexity": torch.exp(torch.tensor(train_stats["loss"])),
                         "ValPerplexity": torch.exp(torch.tensor(val_loss_stats["loss"])),
                         "TestPerplexity": torch.exp(torch.tensor(test_loss_stats["loss"])),
@@ -100,12 +97,9 @@ class BertTrainer:
             batch_masked_lm_labels = batch["masked_lm_labels"].to(self.device)
             batch_is_random_next = batch["is_random_next"].to(self.device)
             loss_stats = self.calc_loss_batch(
-                batch_input_tokens,
-                batch_segment_ids,
-                batch_is_random_next,
-                batch_masked_lm_labels
+                batch_input_tokens, batch_segment_ids, batch_is_random_next, batch_masked_lm_labels
             )
-            loss = loss_stats["loss"]
+            loss: torch.Tensor = loss_stats["loss"]
 
             nsp_total += loss_stats["nsp_total"]
             nsp_correct += loss_stats["nsp_correct"]
@@ -113,10 +107,11 @@ class BertTrainer:
             if self.clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_norm)
             self.optimizer.step()
-            total_loss += loss.item() * batch_input_tokens.size(0)  # Multiply by batch size
-            mlm_loss += loss_stats["mlm_loss"] * batch_input_tokens.size(0)
-            nsp_loss += loss_stats["nsp_loss"] * batch_input_tokens.size(0)
-            total_samples += batch_input_tokens.size(0)
+            batch_size = batch_input_tokens.size(0)
+            total_loss += loss.item() * batch_size  # Multiply by batch size
+            mlm_loss += loss_stats["mlm_loss"].item() * batch_size
+            nsp_loss += loss_stats["nsp_loss"].item() * batch_size
+            total_samples += batch_size
         avg_train_loss = total_loss / total_samples
         avg_mlm_loss = mlm_loss / total_samples
         avg_nsp_loss = nsp_loss / total_samples
@@ -132,10 +127,10 @@ class BertTrainer:
         return train_stats
 
     def _validate_epoch(
-            self,
-            val_dataloader: DataLoader,
-            test_dataloader: DataLoader,
-            ) -> tuple[dict[str, float], dict[str, float]]:
+        self,
+        val_dataloader: DataLoader,
+        test_dataloader: DataLoader,
+    ) -> tuple[dict[str, float], dict[str, float]]:
         self.model.eval()
         with torch.no_grad():
             val_loss_stats = self.calc_loss_loader(val_dataloader)
@@ -143,15 +138,18 @@ class BertTrainer:
         return val_loss_stats, test_loss_stats
 
     def calc_loss_batch(
-            self,
-            batch_input_tokens: torch.Tensor,
-            batch_segment_ids: torch.Tensor,
-            batch_is_random_next: torch.Tensor,
-            batch_masked_lm_labels: torch.Tensor
-            ) -> dict[str, float | torch.Tensor]:
+        self,
+        batch_input_tokens: torch.Tensor,
+        batch_segment_ids: torch.Tensor,
+        batch_is_random_next: torch.Tensor,
+        batch_masked_lm_labels: torch.Tensor,
+    ) -> dict[str, float | torch.Tensor]:
         nsp_logits_output, mlm_logits_output = self.model(batch_input_tokens, batch_segment_ids)
         pred = mlm_logits_output.reshape(-1, mlm_logits_output.shape[-1])
         target_batch = batch_masked_lm_labels.reshape(-1)
+        # print(
+        #     f"percetage of mask: {(batch_masked_lm_labels != 0).sum(dim=1) / batch_input_tokens.size(1)}"
+        # )  # should be ~15% of tokens
         mlm_loss = self.mlm_criterion(pred, target_batch)
         nsp_loss = self.nsp_criterion(nsp_logits_output, batch_is_random_next)
         loss = mlm_loss + nsp_loss
@@ -180,8 +178,9 @@ class BertTrainer:
             segment_batch_device = batch["segment_ids"].to(self.device)
             is_random_next_batch_device = batch["is_random_next"].to(self.device)
             target_batch_device = batch["masked_lm_labels"].to(self.device)
-            loss_stats = self.calc_loss_batch(input_batch_device, segment_batch_device,
-                                        is_random_next_batch_device, target_batch_device)
+            loss_stats = self.calc_loss_batch(
+                input_batch_device, segment_batch_device, is_random_next_batch_device, target_batch_device
+            )
             total_loss += loss_stats["loss"].item() * batch_size  # Multiply by batch size
             mlm_loss += loss_stats["mlm_loss"].item() * batch_size
             nsp_loss += loss_stats["nsp_loss"].item() * batch_size
@@ -202,6 +201,7 @@ class BertTrainer:
         }
 
         return stats
+
 
 def train_model(config: BertConfig) -> None:
     """Train the BERT model with the given configuration."""

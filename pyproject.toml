@@ -137,6 +137,7 @@ directory = "htmlcov"
 
 
 [tool.mypy]
+files = ["toynlp", "tests"]
 ignore_missing_imports = true
 check_untyped_defs = true
 disallow_untyped_decorators = false

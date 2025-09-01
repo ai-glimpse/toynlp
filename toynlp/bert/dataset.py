@@ -23,6 +23,7 @@ def convert_to_unicode(text):
     msg = f"Unsupported string type: {type(text)}"
     raise ValueError(msg)
 
+
 # https://github.com/google-research/bert/blob/eedf5716ce1268e56f0a50264a88cafad334ac61/create_pretraining_data.py#L418
 def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
     """Truncates a pair of sequences to a maximum sequence length."""
@@ -40,6 +41,7 @@ def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
             del trunc_tokens[0]
         else:
             trunc_tokens.pop()
+
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])  # noqa: PYI024
 
@@ -336,23 +338,27 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
             "is_random_next": [instance["is_random_next"] for instance in batch_instances],
             "masked_lm_positions": [instance["masked_lm_positions"] for instance in batch_instances],
             "masked_lm_labels": [instance["masked_lm_labels"] for instance in batch_instances],
-        } if (batch_instances := batch_create_pretraining_examples_from_documents(
-            documents_dataset,
-            batch["document"],
-            max_seq_length=config.max_seq_length,
-            short_seq_prob=config.short_seq_prob,
-            masked_lm_prob=config.masked_lm_prob,
-            max_predictions_per_seq=config.max_predictions_per_seq,
-            vocab_words=list(bert_tokenizer.get_vocab().keys()),
-            rng=random.Random(12345),
-        )) else {},
+        }
+        if (
+            batch_instances := batch_create_pretraining_examples_from_documents(
+                documents_dataset,
+                batch["document"],
+                max_seq_length=config.max_seq_length,
+                short_seq_prob=config.short_seq_prob,
+                masked_lm_prob=config.masked_lm_prob,
+                max_predictions_per_seq=config.max_predictions_per_seq,
+                vocab_words=list(bert_tokenizer.get_vocab().keys()),
+                rng=random.Random(12345),
+            )
+        )
+        else {},
         batched=True,
         batch_size=1000,
         num_proc=12,
         remove_columns=["document"],
     )
 
-    return  pre_train_dataset
+    return pre_train_dataset
 
 
 def upload_pretrain_instance(all_pretrain_instances: Dataset):
@@ -415,7 +421,7 @@ def get_split_dataloader(
     dataloader = torch.utils.data.DataLoader(
         pretrain_dataset.with_format(type="torch"),
         batch_size=config.batch_size,
-        collate_fn=lambda batch: collate_fn(batch, bert_tokenizer)
+        collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
     )
 
     return dataloader
@@ -434,7 +440,7 @@ if __name__ == "__main__":
         # config.dataset_split_of_model_val,
         "train[:10]",
         config,
-        )
+    )
     print(f"Number of training batches: {len(val_dataset_loader)}")
     for batch in val_dataset_loader:
         # Process each batch

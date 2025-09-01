@@ -24,4 +24,5 @@ repos:
     rev: v1.17.1  # Use the sha / tag you want to point at
     hooks:
       - id: mypy
+        pass_filenames: false
         args: [--config-file, pyproject.toml]

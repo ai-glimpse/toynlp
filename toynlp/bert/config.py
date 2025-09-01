@@ -36,7 +36,7 @@ class BertConfig:
 
     dropout_ratio: float = 0.0
     # optimizer configs
-    learning_rate: float = 0.001
+    learning_rate: float = 0.01
     weight_decay: float = 0.0
     # training configs
     dataset_split_of_tokenizer: str = "train[:10%]"
@@ -45,8 +45,8 @@ class BertConfig:
     # dataset_split_of_model_val: str = "train[8%:9%]"
     # dataset_split_of_model_test: str = "train[9%:10%]"
 
-    dataset_split_of_model_train: str = "train[:8]"
-    dataset_split_of_model_val: str = "train[8:9]"
+    dataset_split_of_model_train: str = "train[8:9]"
+    dataset_split_of_model_val: str = "train[7:8]"
     dataset_split_of_model_test: str = "train[9:10]"
 
     epochs: int = 40
