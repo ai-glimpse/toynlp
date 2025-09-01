@@ -102,7 +102,7 @@ def create_masked_lm_predictions(  # noqa: C901, PLR0912
             masked_token = None
             # 80% of the time, replace with [MASK]
             if rng.random() < 0.8:
-                masked_token = "[MASK]"
+                masked_token = "[MASK]"  # noqa: S105
             # 10% of the time, keep original
             elif rng.random() < 0.5:
                 masked_token = tokens[index]
@@ -261,7 +261,7 @@ def text_to_documents(text: str) -> list[list[str]]:
     all_documents = [[]]
     lines = text.split("\n")
     for line in lines:
-        line = convert_to_unicode(line).strip()
+        line = convert_to_unicode(line).strip()  # noqa: PLW2901
         # Empty lines are used as document delimiters
         if not line:
             all_documents.append([])
@@ -280,7 +280,7 @@ def batch_text_to_documents(batch: list[str]) -> list[list[str]]:
     all_documents = []
     for text in batch:
         for doc in text_to_documents(text):
-            all_documents.append(doc)
+            all_documents.append(doc)  # noqa: PERF402
     return all_documents
 
 
