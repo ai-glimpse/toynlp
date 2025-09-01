@@ -51,7 +51,7 @@ class BertTrainer:
                 f"Train NSP Loss: {train_stats['nsp_loss']:.4f}, "
                 f"Train NSP Accuracy: {train_stats['nsp_accuracy']:.4f}, "
                 f"Val Loss: {val_loss_stats['loss']:.4f}, "
-                f"Val MLM Loss: {val_loss_stats['loss']:.4f}, "
+                f"Val MLM Loss: {val_loss_stats['mlm_loss']:.4f}, "
                 f"Val NSP Loss: {val_loss_stats['nsp_loss']:.4f}, "
                 f"Val NSP Accuracy: {val_loss_stats['nsp_accuracy']:.4f}, "
                 f"Test Loss: {test_loss_stats['loss']:.4f}, "
