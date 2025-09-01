@@ -5,7 +5,7 @@ from toynlp.util import current_device
 
 
 class BertEmbedding(torch.nn.Module):
-    def __init__(self, vocab_size: int, max_length: int, d_model: int, padding_idx: int) -> None:
+    def __init__(self, vocab_size: int, max_length: int, d_model: int, padding_idx: int, dropout: float) -> None:
         super().__init__()
         self.token_embedding = torch.nn.Embedding(
             num_embeddings=vocab_size,
@@ -15,7 +15,7 @@ class BertEmbedding(torch.nn.Module):
         self.position_embedding = torch.nn.Embedding(max_length, d_model, padding_idx=padding_idx)
         # 2: sentence A, sentence B
         self.segment_embedding = torch.nn.Embedding(2, d_model)
-        self.dropout = torch.nn.Dropout(p=0.1)
+        self.dropout = torch.nn.Dropout(dropout)
 
     def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor) -> torch.Tensor:
         token_embeddings = self.token_embedding(input_ids)
@@ -141,17 +141,18 @@ class Encoder(torch.nn.Module):
             max_length=config.max_seq_length,
             d_model=config.d_model,
             padding_idx=padding_idx,
+            dropout=config.dropout_ratio,
         )
         self.layers = torch.nn.ModuleList(
             [EncoderTransformerBlock(config) for _ in range(config.encoder_layers)],
         )
 
     def forward(
-            self,
-            source_token_ids: torch.Tensor,
-            segment_ids: torch.Tensor,
-            mask: torch.Tensor | None = None,
-            ) -> torch.Tensor:
+        self,
+        source_token_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         x = self.bert_embedding(source_token_ids, segment_ids)
         for layer in self.layers:
             x = layer(x, mask)
@@ -190,6 +191,7 @@ class MLMHead(torch.nn.Module):
         x = self.linear(x) + self.bias
         return x
 
+
 class BertModel(torch.nn.Module):
     def __init__(self, config: BertConfig, padding_idx: int) -> None:
         super().__init__()
@@ -204,10 +206,10 @@ class BertModel(torch.nn.Module):
         self.device = current_device
 
     def forward(
-            self,
-            source_token_ids: torch.Tensor,
-            source_segments: torch.Tensor,
-        ) -> tuple[torch.Tensor, torch.Tensor]:
+        self,
+        source_token_ids: torch.Tensor,
+        source_segments: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         source_mask = self._get_source_mask(source_token_ids)
         encoder_output = self.encoder(source_token_ids, source_segments, source_mask)
         nsp_output = self.nsp_head(encoder_output)
@@ -217,7 +219,6 @@ class BertModel(torch.nn.Module):
     def _get_source_mask(self, source_token_ids: torch.Tensor) -> torch.Tensor:
         # shape: (batch_size, 1, 1, source_seq_length)
         return (source_token_ids != self.padding_idx).unsqueeze(1).unsqueeze(2)
-
 
 
 if __name__ == "__main__":
@@ -236,7 +237,6 @@ if __name__ == "__main__":
     model = BertModel(config, padding_idx=0).to(device=current_device)
     output = model(source_token_ids, source_segments)
     print(output[0].shape, output[1].shape)  # (2, 2), (2, 10, vocab_size)
-
 
     # BERTBASE (L=12, H=768, A=12, Total Parameters=110M)
     base_bert_config = BertConfig(

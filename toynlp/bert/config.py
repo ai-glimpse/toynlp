@@ -10,7 +10,7 @@ class BertConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 128  # paper setting: 256
+    batch_size: int = 80  # paper setting: 256
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -34,10 +34,10 @@ class BertConfig:
     d_feed_forward: int = 3072  # paper setting: 3072
     encoder_layers: int = 12  # paper setting: 12
 
-    dropout_ratio: float = 0.1
+    dropout_ratio: float = 0.0
     # optimizer configs
     learning_rate: float = 0.001
-    weight_decay: float = 0.01
+    weight_decay: float = 0.0
     # training configs
     dataset_split_of_tokenizer: str = "train[:10%]"
 
@@ -50,7 +50,7 @@ class BertConfig:
     dataset_split_of_model_test: str = "train[9:10]"
 
     epochs: int = 40
-    clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping
+    clip_norm: float | None = None  # Gradient clipping norm, None means no clipping
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Bert"
