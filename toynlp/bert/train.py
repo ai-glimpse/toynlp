@@ -35,6 +35,34 @@ class BertTrainer:
         if self.clip_norm:
             print(f"Gradient clipping enabled with norm {self.clip_norm}")
 
+        # Learning rate scheduler setup
+        self.warmup_steps = self.config.warmup_steps  # As per BERT paper
+        self.current_step = 0
+        self.base_lr = self.config.learning_rate
+        print(f"Learning rate warmup enabled: {self.warmup_steps} warmup steps")
+
+    def get_lr(self) -> float:
+        """Calculate learning rate with warmup and linear decay."""
+        if self.current_step < self.warmup_steps:
+            # Linear warmup
+            return self.base_lr * self.current_step / self.warmup_steps
+
+        # Linear decay after warmup
+        # Assuming we want to decay to 0 over the remaining steps
+        # You can adjust total_steps based on your training schedule
+        total_steps = self.config.epochs * 1000  # Rough estimate, adjust as needed
+        remaining_steps = total_steps - self.warmup_steps
+        decay_steps = self.current_step - self.warmup_steps
+        if remaining_steps <= 0:
+            return 0.0
+        return self.base_lr * max(0.0, (remaining_steps - decay_steps) / remaining_steps)
+
+    def update_lr(self) -> None:
+        """Update learning rate for all parameter groups."""
+        lr = self.get_lr()
+        for param_group in self.optimizer.param_groups:
+            param_group["lr"] = lr
+
     def train(
         self,
         train_dataloader: DataLoader,
@@ -46,12 +74,14 @@ class BertTrainer:
             train_stats = self._train_epoch(train_dataloader)
             # val_loss_stats, test_loss_stats = self._validate_epoch(val_dataloader, test_dataloader)
 
+            current_lr = self.get_lr()
             print(
                 f"Epoch {epoch + 1}/{self.config.epochs} - "
                 f"Train Loss: {train_stats['loss']:.4f}, "
                 f"Train MLM Loss: {train_stats['mlm_loss']:.4f}, "
                 f"Train NSP Loss: {train_stats['nsp_loss']:.4f}, "
                 f"Train NSP Accuracy: {train_stats['nsp_accuracy']:.4f}, "
+                f"LR: {current_lr:.6f}",
                 # f"Val Loss: {val_loss_stats['loss']:.4f}, "
                 # f"Val MLM Loss: {val_loss_stats['mlm_loss']:.4f}, "
                 # f"Val NSP Loss: {val_loss_stats['nsp_loss']:.4f}, "
@@ -66,26 +96,28 @@ class BertTrainer:
             #     torch.save(self.model, self.model_path)
             #     print(f"Saved best model({val_loss_stats['loss']:.4f}) from epoch {epoch + 1} to {self.model_path}")
             # # log metrics to wandb
-            # if self.config.wandb_enabled:
-            #     wandb.log(
-            #         {
-            #             "TrainLoss": train_stats["loss"],
-            #             "ValLoss": val_loss_stats["loss"],
-            #             "TestLoss": test_loss_stats["loss"],
-            #             "TrainMLMLoss": train_stats["mlm_loss"],
-            #             "ValMLMLoss": val_loss_stats["mlm_loss"],
-            #             "TestMLMLoss": test_loss_stats["mlm_loss"],
-            #             "TrainNSPLoss": train_stats["nsp_loss"],
-            #             "ValNSPLoss": val_loss_stats["nsp_loss"],
-            #             "TestNSPLoss": test_loss_stats["nsp_loss"],
-            #             "TrainNSPAccuracy": train_stats["nsp_accuracy"],
-            #             "ValNSPAccuracy": val_loss_stats["nsp_accuracy"],
-            #             "TestNSPAccuracy": test_loss_stats["nsp_accuracy"],
-            #             "TrainPerplexity": torch.exp(torch.tensor(train_stats["loss"])),
-            #             "ValPerplexity": torch.exp(torch.tensor(val_loss_stats["loss"])),
-            #             "TestPerplexity": torch.exp(torch.tensor(test_loss_stats["loss"])),
-            #         },
-            #     )
+            if self.config.wandb_enabled:
+                wandb.log(
+                    {
+                        "TrainLoss": train_stats["loss"],
+                        "TrainMLMLoss": train_stats["mlm_loss"],
+                        "TrainNSPLoss": train_stats["nsp_loss"],
+                        "TrainNSPAccuracy": train_stats["nsp_accuracy"],
+                        "TrainPerplexity": torch.exp(torch.tensor(train_stats["loss"])),
+                        "LearningRate": current_lr,
+                        "Step": self.current_step,
+                        # "ValLoss": val_loss_stats["loss"],
+                        # "TestLoss": test_loss_stats["loss"],
+                        # "ValMLMLoss": val_loss_stats["mlm_loss"],
+                        # "TestMLMLoss": test_loss_stats["mlm_loss"],
+                        # "ValNSPLoss": val_loss_stats["nsp_loss"],
+                        # "TestNSPLoss": test_loss_stats["nsp_loss"],
+                        # "ValNSPAccuracy": val_loss_stats["nsp_accuracy"],
+                        # "TestNSPAccuracy": test_loss_stats["nsp_accuracy"],
+                        # "ValPerplexity": torch.exp(torch.tensor(val_loss_stats["loss"])),
+                        # "TestPerplexity": torch.exp(torch.tensor(test_loss_stats["loss"])),
+                    },
+                )
 
     def _train_epoch(self, train_dataloader: DataLoader) -> dict[str, float]:
         self.model.train()
@@ -93,6 +125,9 @@ class BertTrainer:
         total_samples = 0
         nsp_total, nsp_correct = 0, 0  # Initialize counters for NSP accuracy
         for batch in train_dataloader:
+            # Update learning rate before each step
+            self.update_lr()
+
             self.optimizer.zero_grad()
             batch_input_tokens = batch["tokens"].to(self.device)
             batch_segment_ids = batch["segment_ids"].to(self.device)
@@ -109,6 +144,10 @@ class BertTrainer:
             if self.clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_norm)
             self.optimizer.step()
+
+            # Increment step counter
+            self.current_step += 1
+
             batch_size = batch_input_tokens.size(0)
             total_loss += loss.item() * batch_size  # Multiply by batch size
             mlm_loss += loss_stats["mlm_loss"].item() * batch_size
@@ -157,9 +196,15 @@ class BertTrainer:
         pred_tokens = mlm_logits_output[0].argmax(dim=-1)
         if random.random() < 0.01:  # Print 1% of the batches
             print("=" * 100)
-            print(f"Input Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}")  # Decode input tokens
-            print(f"Target Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in target_tokens  if token != 0])}")  # Decode target tokens
-            print(f"Predicted Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens != 0]])}")  # Decode predicted tokens
+            print(
+                f"Input Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}"
+            )  # Decode input tokens
+            print(
+                f"Target Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in target_tokens if token != 0])}"
+            )  # Decode target tokens
+            print(
+                f"Predicted Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens != 0]])}"
+            )  # Decode predicted tokens
             print("=" * 100)
 
         # print(
