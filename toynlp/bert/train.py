@@ -22,6 +22,7 @@ class BertTrainer:
         self.model_path = BERT_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
+        self.tokenizer = BertTokenizer().load()
         self.optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=self.config.learning_rate,
@@ -42,7 +43,7 @@ class BertTrainer:
         best_val_loss = float("inf")
         for epoch in range(self.config.epochs):
             train_stats = self._train_epoch(train_dataloader)
-            val_loss_stats, test_loss_stats = self._validate_epoch(val_dataloader, test_dataloader)
+            # val_loss_stats, test_loss_stats = self._validate_epoch(val_dataloader, test_dataloader)
 
             print(
                 f"Epoch {epoch + 1}/{self.config.epochs} - "
@@ -50,40 +51,40 @@ class BertTrainer:
                 f"Train MLM Loss: {train_stats['mlm_loss']:.4f}, "
                 f"Train NSP Loss: {train_stats['nsp_loss']:.4f}, "
                 f"Train NSP Accuracy: {train_stats['nsp_accuracy']:.4f}, "
-                f"Val Loss: {val_loss_stats['loss']:.4f}, "
-                f"Val MLM Loss: {val_loss_stats['mlm_loss']:.4f}, "
-                f"Val NSP Loss: {val_loss_stats['nsp_loss']:.4f}, "
-                f"Val NSP Accuracy: {val_loss_stats['nsp_accuracy']:.4f}, "
-                f"Test Loss: {test_loss_stats['loss']:.4f}, "
-                f"Test NSP Accuracy: {test_loss_stats['nsp_accuracy']:.4f}, "
-                f"Test MLM Loss: {test_loss_stats['mlm_loss']:.4f}, "
-                f"Test NSP Loss: {test_loss_stats['nsp_loss']:.4f}"
+                # f"Val Loss: {val_loss_stats['loss']:.4f}, "
+                # f"Val MLM Loss: {val_loss_stats['mlm_loss']:.4f}, "
+                # f"Val NSP Loss: {val_loss_stats['nsp_loss']:.4f}, "
+                # f"Val NSP Accuracy: {val_loss_stats['nsp_accuracy']:.4f}, "
+                # f"Test Loss: {test_loss_stats['loss']:.4f}, "
+                # f"Test NSP Accuracy: {test_loss_stats['nsp_accuracy']:.4f}, "
+                # f"Test MLM Loss: {test_loss_stats['mlm_loss']:.4f}, "
+                # f"Test NSP Loss: {test_loss_stats['nsp_loss']:.4f}"
             )
-            if val_loss_stats["loss"] < best_val_loss:
-                best_val_loss = val_loss_stats["loss"]
-                torch.save(self.model, self.model_path)
-                print(f"Saved best model({val_loss_stats['loss']:.4f}) from epoch {epoch + 1} to {self.model_path}")
-            # log metrics to wandb
-            if self.config.wandb_enabled:
-                wandb.log(
-                    {
-                        "TrainLoss": train_stats["loss"],
-                        "ValLoss": val_loss_stats["loss"],
-                        "TestLoss": test_loss_stats["loss"],
-                        "TrainMLMLoss": train_stats["mlm_loss"],
-                        "ValMLMLoss": val_loss_stats["mlm_loss"],
-                        "TestMLMLoss": test_loss_stats["mlm_loss"],
-                        "TrainNSPLoss": train_stats["nsp_loss"],
-                        "ValNSPLoss": val_loss_stats["nsp_loss"],
-                        "TestNSPLoss": test_loss_stats["nsp_loss"],
-                        "TrainNSPAccuracy": train_stats["nsp_accuracy"],
-                        "ValNSPAccuracy": val_loss_stats["nsp_accuracy"],
-                        "TestNSPAccuracy": test_loss_stats["nsp_accuracy"],
-                        "TrainPerplexity": torch.exp(torch.tensor(train_stats["loss"])),
-                        "ValPerplexity": torch.exp(torch.tensor(val_loss_stats["loss"])),
-                        "TestPerplexity": torch.exp(torch.tensor(test_loss_stats["loss"])),
-                    },
-                )
+            # if val_loss_stats["loss"] < best_val_loss:
+            #     best_val_loss = val_loss_stats["loss"]
+            #     torch.save(self.model, self.model_path)
+            #     print(f"Saved best model({val_loss_stats['loss']:.4f}) from epoch {epoch + 1} to {self.model_path}")
+            # # log metrics to wandb
+            # if self.config.wandb_enabled:
+            #     wandb.log(
+            #         {
+            #             "TrainLoss": train_stats["loss"],
+            #             "ValLoss": val_loss_stats["loss"],
+            #             "TestLoss": test_loss_stats["loss"],
+            #             "TrainMLMLoss": train_stats["mlm_loss"],
+            #             "ValMLMLoss": val_loss_stats["mlm_loss"],
+            #             "TestMLMLoss": test_loss_stats["mlm_loss"],
+            #             "TrainNSPLoss": train_stats["nsp_loss"],
+            #             "ValNSPLoss": val_loss_stats["nsp_loss"],
+            #             "TestNSPLoss": test_loss_stats["nsp_loss"],
+            #             "TrainNSPAccuracy": train_stats["nsp_accuracy"],
+            #             "ValNSPAccuracy": val_loss_stats["nsp_accuracy"],
+            #             "TestNSPAccuracy": test_loss_stats["nsp_accuracy"],
+            #             "TrainPerplexity": torch.exp(torch.tensor(train_stats["loss"])),
+            #             "ValPerplexity": torch.exp(torch.tensor(val_loss_stats["loss"])),
+            #             "TestPerplexity": torch.exp(torch.tensor(test_loss_stats["loss"])),
+            #         },
+            #     )
 
     def _train_epoch(self, train_dataloader: DataLoader) -> dict[str, float]:
         self.model.train()
@@ -112,6 +113,7 @@ class BertTrainer:
             mlm_loss += loss_stats["mlm_loss"].item() * batch_size
             nsp_loss += loss_stats["nsp_loss"].item() * batch_size
             total_samples += batch_size
+            break
         avg_train_loss = total_loss / total_samples
         avg_mlm_loss = mlm_loss / total_samples
         avg_nsp_loss = nsp_loss / total_samples
@@ -147,6 +149,17 @@ class BertTrainer:
         nsp_logits_output, mlm_logits_output = self.model(batch_input_tokens, batch_segment_ids)
         pred = mlm_logits_output.reshape(-1, mlm_logits_output.shape[-1])
         target_batch = batch_masked_lm_labels.reshape(-1)
+
+        # print input and target token
+        input_tokens = batch_input_tokens[0]
+        target_tokens = batch_masked_lm_labels[0]
+        pred_tokens = mlm_logits_output[0].argmax(dim=-1)
+        print("=" * 100)
+        print(f"Input Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}")  # Decode input tokens
+        print(f"Target Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in target_tokens  if token != 0])}")  # Decode target tokens
+        print(f"Predicted Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_batch != 0]])}")  # Decode predicted tokens
+        print("=" * 100)
+
         # print(
         #     f"percetage of mask: {(batch_masked_lm_labels != 0).sum(dim=1) / batch_input_tokens.size(1)}"
         # )  # should be ~15% of tokens
@@ -188,6 +201,7 @@ class BertTrainer:
 
             nsp_total += loss_stats["nsp_total"]
             nsp_correct += loss_stats["nsp_correct"]
+            break
 
         avg_loss = total_loss / total_samples  # Correct average
         mlm_loss = mlm_loss / total_samples if total_samples > 0 else 0
