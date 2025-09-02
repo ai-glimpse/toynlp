@@ -3,7 +3,7 @@
 
 ## The mistakes that I made
 
-### Can not overfit even on very small dataset
+### Can not overfit even on a very small dataset
 
 I want to make sure that the full pipeline(data loading, tokenization, model training) is working correctly and that the model can overfit on a small dataset before scaling up. To speed up the overfitting speed, I set a bigger learning rate(0.01/0.001). But I find I can not overfit even on a very small dataset.
 
@@ -34,6 +34,7 @@ Epoch 147/1000 - Train Loss: 2.3028, Train MLM Loss: 2.3028, Train NSP Loss: 0.0
 Input Tokens: [CLS]|#|#|skyscr|##aper|arch|##ipe|##lag|##o|[SEP]|trying|to|recover|nuclear|weapons|now|[MASK]|[MASK]|bottom|[MASK]|the|ocean|.|.|.|.|[MASK]|were|trying|to|keep|a|nuclear|power|-|plant|from|melting|down|.|hait|.|.|[MASK]|high|[MASK]|ranking|officials|were|still|alive|at|the|submerged|un|compound|.|.|.|.|all|[MASK]|of|[SEP]
 Target Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
 Predicted Tokens: some|some|some|some|some|some|some|some|some|some
+====================================================================================================
 ```
 
 And the loss is keep shake around 2.3(most mlm loss, the nsp loss is near 0.0).
@@ -41,8 +42,26 @@ The make me realize that the model maybe stuck in a local minimum, due to the **
 So I try with a smaller learning rate `0.0001` and then the training loss can decrease to 0.0, and the predicted tokens can finally match the target tokens:
 
 ```
-
+====================================================================================================
+Epoch 29/1000 - Train Loss: 0.0004, Train MLM Loss: 0.0000, Train NSP Loss: 0.0004, Train NSP Accuracy: 1.0000, 
+====================================================================================================
+Input Tokens: [CLS]|#|#|skyscr|##aper|arch|##ipe|##lag|##o|[SEP]|trying|to|recover|nuclear|weapons|now|[MASK]|[MASK]|bottom|[MASK]|the|ocean|.|.|.|.|[MASK]|were|trying|to|keep|a|nuclear|power|-|plant|from|melting|down|.|reap|.|.|[MASK]|high|[MASK]|ranking|officials|were|still|alive|at|the|submerged|un|compound|.|.|.|.|all|[MASK]|of|[SEP]
+Target Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
+Predicted Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
+====================================================================================================
+Epoch 30/1000 - Train Loss: 0.0000, Train MLM Loss: 0.0000, Train NSP Loss: 0.0000, Train NSP Accuracy: 1.0000, 
+====================================================================================================
+Input Tokens: [CLS]|#|#|skyscr|##aper|arch|##ipe|##lag|##o|[SEP]|trying|to|recover|nuclear|weapons|now|[MASK]|[MASK]|bottom|[MASK]|the|ocean|.|.|.|.|[MASK]|were|trying|to|keep|a|nuclear|power|-|plant|from|melting|down|.|reap|.|.|[MASK]|high|[MASK]|ranking|officials|were|still|alive|at|the|submerged|un|compound|.|.|.|.|all|[MASK]|of|[SEP]
+Target Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
+Predicted Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
+====================================================================================================
 ```
+
+> To speed up the overfitting speed, I set a bigger learning rate(0.01/0.001)
+
+So that's the story: A bigger learning rate can help the model to converge faster, but it may also lead to local minima.
+
+And, why am I so hurry to want to train the model faster? Because my 4060Ti GPU is so slow and want to finish the training as soon as possible. So, be patient man.
 
 
 ## References

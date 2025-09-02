@@ -155,11 +155,11 @@ class BertTrainer:
         input_tokens = batch_input_tokens[0]
         target_tokens = batch_masked_lm_labels[0]
         pred_tokens = mlm_logits_output[0].argmax(dim=-1)
-        if random.random() < 0.001:  # Print 0.1% of the batches
+        if random.random() < 0.01:  # Print 1% of the batches
             print("=" * 100)
             print(f"Input Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}")  # Decode input tokens
             print(f"Target Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in target_tokens  if token != 0])}")  # Decode target tokens
-            print(f"Predicted Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens[0] != 0]])}")  # Decode predicted tokens
+            print(f"Predicted Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens != 0]])}")  # Decode predicted tokens
             print("=" * 100)
 
         # print(
