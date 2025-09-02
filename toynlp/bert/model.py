@@ -177,21 +177,21 @@ class NSPHead(torch.nn.Module):
 class MLMHead(torch.nn.Module):
     def __init__(self, config: BertConfig, token_embedding: torch.nn.Embedding) -> None:
         super().__init__()
-        # self.dense = torch.nn.Linear(config.d_model, config.d_model)
-        # self.activation = torch.nn.GELU()
-        # self.layer_norm = torch.nn.LayerNorm(config.d_model)
-        self.linear = torch.nn.Linear(config.d_model, config.vocab_size, bias=True)
+        self.dense = torch.nn.Linear(config.d_model, config.d_model)
+        self.activation = torch.nn.GELU()
+        self.layer_norm = torch.nn.LayerNorm(config.d_model)
+        self.linear = torch.nn.Linear(config.d_model, config.vocab_size, bias=False)
         # TODO: Weight tying: share weights with token embedding
-        # self.linear.weight = token_embedding.weight
+        self.linear.weight = token_embedding.weight
         # Add bias parameter (not tied to embedding)
-        # self.bias = torch.nn.Parameter(torch.zeros(config.vocab_size))
+        self.bias = torch.nn.Parameter(torch.zeros(config.vocab_size))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x = self.dense(x)
-        # x = self.activation(x)
-        # x = self.layer_norm(x)
-        # x = self.linear(x) + self.bias
-        x = self.linear(x)
+        x = self.dense(x)
+        x = self.activation(x)
+        x = self.layer_norm(x)
+        x = self.linear(x) + self.bias
+        # x = self.linear(x)
         return x
 
 
