@@ -10,7 +10,7 @@ class BertConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 1  # paper setting: 256
+    batch_size: int = 128  # paper setting: 256
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -36,7 +36,7 @@ class BertConfig:
 
     dropout_ratio: float = 0.0
     # optimizer configs
-    learning_rate: float = 0.0001
+    learning_rate: float = 0.00005
     weight_decay: float = 0.0
     # training configs
     dataset_split_of_tokenizer: str = "train[:10%]"

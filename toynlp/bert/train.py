@@ -1,3 +1,4 @@
+import random
 import torch
 from torch.utils.data import DataLoader
 
@@ -113,7 +114,7 @@ class BertTrainer:
             mlm_loss += loss_stats["mlm_loss"].item() * batch_size
             nsp_loss += loss_stats["nsp_loss"].item() * batch_size
             total_samples += batch_size
-            break
+
         avg_train_loss = total_loss / total_samples
         avg_mlm_loss = mlm_loss / total_samples
         avg_nsp_loss = nsp_loss / total_samples
@@ -154,11 +155,12 @@ class BertTrainer:
         input_tokens = batch_input_tokens[0]
         target_tokens = batch_masked_lm_labels[0]
         pred_tokens = mlm_logits_output[0].argmax(dim=-1)
-        print("=" * 100)
-        print(f"Input Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}")  # Decode input tokens
-        print(f"Target Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in target_tokens  if token != 0])}")  # Decode target tokens
-        print(f"Predicted Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_batch != 0]])}")  # Decode predicted tokens
-        print("=" * 100)
+        if random.random() < 0.001:  # Print 0.1% of the batches
+            print("=" * 100)
+            print(f"Input Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}")  # Decode input tokens
+            print(f"Target Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in target_tokens  if token != 0])}")  # Decode target tokens
+            print(f"Predicted Tokens: {"|".join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens[0] != 0]])}")  # Decode predicted tokens
+            print("=" * 100)
 
         # print(
         #     f"percetage of mask: {(batch_masked_lm_labels != 0).sum(dim=1) / batch_input_tokens.size(1)}"
@@ -201,7 +203,6 @@ class BertTrainer:
 
             nsp_total += loss_stats["nsp_total"]
             nsp_correct += loss_stats["nsp_correct"]
-            break
 
         avg_loss = total_loss / total_samples  # Correct average
         mlm_loss = mlm_loss / total_samples if total_samples > 0 else 0
