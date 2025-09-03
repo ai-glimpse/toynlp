@@ -36,7 +36,7 @@ class PositionwiseFeedForward(torch.nn.Module):
         self.layer_norm = torch.nn.LayerNorm(d_model, eps=1e-12)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.linear1(x).gelu()
+        x = torch.nn.functional.gelu(self.linear1(x))
         x = self.linear2(x)
         x = self.dropout(x)
         x = self.layer_norm(x)
@@ -130,7 +130,6 @@ class EncoderTransformerBlock(torch.nn.Module):
         self.mha = MultiHeadAttention(config)
         self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
 
-
     def forward(self, x: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
         h1 = self.mha(x, x, x, mask)
         y1 = x + h1
@@ -159,6 +158,7 @@ class Encoder(torch.nn.Module):
         for layer in self.layers:
             x = layer(x, mask)
         return x
+
 
 class Bert(torch.nn.Module):
     def __init__(self, config: BertConfig, padding_idx: int) -> None:
@@ -247,7 +247,6 @@ class BertPretrainModel(torch.nn.Module):
         nsp_output = self.nsp_head(encoder_output)
         mlm_output = self.mlm_head(encoder_output)
         return nsp_output, mlm_output
-
 
 
 if __name__ == "__main__":
