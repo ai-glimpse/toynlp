@@ -72,7 +72,7 @@ class BertTrainer:
         best_val_loss = float("inf")
         for epoch in range(self.config.epochs):
             train_stats = self._train_epoch(train_dataloader)
-            # val_loss_stats, test_loss_stats = self._validate_epoch(val_dataloader, test_dataloader)
+            val_loss_stats, test_loss_stats = self._validate_epoch(val_dataloader, test_dataloader)
 
             current_lr = self.get_lr()
             print(
@@ -82,20 +82,20 @@ class BertTrainer:
                 f"Train NSP Loss: {train_stats['nsp_loss']:.4f}, "
                 f"Train NSP Accuracy: {train_stats['nsp_accuracy']:.4f}, "
                 f"LR: {current_lr:.6f}",
-                # f"Val Loss: {val_loss_stats['loss']:.4f}, "
-                # f"Val MLM Loss: {val_loss_stats['mlm_loss']:.4f}, "
-                # f"Val NSP Loss: {val_loss_stats['nsp_loss']:.4f}, "
-                # f"Val NSP Accuracy: {val_loss_stats['nsp_accuracy']:.4f}, "
-                # f"Test Loss: {test_loss_stats['loss']:.4f}, "
-                # f"Test NSP Accuracy: {test_loss_stats['nsp_accuracy']:.4f}, "
-                # f"Test MLM Loss: {test_loss_stats['mlm_loss']:.4f}, "
-                # f"Test NSP Loss: {test_loss_stats['nsp_loss']:.4f}"
+                f"Val Loss: {val_loss_stats['loss']:.4f}, "
+                f"Val MLM Loss: {val_loss_stats['mlm_loss']:.4f}, "
+                f"Val NSP Loss: {val_loss_stats['nsp_loss']:.4f}, "
+                f"Val NSP Accuracy: {val_loss_stats['nsp_accuracy']:.4f}, "
+                f"Test Loss: {test_loss_stats['loss']:.4f}, "
+                f"Test NSP Accuracy: {test_loss_stats['nsp_accuracy']:.4f}, "
+                f"Test MLM Loss: {test_loss_stats['mlm_loss']:.4f}, "
+                f"Test NSP Loss: {test_loss_stats['nsp_loss']:.4f}"
             )
-            # if val_loss_stats["loss"] < best_val_loss:
-            #     best_val_loss = val_loss_stats["loss"]
-            #     torch.save(self.model, self.model_path)
-            #     print(f"Saved best model({val_loss_stats['loss']:.4f}) from epoch {epoch + 1} to {self.model_path}")
-            # # log metrics to wandb
+            if val_loss_stats["loss"] < best_val_loss:
+                best_val_loss = val_loss_stats["loss"]
+                torch.save(self.model, self.model_path)
+                print(f"Saved best model({val_loss_stats['loss']:.4f}) from epoch {epoch + 1} to {self.model_path}")
+            # log metrics to wandb
             if self.config.wandb_enabled:
                 wandb.log(
                     {
@@ -106,16 +106,16 @@ class BertTrainer:
                         "TrainPerplexity": torch.exp(torch.tensor(train_stats["loss"])),
                         "LearningRate": current_lr,
                         "Step": self.current_step,
-                        # "ValLoss": val_loss_stats["loss"],
-                        # "TestLoss": test_loss_stats["loss"],
-                        # "ValMLMLoss": val_loss_stats["mlm_loss"],
-                        # "TestMLMLoss": test_loss_stats["mlm_loss"],
-                        # "ValNSPLoss": val_loss_stats["nsp_loss"],
-                        # "TestNSPLoss": test_loss_stats["nsp_loss"],
-                        # "ValNSPAccuracy": val_loss_stats["nsp_accuracy"],
-                        # "TestNSPAccuracy": test_loss_stats["nsp_accuracy"],
-                        # "ValPerplexity": torch.exp(torch.tensor(val_loss_stats["loss"])),
-                        # "TestPerplexity": torch.exp(torch.tensor(test_loss_stats["loss"])),
+                        "ValLoss": val_loss_stats["loss"],
+                        "TestLoss": test_loss_stats["loss"],
+                        "ValMLMLoss": val_loss_stats["mlm_loss"],
+                        "TestMLMLoss": test_loss_stats["mlm_loss"],
+                        "ValNSPLoss": val_loss_stats["nsp_loss"],
+                        "TestNSPLoss": test_loss_stats["nsp_loss"],
+                        "ValNSPAccuracy": val_loss_stats["nsp_accuracy"],
+                        "TestNSPAccuracy": test_loss_stats["nsp_accuracy"],
+                        "ValPerplexity": torch.exp(torch.tensor(val_loss_stats["loss"])),
+                        "TestPerplexity": torch.exp(torch.tensor(test_loss_stats["loss"])),
                     },
                 )
 
