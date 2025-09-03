@@ -6,7 +6,7 @@ import wandb
 from toynlp.util import current_device
 from toynlp.paths import BERT_MODEL_PATH
 from toynlp.bert.config import BertConfig, create_config_from_cli
-from toynlp.bert.model import BertModel
+from toynlp.bert.model import BertPretrainModel
 from toynlp.bert.tokenizer import BertTokenizer
 from toynlp.util import setup_seed, set_deterministic_mode
 from toynlp.bert.dataset import get_split_dataloader
@@ -19,7 +19,7 @@ set_deterministic_mode()  # Set deterministic mode for reproducibility
 class BertTrainer:
     def __init__(self, config: BertConfig, pad_token_id: int) -> None:
         self.config = config
-        self.model = BertModel(self.config, pad_token_id)
+        self.model = BertPretrainModel(self.config, pad_token_id)
         self.model_path = BERT_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
