@@ -37,9 +37,9 @@ class BertConfig:
     dropout_ratio: float = 0.1  # paper setting: 0.1
 
     # optimizer configs
-    learning_rate: float = 2e-5  # paper setting: 0.0001
+    learning_rate: float = 0.0001  # paper setting: 0.0001
     weight_decay: float = 0.01  # paper setting: 0.01
-    warmup_steps: int = 10000  # paper setting: 10000
+    warmup_steps: int = 1000  # paper setting: 10000
     # training configs
     dataset_split_of_tokenizer: str = "train[:10%]"
     dataset_split_of_model_train: str = "train[:8%]"
@@ -55,7 +55,7 @@ class BertConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "Bert"
-    wandb_enabled: bool = False
+    wandb_enabled: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
