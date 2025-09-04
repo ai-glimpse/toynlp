@@ -42,20 +42,13 @@ class BertTrainer:
         print(f"Learning rate warmup enabled: {self.warmup_steps} warmup steps")
 
     def get_lr(self) -> float:
-        """Calculate learning rate with warmup and linear decay."""
+        """Calculate learning rate with warmup and then keep constant."""
         if self.current_step < self.warmup_steps:
             # Linear warmup
             return self.base_lr * self.current_step / self.warmup_steps
 
-        # Linear decay after warmup
-        # Assuming we want to decay to 0 over the remaining steps
-        # You can adjust total_steps based on your training schedule
-        total_steps = self.config.epochs * 1000  # Rough estimate, adjust as needed
-        remaining_steps = total_steps - self.warmup_steps
-        decay_steps = self.current_step - self.warmup_steps
-        if remaining_steps <= 0:
-            return 0.0
-        return self.base_lr * max(0.0, (remaining_steps - decay_steps) / remaining_steps)
+        # Keep learning rate constant after warmup
+        return self.base_lr
 
     def update_lr(self) -> None:
         """Update learning rate for all parameter groups."""
