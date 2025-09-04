@@ -32,17 +32,21 @@ Implementing classic NLP models from scratch with clean code and easy-to-underst
 - [x] NNLM(2003)
 - [x] Word2Vec(2013)
 - [x] Seq2Seq(2014)
-- [x] Attention(2015)
+- [x] Attention(2014)
 - [x] fastText(2016)
 - [x] Transformer(2017)
 - [ ] BERT(2018)
 - [ ] GPT(2018)
-- [ ] XLNet(2019)
-- [ ] T5(2020)
 
 
 
 ## FAQ
+
+### I see there are 10 models before, why only 8 now?
+
+Yes, I removed XLNet and T5. The main reason is that I don't have so many GPUs to train these models. Without training them by myself, I can't guarantee the correctness of the implementations.
+So I just keep the models that I can train and verify myself.
+
 
 ### I find there are DIFFERENCES between the implementations in toynlp and original papers.
 
