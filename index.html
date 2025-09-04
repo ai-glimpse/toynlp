@@ -409,6 +409,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#i-see-there-are-10-models-before-why-only-8-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      I see there are 10 models before, why only 8 now?
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#i-find-there-are-differences-between-the-implementations-in-toynlp-and-original-papers" class="md-nav__link">
     <span class="md-ellipsis">
       I find there are DIFFERENCES between the implementations in toynlp and original papers.
@@ -568,6 +577,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#i-see-there-are-10-models-before-why-only-8-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      I see there are 10 models before, why only 8 now?
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#i-find-there-are-differences-between-the-implementations-in-toynlp-and-original-papers" class="md-nav__link">
     <span class="md-ellipsis">
       I find there are DIFFERENCES between the implementations in toynlp and original papers.
@@ -655,15 +673,16 @@ And we will add more docs for you can RUN it easily, add more playgrounds for yo
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> NNLM(2003)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Word2Vec(2013)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Seq2Seq(2014)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Attention(2015)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Attention(2014)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> fastText(2016)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Transformer(2017)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> BERT(2018)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GPT(2018)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> XLNet(2019)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> T5(2020)</li>
 </ul>
 <h2 id="faq">FAQ<a class="headerlink" href="#faq" title="Permanent link">&para;</a></h2>
+<h3 id="i-see-there-are-10-models-before-why-only-8-now">I see there are 10 models before, why only 8 now?<a class="headerlink" href="#i-see-there-are-10-models-before-why-only-8-now" title="Permanent link">&para;</a></h3>
+<p>Yes, I removed XLNet and T5. The main reason is that I don't have so many GPUs to train these models. Without training them by myself, I can't guarantee the correctness of the implementations.
+So I just keep the models that I can train and verify myself.</p>
 <h3 id="i-find-there-are-differences-between-the-implementations-in-toynlp-and-original-papers">I find there are DIFFERENCES between the implementations in toynlp and original papers.<a class="headerlink" href="#i-find-there-are-differences-between-the-implementations-in-toynlp-and-original-papers" title="Permanent link">&para;</a></h3>
 <p>Yes, there are some differences in the implementations. The goal of toynlp is to provide a simple and educational implementation of these models, which may not include all the optimizations and features in original papers.</p>
 <p>The reason is that I want to focus on the core ideas and concepts behind each model, rather than getting bogged down in implementation details. Especially when the original papers may introduce complexities that are not essential for understanding the main contributions of the work.</p>
