@@ -39,16 +39,16 @@ class BertConfig:
     # optimizer configs
     learning_rate: float = 2e-5  # paper setting: 0.0001
     weight_decay: float = 0.01  # paper setting: 0.01
-    warmup_steps: int = 10000  # paper setting: 10000
+    warmup_steps: int = 100  # paper setting: 10000
     # training configs
     dataset_split_of_tokenizer: str = "train[:10%]"
-    dataset_split_of_model_train: str = "train[:8%]"
-    dataset_split_of_model_val: str = "train[8%:9%]"
-    dataset_split_of_model_test: str = "train[9%:10%]"
+    # dataset_split_of_model_train: str = "train[:8%]"
+    # dataset_split_of_model_val: str = "train[8%:9%]"
+    # dataset_split_of_model_test: str = "train[9%:10%]"
 
-    # dataset_split_of_model_train: str = "train[7:8]"
-    # dataset_split_of_model_val: str = "train[8:9]"
-    # dataset_split_of_model_test: str = "train[9:10]"
+    dataset_split_of_model_train: str = "train[7:8]"
+    dataset_split_of_model_val: str = "train[8:9]"
+    dataset_split_of_model_test: str = "train[9:10]"
 
     epochs: int = 10
     clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping

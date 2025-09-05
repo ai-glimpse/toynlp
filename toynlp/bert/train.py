@@ -127,7 +127,7 @@ class BertTrainer:
             batch_masked_lm_labels = batch["masked_lm_labels"].to(self.device)
             batch_is_random_next = batch["is_random_next"].to(self.device)
             loss_stats = self.calc_loss_batch(
-                batch_input_tokens, batch_segment_ids, batch_is_random_next, batch_masked_lm_labels
+                batch_input_tokens, batch_segment_ids, batch_is_random_next, batch_masked_lm_labels, "train"
             )
             loss: torch.Tensor = loss_stats["loss"]
 
@@ -178,6 +178,7 @@ class BertTrainer:
         batch_segment_ids: torch.Tensor,
         batch_is_random_next: torch.Tensor,
         batch_masked_lm_labels: torch.Tensor,
+        batch_name: str = "train",
     ) -> dict[str, float | torch.Tensor]:
         nsp_logits_output, mlm_logits_output = self.model(batch_input_tokens, batch_segment_ids)
         pred = mlm_logits_output.reshape(-1, mlm_logits_output.shape[-1])
@@ -196,7 +197,7 @@ class BertTrainer:
                 f"Target Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in target_tokens if token != 0])}"
             )  # Decode target tokens
             print(
-                f"Predicted Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens != 0]])}"
+                f"[{batch_name}]Predicted Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens != 0]])}"
             )  # Decode predicted tokens
             print("=" * 100)
 
@@ -232,7 +233,7 @@ class BertTrainer:
             is_random_next_batch_device = batch["is_random_next"].to(self.device)
             target_batch_device = batch["masked_lm_labels"].to(self.device)
             loss_stats = self.calc_loss_batch(
-                input_batch_device, segment_batch_device, is_random_next_batch_device, target_batch_device
+                input_batch_device, segment_batch_device, is_random_next_batch_device, target_batch_device, "Val/Test"
             )
             total_loss += loss_stats["loss"].item() * batch_size  # Multiply by batch size
             mlm_loss += loss_stats["mlm_loss"].item() * batch_size
