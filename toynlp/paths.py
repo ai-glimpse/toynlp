@@ -38,3 +38,4 @@ TRANSFORMER_MODEL_PATH = _MODEL_PATH / "transformer" / "transformer_model.pt"
 # Bert paths
 BERT_TOKENIZER_PATH = _MODEL_PATH / "bert" / "tokenizer.json"
 BERT_MODEL_PATH = _MODEL_PATH / "bert" / "bert_model.pt"
+SST2BERT_MODEL_PATH = _MODEL_PATH / "bert" / "sst2_bert_model.pt"
