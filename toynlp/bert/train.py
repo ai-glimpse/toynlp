@@ -194,10 +194,12 @@ class BertTrainer:
                 f"Input Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}"
             )  # Decode input tokens
             print(
-                f"Target Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in target_tokens if token != 0])}"
+                f"Target Tokens: {'|'.join([self.tokenizer.id_to_token(token.item())
+                    for token in target_tokens if token != 0])}"
             )  # Decode target tokens
             print(
-                f"[{batch_name}]Predicted Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens != 0]])}"
+                f"[{batch_name}]Predicted Tokens: {'|'.join([self.tokenizer.id_to_token(token.item())
+                for token in pred_tokens[target_tokens != 0]])}"
             )  # Decode predicted tokens
             print("=" * 100)
 
