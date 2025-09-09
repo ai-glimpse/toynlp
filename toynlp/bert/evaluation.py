@@ -8,7 +8,7 @@ from toynlp.bert.config import BertConfig
 from toynlp.bert.tokenizer import BertTokenizer
 from toynlp.bert.model import Bert
 from toynlp.util import current_device
-from toynlp.paths import SST2BERT_MODEL_PATH
+from toynlp.paths import SST2BERT_MODEL_PATH, BERT_MODEL_PATH
 import wandb
 from toynlp.util import setup_seed, set_deterministic_mode
 
@@ -22,14 +22,15 @@ bert_tokenizer = BertTokenizer().load()
 
 @dataclass
 class EvaluationConfig:
+    with_pretrained: bool = False
     dataset_path: str = "stanfordnlp/sst2"
     test_dataset_path: str = "SetFit/sst2"  # test set labels
     dataset_name: str | None = None
-    batch_size: int = 128
+    batch_size: int = 32
     # train
-    epochs: int = 50
+    epochs: int = 10
     # optimizer configs
-    learning_rate: float = 5e-5
+    learning_rate: float = 2e-5
     weight_decay: float = 0.01
 
     # wandb configs
@@ -121,11 +122,13 @@ class SST2BertModel(torch.nn.Module):
     def __init__(self, config: BertConfig) -> None:
         super().__init__()
         self.bert = Bert(config, padding_idx=bert_tokenizer.token_to_id("[PAD]"))
+        self.dropout = torch.nn.Dropout(p=0.5)
         self.classifier = torch.nn.Linear(config.d_model, 2)  # SST-2 has 2 classes
 
     def forward(self, input_ids: torch.Tensor, token_type_ids: torch.Tensor) -> torch.Tensor:
         bert_output = self.bert(input_ids, token_type_ids)
         cls_hidden_state = bert_output[:, 0, :]
+        cls_hidden_state = self.dropout(cls_hidden_state)
         logits = self.classifier(cls_hidden_state)
         return logits
 
@@ -134,6 +137,14 @@ class SST2BertTrainer:
     def __init__(self, config: BertConfig) -> None:
         self.config = config
         self.model = SST2BertModel(self.config)
+        # load pretrained model if exists
+        if evaluation_config.with_pretrained:
+            if BERT_MODEL_PATH.exists():
+                print(f"Loading pretrained BERT model from {BERT_MODEL_PATH}")
+                pretrained_bert: Bert = torch.load(BERT_MODEL_PATH, weights_only=False)
+                self.model.bert.load_state_dict(pretrained_bert.base_model.state_dict())
+            else:
+                print(f"No pretrained BERT model found at {BERT_MODEL_PATH}, training from scratch.")
         self.model_path = SST2BERT_MODEL_PATH
         self.device = current_device
         self.model.to(self.device)
