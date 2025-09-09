@@ -1,6 +1,64 @@
 # Bert
 
 
+
+## W/O Pretraining on SST2
+
+The SST2 dataset:
+
+- train/validation dataset: [stanfordnlp/sst2](https://huggingface.co/datasets/stanfordnlp/sst2)
+- test dataset: [SetFit/sst2](https://huggingface.co/datasets/SetFit/sst2)
+
+
+The model architecture:
+
+```python
+class SST2BertModel(torch.nn.Module):
+    def __init__(self, config: BertConfig) -> None:
+        super().__init__()
+        self.bert = Bert(config, padding_idx=bert_tokenizer.token_to_id("[PAD]"))
+        self.classifier = torch.nn.Linear(config.d_model, 2)  # SST-2 has 2 classes
+
+    def forward(self, input_ids: torch.Tensor, token_type_ids: torch.Tensor) -> torch.Tensor:
+        bert_output = self.bert(input_ids, token_type_ids)
+        cls_hidden_state = bert_output[:, 0, :]
+        logits = self.classifier(cls_hidden_state)
+        return logits
+```
+
+
+
+### Without Pretraining on SST2
+
+The bert config(almost the same as base BERT):
+
+> Note here we use a smaller `max_seq_length=128` while the original BERT uses `max_seq_length=512`.
+
+```python
+bert_config = BertConfig(
+    max_seq_length=128,
+    vocab_size=30522,
+    d_model=768,
+    attention_d_k=768,
+    attention_d_v=768,
+    head_num=12,
+    d_feed_forward=3072,
+    encoder_layers=12,
+)
+```
+
+The training curve on SST2 dataset with different learning rates:
+
+![](../../docs/images/bert/SST2Bert-Without-Pretrain.png)
+
+
+Observations:
+- With a learning rate of `5e-5`, the model achieves best test accuracy of around 80%
+- With learning rates of `1e-5` and `1e-6`, the model got worse performance
+- All the learning rates lead to overfitting after several epochs
+
+
+
 ## The mistakes that I made
 
 ### Can not overfit even on a very small dataset
