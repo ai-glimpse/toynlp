@@ -10,6 +10,11 @@ from toynlp.bert.model import Bert
 from toynlp.util import current_device
 from toynlp.paths import SST2BERT_MODEL_PATH
 import wandb
+from toynlp.util import setup_seed, set_deterministic_mode
+
+
+setup_seed(1234)  # Set a random seed for reproducibility
+set_deterministic_mode()  # Set deterministic mode for reproducibility
 
 
 bert_tokenizer = BertTokenizer().load()
@@ -24,7 +29,7 @@ class EvaluationConfig:
     # train
     epochs: int = 50
     # optimizer configs
-    learning_rate: float = 1e-5
+    learning_rate: float = 5e-5
     weight_decay: float = 0.01
 
     # wandb configs
