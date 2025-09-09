@@ -5,14 +5,14 @@ from toynlp.util import current_device
 
 
 class BertEmbedding(torch.nn.Module):
-    def __init__(self, vocab_size: int, max_length: int, d_model: int, padding_idx: int, dropout: float) -> None:
+    def __init__(self, vocab_size: int, max_seq_length: int, d_model: int, padding_idx: int, dropout: float) -> None:
         super().__init__()
         self.token_embedding = torch.nn.Embedding(
             num_embeddings=vocab_size,
             embedding_dim=d_model,
             padding_idx=padding_idx,
         )
-        self.position_embedding = torch.nn.Embedding(max_length, d_model)
+        self.position_embedding = torch.nn.Embedding(max_seq_length, d_model)
         # 2: sentence A, sentence B
         self.segment_embedding = torch.nn.Embedding(2, d_model)
         self.layer_norm = torch.nn.LayerNorm(d_model, eps=1e-12)
@@ -20,7 +20,7 @@ class BertEmbedding(torch.nn.Module):
 
     def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor) -> torch.Tensor:
         token_embeddings = self.token_embedding(input_ids)
-        position_ids = torch.arange(input_ids.size(1), device=current_device).unsqueeze(0)
+        position_ids = torch.arange(input_ids.size(1), device=input_ids.device).unsqueeze(0)
         position_embeddings = self.position_embedding(position_ids)
         segment_embeddings = self.segment_embedding(segment_ids)
         embeddings = self.layer_norm(token_embeddings + position_embeddings + segment_embeddings)
@@ -167,7 +167,7 @@ class Bert(torch.nn.Module):
         self.padding_idx = padding_idx
         self.bert_embedding = BertEmbedding(
             vocab_size=config.vocab_size,
-            max_length=config.max_seq_length,
+            max_seq_length=config.max_seq_length,
             d_model=config.d_model,
             padding_idx=padding_idx,
             dropout=config.dropout_ratio,
@@ -214,7 +214,7 @@ class MLMHead(torch.nn.Module):
         self.activation = torch.nn.GELU()
         self.layer_norm = torch.nn.LayerNorm(config.d_model, eps=1e-12)
         self.linear = torch.nn.Linear(config.d_model, config.vocab_size, bias=False)
-        # TODO: Weight tying: share weights with token embedding
+        # Weight tying: share weights with token embedding
         self.linear.weight = token_embedding.weight
         # Add bias parameter (not tied to embedding)
         self.bias = torch.nn.Parameter(torch.zeros(config.vocab_size))
@@ -247,58 +247,3 @@ class BertPretrainModel(torch.nn.Module):
         nsp_output = self.nsp_head(encoder_output)
         mlm_output = self.mlm_head(encoder_output)
         return nsp_output, mlm_output
-
-
-if __name__ == "__main__":
-    # config = BertConfig()
-
-    # # test encoder shapes
-    # encoder = Encoder(config, padding_idx=0).to(device=current_device)
-    # input_tokens = torch.randint(0, config.vocab_size, (2, 10), device=current_device)
-    # input_segments = torch.randint(0, 2, (2, 10), device=current_device)
-    # z = encoder(input_tokens, input_segments)
-    # print(z.shape)  # (2, 10, d_model)
-
-    # # test transformer model shapes
-    # source_token_ids = torch.randint(0, config.vocab_size, (2, 10), device=current_device)
-    # source_segments = torch.randint(0, 2, (2, 10), device=current_device)
-    # model = BertModel(config, padding_idx=0).to(device=current_device)
-    # output = model(source_token_ids, source_segments)
-    # print(output[0].shape, output[1].shape)  # (2, 2), (2, 10, vocab_size)
-
-    # BERTBASE (L=12, H=768, A=12, Total Parameters=110M)
-    base_bert_config = BertConfig(
-        max_seq_length=512,
-        vocab_size=30522,
-        d_model=768,
-        attention_d_k=768,
-        attention_d_v=768,
-        head_num=12,
-        d_feed_forward=3072,
-        encoder_layers=12,
-    )
-    base_bert_model = Bert(base_bert_config, padding_idx=0)
-    print("Base BERT model created:")
-    print(f"  Layers: {base_bert_config.encoder_layers}")
-    print(f"  Hidden size: {base_bert_config.d_model}")
-    print(f"  Attention heads: {base_bert_config.head_num}")
-    parameter_count = sum(p.numel() for p in base_bert_model.parameters())
-    print(f"  Model parameters: {parameter_count} ~ {parameter_count / 1_000_000:.1f}M")
-
-    # BERTLARGE (L=24, H=1024, A=16, Total Parameters=340M)
-    large_bert_config = BertConfig(
-        max_seq_length=512,
-        vocab_size=30522,
-        d_model=1024,
-        attention_d_k=1024,
-        attention_d_v=1024,
-        head_num=16,
-        d_feed_forward=4096,
-        encoder_layers=24,
-    )
-    large_bert_model = Bert(large_bert_config, padding_idx=0)
-    print(f"  Layers: {large_bert_config.encoder_layers}")
-    print(f"  Hidden size: {large_bert_config.d_model}")
-    print(f"  Attention heads: {large_bert_config.head_num}")
-    parameter_count = sum(p.numel() for p in large_bert_model.parameters())
-    print(f"  Model parameters: {parameter_count} ~ {parameter_count / 1_000_000:.1f}M")

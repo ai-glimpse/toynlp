@@ -1,4 +1,5 @@
-from toynlp.bert.model import BertConfig, Bert
+import torch
+from toynlp.bert.model import BertConfig, Bert, BertPretrainModel
 
 
 def test_bert_architecture() -> None:
@@ -35,3 +36,30 @@ def test_bert_architecture() -> None:
     # Make sure the parameter count matches the expected value for BERT large
     # 335141888 match EXACTLY with Huggingface implementation: BertModel.from_pretrained("bert-large-uncased")
     assert large_bert_param_count == 335141888  # 335M params
+
+
+def test_bert_model_shapes() -> None:
+    """Test BERT base model forward pass and output shapes."""
+    config = BertConfig()
+    device = torch.device("cpu")
+
+    # Test Bert shapes
+    bert = Bert(config, padding_idx=0).to(device=device)
+    input_tokens = torch.randint(0, config.vocab_size, (2, 10), dtype=torch.long, device=device)
+    input_segments = torch.randint(0, 2, (2, 10), dtype=torch.long, device=device)
+    z = bert(input_tokens, input_segments)
+    assert z.shape == (2, 10, config.d_model)
+
+
+def test_bert_pretrain_model_shapes() -> None:
+    """Test BERT pretrain model forward pass and output shapes."""
+    config = BertConfig()
+    device = torch.device("cpu")
+
+    # Test BertPretrainModel model shapes
+    source_token_ids = torch.randint(0, config.vocab_size, (2, 10), device=device)
+    source_segments = torch.randint(0, 2, (2, 10), device=device)
+    model = BertPretrainModel(config, padding_idx=0).to(device=device)
+    nsp_output, mlm_output = model(source_token_ids, source_segments)
+    assert nsp_output.shape == (2, 2)  # batch_size=2, 2 classes for NSP
+    assert mlm_output.shape == (2, 10, config.vocab_size)  # batch_size=2, seq_len=10, vocab_size
