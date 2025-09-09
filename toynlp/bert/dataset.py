@@ -55,7 +55,7 @@ def create_masked_lm_predictions(  # noqa: C901, PLR0912
     do_whole_word_mask=False,
 ):
     """Creates the predictions for the masked LM objective."""
-    cand_indexes = []
+    cand_indexes: list[list[int]] = []
     for i, token in enumerate(tokens):
         if token in {"[CLS]", "[SEP]"}:
             continue
@@ -82,7 +82,7 @@ def create_masked_lm_predictions(  # noqa: C901, PLR0912
         max(1, round(len(tokens) * masked_lm_prob)),
     )
 
-    masked_lms = []
+    masked_lms: list[MaskedLmInstance] = []
     covered_indexes = set()
     for index_set in cand_indexes:
         if len(masked_lms) >= num_to_predict:
@@ -260,7 +260,7 @@ def create_pretraining_examples_from_documents(  # noqa: C901, PLR0912, PLR0915
 
 
 def text_to_documents(text: str) -> list[list[str]]:
-    all_documents = [[]]
+    all_documents: list[list[str]] = [[]]
     lines = text.split("\n")
     for line in lines:
         line = convert_to_unicode(line).strip()  # noqa: PLW2901

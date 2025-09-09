@@ -37,7 +37,6 @@ class EvaluationConfig:
     wandb_project: str = "SST2Bert"
     wandb_enabled: bool = True
 
-
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
         return asdict(self)
@@ -129,7 +128,6 @@ class SST2BertModel(torch.nn.Module):
         cls_hidden_state = bert_output[:, 0, :]
         logits = self.classifier(cls_hidden_state)
         return logits
-
 
 
 class SST2BertTrainer:
@@ -226,11 +224,11 @@ class SST2BertTrainer:
         return val_loss, val_acc, test_loss, test_acc
 
     def calc_loss_batch(
-            self,
-            input_batch: torch.Tensor,
-            segment_ids_batch: torch.Tensor,
-            target_batch: torch.Tensor,
-            ) -> torch.Tensor:
+        self,
+        input_batch: torch.Tensor,
+        segment_ids_batch: torch.Tensor,
+        target_batch: torch.Tensor,
+    ) -> torch.Tensor:
         logits = self.model(input_batch, segment_ids_batch)
         loss = self.criterion(logits, target_batch)
         return loss

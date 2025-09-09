@@ -82,7 +82,7 @@ class BertTrainer:
                 f"Test Loss: {test_loss_stats['loss']:.4f}, "
                 f"Test NSP Accuracy: {test_loss_stats['nsp_accuracy']:.4f}, "
                 f"Test MLM Loss: {test_loss_stats['mlm_loss']:.4f}, "
-                f"Test NSP Loss: {test_loss_stats['nsp_loss']:.4f}"
+                f"Test NSP Loss: {test_loss_stats['nsp_loss']:.4f}",
             )
             if val_loss_stats["loss"] < best_val_loss:
                 best_val_loss = val_loss_stats["loss"]
@@ -131,8 +131,8 @@ class BertTrainer:
             )
             loss: torch.Tensor = loss_stats["loss"]
 
-            nsp_total += loss_stats["nsp_total"]
-            nsp_correct += loss_stats["nsp_correct"]
+            nsp_total += loss_stats["nsp_total"]  # type: ignore[assignment]
+            nsp_correct += loss_stats["nsp_correct"]  # type: ignore[assignment]
             loss.backward()
             if self.clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_norm)
@@ -143,8 +143,8 @@ class BertTrainer:
 
             batch_size = batch_input_tokens.size(0)
             total_loss += loss.item() * batch_size  # Multiply by batch size
-            mlm_loss += loss_stats["mlm_loss"].item() * batch_size
-            nsp_loss += loss_stats["nsp_loss"].item() * batch_size
+            mlm_loss += loss_stats["mlm_loss"].item() * batch_size  # type: ignore[union-attr]
+            nsp_loss += loss_stats["nsp_loss"].item() * batch_size  # type: ignore[union-attr]
             total_samples += batch_size
 
         avg_train_loss = total_loss / total_samples
@@ -194,12 +194,14 @@ class BertTrainer:
                 f"Input Tokens: {'|'.join([self.tokenizer.id_to_token(token.item()) for token in input_tokens])}"
             )  # Decode input tokens
             print(
-                f"Target Tokens: {'|'.join([self.tokenizer.id_to_token(token.item())
-                    for token in target_tokens if token != 0])}"
+                f"Target Tokens: {
+                    '|'.join([self.tokenizer.id_to_token(token.item()) for token in target_tokens if token != 0])
+                }"
             )  # Decode target tokens
             print(
-                f"[{batch_name}]Predicted Tokens: {'|'.join([self.tokenizer.id_to_token(token.item())
-                for token in pred_tokens[target_tokens != 0]])}"
+                f"[{batch_name}]Predicted Tokens: {
+                    '|'.join([self.tokenizer.id_to_token(token.item()) for token in pred_tokens[target_tokens != 0]])
+                }"
             )  # Decode predicted tokens
             print("=" * 100)
 
@@ -237,13 +239,13 @@ class BertTrainer:
             loss_stats = self.calc_loss_batch(
                 input_batch_device, segment_batch_device, is_random_next_batch_device, target_batch_device, "Val/Test"
             )
-            total_loss += loss_stats["loss"].item() * batch_size  # Multiply by batch size
-            mlm_loss += loss_stats["mlm_loss"].item() * batch_size
-            nsp_loss += loss_stats["nsp_loss"].item() * batch_size
+            total_loss += loss_stats["loss"].item() * batch_size  # type: ignore[union-attr]
+            mlm_loss += loss_stats["mlm_loss"].item() * batch_size  # type: ignore[union-attr]
+            nsp_loss += loss_stats["nsp_loss"].item() * batch_size  # type: ignore[union-attr]
             total_samples += batch_size
 
-            nsp_total += loss_stats["nsp_total"]
-            nsp_correct += loss_stats["nsp_correct"]
+            nsp_total += loss_stats["nsp_total"]  # type: ignore[assignment]
+            nsp_correct += loss_stats["nsp_correct"]  # type: ignore[assignment]
 
         avg_loss = total_loss / total_samples  # Correct average
         mlm_loss = mlm_loss / total_samples if total_samples > 0 else 0
