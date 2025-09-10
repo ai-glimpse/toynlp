@@ -56,3 +56,19 @@ transformer-eval:
     uv run python toynlp/transformer/evaluation.py
 
 transformer-train-eval: transformer-train transformer-eval
+
+
+# Bert Model Tasks
+bert-tokenize:
+    uv run python toynlp/bert/tokenizer.py
+
+bert-train *args:
+    uv run python toynlp/bert/train.py {{args}}
+
+bert-infer:
+    uv run python toynlp/bert/inference.py
+
+bert-eval:
+    uv run python toynlp/bert/evaluation.py
+
+bert-train-eval: bert-train bert-eval
