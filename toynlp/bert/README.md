@@ -1,8 +1,34 @@
 # Bert
 
 
+## Pretaining
 
-## W/O Pretraining on SST2
+We reproduced the pattern shown at paper *Characterizing Learning Curves During Language Model Pre-Training: Learning, Forgetting, and Stability*:
+> Althought the paper focuses on GPT-2, we do see similar phenomena in BERT pretraining.
+
+1. "Early in pre-training, models generate short repetitive phrases."
+
+We do see this phenomenon when we pretrain the BERT model on bookcorpus dataset, and the generated text looks like this:
+
+```bash
+Input Tokens: [CLS]|#|#|skyscr|##aper|arch|##ipe|##lag|##o|[SEP]|trying|to|recover|nuclear|weapons|now|[MASK]|[MASK]|bottom|[MASK]|the|ocean|.|.|.|.|[MASK]|were|trying|to|keep|a|nuclear|power|-|plant|from|melting|down|.|hait|.|.|[MASK]|high|[MASK]|ranking|officials|were|still|alive|at|the|submerged|un|compound|.|.|.|.|all|[MASK]|of|[SEP]
+Target Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
+Predicted Tokens: .|.|.|.|.|.|.|.|.|.
+```
+We found at each step the model tends to predict the same token "."(or "the", "a", "and", ...) for all the masked positions.
+
+2. "Models later generate longer and more coherent text."
+
+After more training steps, the model can predict more meaningful tokens:
+
+```bash
+Input Tokens: [CLS]|"|never|mind|.|i|was|only|making|##ival|joke|familial|[MASK]|he|said|,|and|then|he|questioned|his|new|companion|.|"|i|don|'|t|feel|the|[MASK]|strap|anymore|.|how|is|it|that|i|delir|[MASK]|you|?|"|[SEP]|[MASK]|workers|be|sent|into|fields|for|the|harvest|.|the|very|next|verses|in|matthew|[MASK]|s|[MASK]|are|jesus|sending|out|the|apostles|to|do|the|exact|same|thing|he|had|been|[MASK]|(|matt|10|:|[MASK]|-|7|[MASK]|.|they|were|to|be|the|[MASK]|that|were|sent|out|to|gather|[MASK]|harvest|.|this|is|our|call|[MASK]|,|to|go|to|[MASK]|lost|,|hungry|and|thirsty|(|the|lost|sheep|of|this|[MASK]|[SEP]
+Target Tokens: a|,|"|translator|anymore|can|understand|more|'|gospel|doing|matt|1|)|workers|the|too|the|age
+[train]Predicted Tokens: a|,|"|same|anymore|can|about|more|'|gospel|born|matt|1|)|workers|the|too|the|age
+```
+
+
+## Finetune: W/O Pretraining on SST2
 
 The SST2 dataset:
 
