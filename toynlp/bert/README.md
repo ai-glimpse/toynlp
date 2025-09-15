@@ -147,6 +147,27 @@ So that's the story: A bigger learning rate can help the model to converge faste
 
 And, why am I so hurry to want to train the model faster? Because my 4060Ti GPU is so slow and want to finish the training as soon as possible. So, be patient man.
 
+### Full dataset transformation at beginning
+
+```python
+def get_split_dataloader(
+    dataset_path: str,
+    split: str,
+    config: BertConfig,
+) -> DataLoader:
+    raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
+    pretrain_dataset = dataset_transform(raw_dataset, config)
+    dataloader = torch.utils.data.DataLoader(
+        pretrain_dataset.with_format(type="torch"),
+        batch_size=config.batch_size,
+        collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
+    )
+```
+
+The `pretrain_dataset = dataset_transform(raw_dataset, config)` will transform the whole dataset at once, which is very time-consuming(with 12 CPUs( 2.1 GHz), which took more than 7 days...). It is better to do this transformation at training batch level.
+
+
+
 
 ## References
 - [google-research/bert](https://github.com/google-research/bert)

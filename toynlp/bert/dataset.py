@@ -321,6 +321,7 @@ def get_dataset(
     return dataset  # type: ignore[return-value]
 
 
+# TODO: fix this: we should do this transformation at training batch
 def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
     # Apply any necessary transformations to the dataset here
     # https://huggingface.co/docs/datasets/en/about_map_batch#input-size--output-size
