@@ -1,10 +1,11 @@
 import random
 import collections
+from collections.abc import Iterator
 
-from datasets import Dataset, load_dataset, DatasetDict
+from datasets import Dataset, load_dataset, DatasetDict, IterableDataset
 from tokenizers import Tokenizer
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, IterableDataset as TorchIterableDataset
 from torch.nn.utils.rnn import pad_sequence
 
 from toynlp.bert.config import BertConfig
@@ -259,8 +260,8 @@ def create_pretraining_examples_from_documents(  # noqa: C901, PLR0912, PLR0915
     return instances
 
 
-def text_to_documents(text: str) -> list[list[str]]:
-    all_documents: list[list[str]] = [[]]
+def text_to_documents(text: str) -> list[list[list[str]]]:
+    all_documents: list[list[list[str]]] = [[]]
     lines = text.split("\n")
     for line in lines:
         line = convert_to_unicode(line).strip()  # noqa: PLW2901
@@ -278,7 +279,7 @@ def text_to_documents(text: str) -> list[list[str]]:
     return all_documents
 
 
-def batch_text_to_documents(batch: list[str]) -> list[list[str]]:
+def batch_text_to_documents(batch: list[str]) -> list[list[list[str]]]:
     all_documents = []
     for text in batch:
         for doc in text_to_documents(text):
@@ -312,72 +313,79 @@ def batch_create_pretraining_examples_from_documents(
     return all_instances
 
 
-def get_dataset(
-    dataset_path: str,
-    dataset_name: str | None,
-    split: str,
-) -> Dataset:
-    dataset = load_dataset(path=dataset_path, name=dataset_name, split=split)
-    return dataset  # type: ignore[return-value]
+class BufferedPretrainingDataset(TorchIterableDataset):
+    """An IterableDataset that buffers pretraining instances to ensure consistent batch sizes."""
 
+    def __init__(
+        self,
+        dataset: Dataset | IterableDataset,
+        config: BertConfig,
+        tokenizer: Tokenizer,
+        documents_dataset: Dataset,
+        vocab_words: list[str],
+        buffer_size: int = 10000,
+        seed: int = 12345,
+    ) -> None:
+        self.dataset = dataset
+        self.config = config
+        self.tokenizer = tokenizer
+        self.documents_dataset = documents_dataset
+        self.vocab_words = vocab_words
+        self.buffer_size = buffer_size
+        self.seed = seed
+        self.rng = random.Random(seed)
 
-# TODO: fix this: we should do this transformation at training batch
-def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
-    # Apply any necessary transformations to the dataset here
-    # https://huggingface.co/docs/datasets/en/about_map_batch#input-size--output-size
-    documents_dataset = raw_dataset.map(
-        lambda batch: {"document": batch_text_to_documents(batch["text"])},
-        batched=True,
-        batch_size=12,
-        num_proc=12,
-        remove_columns=["text", "title"],
-    )
-    pre_train_dataset = documents_dataset.map(
-        lambda batch: {
-            "tokens": [instance["tokens"] for instance in batch_instances],
-            "segment_ids": [instance["segment_ids"] for instance in batch_instances],
-            "is_random_next": [instance["is_random_next"] for instance in batch_instances],
-            "masked_lm_positions": [instance["masked_lm_positions"] for instance in batch_instances],
-            "masked_lm_labels": [instance["masked_lm_labels"] for instance in batch_instances],
-        }
-        if (
-            batch_instances := batch_create_pretraining_examples_from_documents(
-                documents_dataset,
-                batch["document"],
-                max_seq_length=config.max_seq_length,
-                short_seq_prob=config.short_seq_prob,
-                masked_lm_prob=config.masked_lm_prob,
-                max_predictions_per_seq=config.max_predictions_per_seq,
-                vocab_words=list(bert_tokenizer.get_vocab().keys()),
-                rng=random.Random(12345),
-            )
-        )
-        else {},
-        batched=True,
-        batch_size=1000,
-        num_proc=12,
-        remove_columns=["document"],
-    )
+    def _generate_instances(self) -> Iterator[dict]:
+        """Generate pretraining instances from the raw dataset."""
+        buffer = []
 
-    return pre_train_dataset
+        for item in self.dataset:
+            # Convert text to documents
+            if "text" in item:
+                documents = text_to_documents(item["text"])
 
+                # Create pretraining instances from documents
+                for document in documents:
+                    instances = create_pretraining_examples_from_documents(
+                        self.documents_dataset,
+                        document,  # Pass the document directly, not wrapped in a list
+                        max_seq_length=self.config.max_seq_length,
+                        short_seq_prob=self.config.short_seq_prob,
+                        masked_lm_prob=self.config.masked_lm_prob,
+                        max_predictions_per_seq=self.config.max_predictions_per_seq,
+                        vocab_words=self.vocab_words,
+                        rng=self.rng,
+                    )
+                    buffer.extend(instances)
 
-def upload_pretrain_instance(all_pretrain_instances: Dataset):
-    """Upload the pretraining dataset to Hugging Face dataset hub.
+                    # When buffer is full, shuffle and yield instances
+                    while len(buffer) >= self.buffer_size:
+                        # Shuffle buffer for better randomization
+                        self.rng.shuffle(buffer)
 
-    Args:
-        all_pretrain_instances (Dataset): The dataset to upload.
-    """
-    # Convert the dataset to a DatasetDict if not already
-    dataset_dict = DatasetDict({"train": all_pretrain_instances})
+                        # Yield instances from buffer
+                        while len(buffer) > self.buffer_size // 2:  # Keep half for mixing
+                            yield buffer.pop()
 
-    # Define the repository name on Hugging Face hub
-    repo_name = "AI-Glimpse/bookcorpusopen-bert"
+        # Yield remaining instances in buffer
+        self.rng.shuffle(buffer)
+        while buffer:
+            yield buffer.pop()
 
-    # Push the dataset to the Hugging Face hub
-    dataset_dict.push_to_hub(repo_name)
+    def __iter__(self) -> Iterator[dict]:
+        """Return an iterator over the dataset."""
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            # Single-process data loading
+            return self._generate_instances()
 
-    print(f"Dataset successfully uploaded to Hugging Face hub under repository: {repo_name}")
+        # Multi-process data loading
+        # Each worker gets a different seed for randomization
+        self.rng = random.Random(self.seed + worker_info.id)
+
+        # If using multiple workers, we need to shard the dataset
+        # This is a simplified approach - in production you might want more sophisticated sharding
+        return self._generate_instances()
 
 
 def collate_fn(
@@ -412,17 +420,231 @@ def collate_fn(
     }
 
 
+def collate_pretrain_instances(
+    batch: list[dict],
+    tokenizer: Tokenizer,
+) -> dict[str, torch.Tensor]:
+    """Collate function for pretraining instances that are already processed."""
+    batch_tokens = []
+    batch_segment_ids = []
+    batch_is_random_next = []
+    batch_masked_lm_labels = []
+    pad_id = tokenizer.token_to_id("[PAD]")
+
+    batch_max_seq_length = max(len(item["tokens"]) for item in batch)
+
+    for item in batch:
+        # Convert tokens to IDs
+        token_ids = [tokenizer.token_to_id(token) for token in item["tokens"]]
+        batch_tokens.append(torch.tensor(token_ids))
+
+        # Handle segment_ids
+        segment_ids = item["segment_ids"]
+        if isinstance(segment_ids, list):
+            batch_segment_ids.append(torch.tensor(segment_ids))
+        else:
+            batch_segment_ids.append(segment_ids)
+
+        # Handle is_random_next
+        batch_is_random_next.append(item["is_random_next"])
+
+        # Create padded masked_lm_labels tensor
+        padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
+        masked_positions = item["masked_lm_positions"]
+        masked_labels = item["masked_lm_labels"]
+
+        # Handle both list and tensor types for positions
+        if torch.is_tensor(masked_positions):
+            masked_positions = masked_positions.tolist()
+
+        for i, pos in enumerate(masked_positions):
+            padded_masked_lm_label_token_ids[pos] = tokenizer.token_to_id(masked_labels[i])
+
+        batch_masked_lm_labels.append(padded_masked_lm_label_token_ids)
+
+    # Pad sequences
+    batch_padded_token_id_tensor = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
+    batch_segment_ids_tensor = pad_sequence(batch_segment_ids, padding_value=pad_id, batch_first=True)
+
+    return {
+        "tokens": batch_padded_token_id_tensor,
+        "segment_ids": batch_segment_ids_tensor,
+        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
+        "masked_lm_labels": torch.stack(batch_masked_lm_labels),
+    }
+
+
+def dynamic_collate_fn(
+    batch: list[dict],
+    tokenizer: Tokenizer,
+    config: BertConfig,
+    documents_dataset: Dataset,
+    vocab_words: list[str],
+) -> dict[str, torch.Tensor]:
+    """Collate function that performs transformations during training."""
+    # Convert text to documents for each item in the batch
+    batch_documents = []
+    for item in batch:
+        if "text" in item:
+            documents = text_to_documents(item["text"])
+            batch_documents.extend(documents)
+
+    # Create pretraining examples from documents
+    batch_instances = batch_create_pretraining_examples_from_documents(
+        documents_dataset,
+        batch_documents,
+        max_seq_length=config.max_seq_length,
+        short_seq_prob=config.short_seq_prob,
+        masked_lm_prob=config.masked_lm_prob,
+        max_predictions_per_seq=config.max_predictions_per_seq,
+        vocab_words=vocab_words,
+        rng=random.Random(12345),
+    )
+
+    if not batch_instances:
+        # Return empty tensors if no instances were created
+        return {
+            "tokens": torch.empty((0, 0), dtype=torch.long),
+            "segment_ids": torch.empty((0, 0), dtype=torch.long),
+            "is_random_next": torch.empty((0,), dtype=torch.long),
+            "masked_lm_labels": torch.empty((0, 0), dtype=torch.long),
+        }
+
+    # Process the instances into tensors
+    batch_tokens = []
+    batch_segment_ids = []
+    batch_is_random_next = []
+    batch_masked_lm_labels = []
+    pad_id = tokenizer.token_to_id("[PAD]")
+
+    batch_max_seq_length = max(len(instance["tokens"]) for instance in batch_instances)
+
+    for instance in batch_instances:
+        batch_tokens.append(torch.tensor([tokenizer.token_to_id(token) for token in instance["tokens"]]))
+        batch_segment_ids.append(torch.tensor(instance["segment_ids"]))
+        batch_is_random_next.append(instance["is_random_next"])
+
+        # Create padded masked_lm_labels tensor
+        padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
+        for i, pos in enumerate(instance["masked_lm_positions"]):
+            padded_masked_lm_label_token_ids[pos] = tokenizer.token_to_id(instance["masked_lm_labels"][i])
+        batch_masked_lm_labels.append(padded_masked_lm_label_token_ids)
+
+    batch_padded_token_id_tensor = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
+    batch_segment_ids_tensor = pad_sequence(batch_segment_ids, padding_value=pad_id, batch_first=True)
+
+    return {
+        "tokens": batch_padded_token_id_tensor,
+        "segment_ids": batch_segment_ids_tensor,
+        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
+        "masked_lm_labels": torch.stack(batch_masked_lm_labels),
+    }
+
+
+def get_dataset(
+    dataset_path: str,
+    dataset_name: str | None,
+    split: str,
+) -> Dataset:
+    dataset = load_dataset(path=dataset_path, name=dataset_name, split=split)
+    return dataset  # type: ignore[return-value]
+
+
+def upload_pretrain_instance(all_pretrain_instances: Dataset):
+    """Upload the pretraining dataset to Hugging Face dataset hub.
+
+    Args:
+        all_pretrain_instances (Dataset): The dataset to upload.
+    """
+    # Convert the dataset to a DatasetDict if not already
+    dataset_dict = DatasetDict({"train": all_pretrain_instances})
+
+    # Define the repository name on Hugging Face hub
+    repo_name = "AI-Glimpse/bookcorpusopen-bert"
+
+    # Push the dataset to the Hugging Face hub
+    dataset_dict.push_to_hub(repo_name)
+
+    print(f"Dataset successfully uploaded to Hugging Face hub under repository: {repo_name}")
+
+
 def get_split_dataloader(
     dataset_path: str,
     split: str,
     config: BertConfig,
 ) -> DataLoader:
+    """Get a DataLoader with consistent batch sizes using buffered streaming."""
+    # Load the raw dataset
     raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
-    pretrain_dataset = dataset_transform(raw_dataset, config)
-    dataloader = torch.utils.data.DataLoader(
-        pretrain_dataset.with_format(type="torch"),
+
+    # Create documents dataset for NSP task
+    # We'll create a smaller sample for random document selection
+    sample_size = min(1000, len(raw_dataset))  # type: ignore[arg-type]
+    sample_dataset = raw_dataset.select(range(sample_size))  # type: ignore[attr-defined]
+
+    documents_dataset = sample_dataset.map(
+        lambda batch: {"document": batch_text_to_documents(batch["text"])},
+        batched=True,
+        batch_size=12,
+        num_proc=1,  # Use single process for smaller sample
+        remove_columns=["text", "title"],
+    )
+
+    # Create vocab_words list
+    vocab_words = list(bert_tokenizer.get_vocab().keys())
+
+    # Get seed from config or use default
+    seed = getattr(config, "seed", 12345)
+
+    # Create the buffered dataset
+    buffered_dataset = BufferedPretrainingDataset(
+        dataset=raw_dataset,  # type: ignore[arg-type]
+        config=config,
+        tokenizer=bert_tokenizer,
+        documents_dataset=documents_dataset,
+        vocab_words=vocab_words,
+        buffer_size=10000,  # Adjust based on memory constraints
+        seed=seed,
+    )
+
+    # Create DataLoader with the buffered dataset
+    dataloader = DataLoader(
+        buffered_dataset,
         batch_size=config.batch_size,
-        collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
+        collate_fn=lambda batch: collate_pretrain_instances(batch, bert_tokenizer),
+        num_workers=0,  # Start with 0, can increase for parallel data loading
+        pin_memory=True,
+        drop_last=True,  # Drop last incomplete batch for consistent batch sizes
+    )
+
+    return dataloader
+
+
+def get_split_dataloader_legacy(
+    dataset_path: str,
+    split: str,
+    config: BertConfig,
+) -> DataLoader:
+    """Legacy dataloader that uses dynamic collate function (has batch size control issues)."""
+    raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
+
+    # Create documents dataset EXACTLY as in the original dataset_transform
+    # This is needed for random document sampling in NSP task
+    documents_dataset = raw_dataset.map(
+        lambda batch: {"document": batch_text_to_documents(batch["text"])},
+        batched=True,
+        batch_size=12,
+        num_proc=12,
+        remove_columns=["text", "title"],
+    )
+
+    # Create vocab_words once to avoid recreating it on every batch
+    vocab_words = list(bert_tokenizer.get_vocab().keys())
+
+    dataloader = DataLoader(
+        raw_dataset,  # type: ignore[arg-type]
+        batch_size=config.batch_size,
+        collate_fn=lambda batch: dynamic_collate_fn(batch, bert_tokenizer, config, documents_dataset, vocab_words),
     )
 
     return dataloader
@@ -431,23 +653,35 @@ def get_split_dataloader(
 if __name__ == "__main__":
     config = BertConfig()
 
-    # raw_dataset = get_dataset(config.dataset_path, config.dataset_name, split="train[:1790]")  # 10%
-    # all_pretrain_instances = dataset_transform(raw_dataset)
-    # print(f"Number of pre-training instances: {len(all_pretrain_instances)}")
-    # upload_pretrain_instance(all_pretrain_instances)
-
+    # Example usage with the new buffered streaming approach
     val_dataset_loader = get_split_dataloader(
         config.dataset_path,
-        # config.dataset_split_of_model_val,
         "train[:10]",
         config,
     )
-    print(f"Number of training batches: {len(val_dataset_loader)}")
-    for batch in val_dataset_loader:
-        # Process each batch
-        print(batch)
-        print(batch["tokens"].shape)
-        print(batch["segment_ids"].shape)
-        print(batch["is_random_next"].shape)
-        print(batch["masked_lm_labels"].shape)
-        break
+    print("DataLoader created successfully (streaming mode - no fixed length)")
+
+    # Test batch size consistency
+    batch_sizes = []
+    print("Testing batch consistency...")
+    for i, batch in enumerate(val_dataset_loader):
+        batch_size = batch["tokens"].shape[0]
+        batch_sizes.append(batch_size)
+        print(f"Batch {i + 1}: size={batch_size}")
+        print(f"  tokens shape: {batch['tokens'].shape}")
+        print(f"  segment_ids shape: {batch['segment_ids'].shape}")
+        print(f"  is_random_next shape: {batch['is_random_next'].shape}")
+        print(f"  masked_lm_labels shape: {batch['masked_lm_labels'].shape}")
+        if i >= 4:  # Check first 5 batches
+            break
+
+    if batch_sizes:
+        print("\nBatch size consistency check:")
+        print(f"  Expected batch size: {config.batch_size}")
+        print(f"  Actual batch sizes: {batch_sizes}")
+        # For streaming datasets with drop_last=True, all batches should have the same size
+        all_consistent = all(bs == config.batch_size for bs in batch_sizes)
+        print(f"  All batches have consistent size: {all_consistent}")
+        success_msg = "  SUCCESS: Batch size control is working!"
+        issue_msg = "  ISSUE: Batch sizes are inconsistent"
+        print(success_msg if all_consistent else issue_msg)
