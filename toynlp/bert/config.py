@@ -10,7 +10,7 @@ class BertConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 100  # paper setting: 256
+    batch_size: int = 128  # paper setting: 256
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -27,11 +27,11 @@ class BertConfig:
     masked_lm_prob: float = 0.15  # probability of masking a token
     max_predictions_per_seq: int = 20  # maximum number of masked tokens, paper setting: 20
 
-    d_model: int = 512  # model hidden dimension, paper setting: 768
-    attention_d_k: int = 512  # query & key, paper setting: 768
-    attention_d_v: int = 512  # value, paper setting: 768
-    head_num: int = 8  # paper setting: 12
-    d_feed_forward: int = 2048  # paper setting: 3072
+    d_model: int = 768  # model hidden dimension, paper setting: 768
+    attention_d_k: int = 768  # query & key, paper setting: 768
+    attention_d_v: int = 768  # value, paper setting: 768
+    head_num: int = 12  # paper setting: 12
+    d_feed_forward: int = 3072  # paper setting: 3072
     encoder_layers: int = 12  # paper setting: 12
 
     dropout_ratio: float = 0.1  # paper setting: 0.1
@@ -39,18 +39,18 @@ class BertConfig:
     # optimizer configs
     learning_rate: float = 2e-5  # paper setting: 0.0001
     weight_decay: float = 0.01  # paper setting: 0.01
-    warmup_steps: int = 100  # paper setting: 10000
+    warmup_steps: int = 10000  # paper setting: 10000
     # training configs
-    dataset_split_of_tokenizer: str = "train[:10%]"
-    # dataset_split_of_model_train: str = "train[:8%]"
-    # dataset_split_of_model_val: str = "train[8%:9%]"
-    # dataset_split_of_model_test: str = "train[9%:10%]"
+    dataset_split_of_tokenizer: str = "train[:90%]"
+    dataset_split_of_model_train: str = "train[:90%]"
+    dataset_split_of_model_val: str = "train[90%:95%]"
+    dataset_split_of_model_test: str = "train[95%:]"
 
-    dataset_split_of_model_train: str = "train[7:8]"
-    dataset_split_of_model_val: str = "train[8:9]"
-    dataset_split_of_model_test: str = "train[9:10]"
+    # dataset_split_of_model_train: str = "train[7:8]"
+    # dataset_split_of_model_val: str = "train[8:9]"
+    # dataset_split_of_model_test: str = "train[9:10]"
 
-    epochs: int = 10
+    epochs: int = 100
     clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping
     # wandb configs
     wandb_name: str | None = None
