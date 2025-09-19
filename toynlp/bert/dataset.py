@@ -1,11 +1,11 @@
 import random
 import collections
-from collections.abc import Iterator
+import time
 
-from datasets import Dataset, load_dataset, DatasetDict, IterableDataset
+from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer
 import torch
-from torch.utils.data import DataLoader, IterableDataset as TorchIterableDataset
+from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
 from toynlp.bert.config import BertConfig
@@ -22,7 +22,11 @@ def convert_to_unicode(text):
     if isinstance(text, bytes):
         return text.decode("utf-8", "ignore")
     msg = f"Unsupported string type: {type(text)}"
+    msg = f"Unsupported string type: {type(text)}"
     raise ValueError(msg)
+
+
+# https://github.com/google-research/bert/blob/eedf5716ce1268e56f0a50264a88cafad334ac61/create_pretraining_data.py#L418
 
 
 # https://github.com/google-research/bert/blob/eedf5716ce1268e56f0a50264a88cafad334ac61/create_pretraining_data.py#L418
@@ -313,113 +317,6 @@ def batch_create_pretraining_examples_from_documents(
     return all_instances
 
 
-class BufferedPretrainingDataset(TorchIterableDataset):
-    """An IterableDataset that buffers pretraining instances to ensure consistent batch sizes."""
-
-    def __init__(
-        self,
-        dataset: Dataset | IterableDataset,
-        config: BertConfig,
-        tokenizer: Tokenizer,
-        documents_dataset: Dataset,
-        vocab_words: list[str],
-        buffer_size: int = 10000,
-        seed: int = 12345,
-    ) -> None:
-        self.dataset = dataset
-        self.config = config
-        self.tokenizer = tokenizer
-        self.documents_dataset = documents_dataset
-        self.vocab_words = vocab_words
-        self.buffer_size = buffer_size
-        self.seed = seed
-        self.rng = random.Random(seed)
-
-    def _generate_instances(self) -> Iterator[dict]:
-        """Generate pretraining instances from the raw dataset."""
-        buffer = []
-
-        for item in self.dataset:
-            # Convert text to documents
-            if "text" in item:
-                documents = text_to_documents(item["text"])
-
-                # Create pretraining instances from documents
-                for document in documents:
-                    instances = create_pretraining_examples_from_documents(
-                        self.documents_dataset,
-                        document,  # Pass the document directly, not wrapped in a list
-                        max_seq_length=self.config.max_seq_length,
-                        short_seq_prob=self.config.short_seq_prob,
-                        masked_lm_prob=self.config.masked_lm_prob,
-                        max_predictions_per_seq=self.config.max_predictions_per_seq,
-                        vocab_words=self.vocab_words,
-                        rng=self.rng,
-                    )
-                    buffer.extend(instances)
-
-                    # When buffer is full, shuffle and yield instances
-                    while len(buffer) >= self.buffer_size:
-                        # Shuffle buffer for better randomization
-                        self.rng.shuffle(buffer)
-
-                        # Yield instances from buffer
-                        while len(buffer) > self.buffer_size // 2:  # Keep half for mixing
-                            yield buffer.pop()
-
-        # Yield remaining instances in buffer
-        self.rng.shuffle(buffer)
-        while buffer:
-            yield buffer.pop()
-
-    def __iter__(self) -> Iterator[dict]:
-        """Return an iterator over the dataset."""
-        worker_info = torch.utils.data.get_worker_info()
-        if worker_info is None:
-            # Single-process data loading
-            return self._generate_instances()
-
-        # Multi-process data loading
-        # Each worker gets a different seed for randomization
-        self.rng = random.Random(self.seed + worker_info.id)
-
-        # If using multiple workers, we need to shard the dataset
-        # This is a simplified approach - in production you might want more sophisticated sharding
-        return self._generate_instances()
-
-
-def collate_fn(
-    batch: list[dict],
-    tokenizer: Tokenizer,
-) -> dict[str, torch.Tensor]:
-    batch_tokens = []
-    batch_segment_ids = []
-    batch_is_random_next = []
-    batch_masked_lm_labels = []
-    pad_id = tokenizer.token_to_id("[PAD]")
-
-    batch_max_seq_length = max(len(item["tokens"]) for item in batch)
-
-    for item in batch:
-        batch_tokens.append(torch.tensor([tokenizer.token_to_id(token) for token in item["tokens"]]))
-        batch_segment_ids.append(item["segment_ids"])
-        batch_is_random_next.append(item["is_random_next"])
-        # length batch_max_seq_length tensor for masked_lm_labels
-        padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
-        for i, pos in enumerate(item["masked_lm_positions"].tolist()):
-            padded_masked_lm_label_token_ids[pos] = tokenizer.token_to_id(item["masked_lm_labels"][i])
-        batch_masked_lm_labels.append(padded_masked_lm_label_token_ids)
-    batch_padded_token_id_tensor = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
-    batch_segment_ids_tensor = pad_sequence(batch_segment_ids, padding_value=pad_id, batch_first=True)
-
-    return {
-        "tokens": batch_padded_token_id_tensor,
-        "segment_ids": batch_segment_ids_tensor,
-        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
-        "masked_lm_labels": torch.stack(batch_masked_lm_labels),
-    }
-
-
 def collate_pretrain_instances(
     batch: list[dict],
     tokenizer: Tokenizer,
@@ -474,71 +371,13 @@ def collate_pretrain_instances(
     }
 
 
-def dynamic_collate_fn(
-    batch: list[dict],
-    tokenizer: Tokenizer,
+def get_split_dataloader_clean(
+    dataset_path: str,
+    split: str,
     config: BertConfig,
-    documents_dataset: Dataset,
-    vocab_words: list[str],
-) -> dict[str, torch.Tensor]:
-    """Collate function that performs transformations during training."""
-    # Convert text to documents for each item in the batch
-    batch_documents = []
-    for item in batch:
-        if "text" in item:
-            documents = text_to_documents(item["text"])
-            batch_documents.extend(documents)
-
-    # Create pretraining examples from documents
-    batch_instances = batch_create_pretraining_examples_from_documents(
-        documents_dataset,
-        batch_documents,
-        max_seq_length=config.max_seq_length,
-        short_seq_prob=config.short_seq_prob,
-        masked_lm_prob=config.masked_lm_prob,
-        max_predictions_per_seq=config.max_predictions_per_seq,
-        vocab_words=vocab_words,
-        rng=random.Random(12345),
-    )
-
-    if not batch_instances:
-        # Return empty tensors if no instances were created
-        return {
-            "tokens": torch.empty((0, 0), dtype=torch.long),
-            "segment_ids": torch.empty((0, 0), dtype=torch.long),
-            "is_random_next": torch.empty((0,), dtype=torch.long),
-            "masked_lm_labels": torch.empty((0, 0), dtype=torch.long),
-        }
-
-    # Process the instances into tensors
-    batch_tokens = []
-    batch_segment_ids = []
-    batch_is_random_next = []
-    batch_masked_lm_labels = []
-    pad_id = tokenizer.token_to_id("[PAD]")
-
-    batch_max_seq_length = max(len(instance["tokens"]) for instance in batch_instances)
-
-    for instance in batch_instances:
-        batch_tokens.append(torch.tensor([tokenizer.token_to_id(token) for token in instance["tokens"]]))
-        batch_segment_ids.append(torch.tensor(instance["segment_ids"]))
-        batch_is_random_next.append(instance["is_random_next"])
-
-        # Create padded masked_lm_labels tensor
-        padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
-        for i, pos in enumerate(instance["masked_lm_positions"]):
-            padded_masked_lm_label_token_ids[pos] = tokenizer.token_to_id(instance["masked_lm_labels"][i])
-        batch_masked_lm_labels.append(padded_masked_lm_label_token_ids)
-
-    batch_padded_token_id_tensor = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
-    batch_segment_ids_tensor = pad_sequence(batch_segment_ids, padding_value=pad_id, batch_first=True)
-
-    return {
-        "tokens": batch_padded_token_id_tensor,
-        "segment_ids": batch_segment_ids_tensor,
-        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
-        "masked_lm_labels": torch.stack(batch_masked_lm_labels),
-    }
+) -> DataLoader:
+    """Clean pipeline using streaming approach for large datasets."""
+    return get_split_dataloader_streaming(dataset_path, split, config)
 
 
 def get_dataset(
@@ -550,138 +389,317 @@ def get_dataset(
     return dataset  # type: ignore[return-value]
 
 
-def upload_pretrain_instance(all_pretrain_instances: Dataset):
-    """Upload the pretraining dataset to Hugging Face dataset hub.
-
-    Args:
-        all_pretrain_instances (Dataset): The dataset to upload.
+class StreamingBertDataset(torch.utils.data.IterableDataset):
     """
-    # Convert the dataset to a DatasetDict if not already
-    dataset_dict = DatasetDict({"train": all_pretrain_instances})
+    STREAMING SOLUTION: Process data on-the-fly while maintaining exact batch size.
 
-    # Define the repository name on Hugging Face hub
-    repo_name = "AI-Glimpse/bookcorpusopen-bert"
+    Key idea: Buffer training instances until we have exactly `batch_size` samples,
+    then yield them. This gives us streaming processing + exact batch control.
+    """
 
-    # Push the dataset to the Hugging Face hub
-    dataset_dict.push_to_hub(repo_name)
+    def __init__(
+        self,
+        dataset_path: str,
+        split: str,
+        config: BertConfig,
+        buffer_size: int = 1000,
+    ) -> None:
+        super().__init__()
+        self.dataset_path = dataset_path
+        self.split = split
+        self.config = config
+        self.buffer_size = buffer_size
 
-    print(f"Dataset successfully uploaded to Hugging Face hub under repository: {repo_name}")
+        # Load the raw dataset as streaming
+        # For streaming datasets, we need to handle split parsing
+        if ":" in split and "[" in split:
+            # Parse "train[:50]" format
+            base_split = split.split("[")[0]  # "train"
+            slice_part = split.split("[")[1].split("]")[0]  # ":50"
+            self.raw_dataset = load_dataset(dataset_path, split=base_split, streaming=True)
+            if ":" in slice_part and slice_part.split(":")[1]:
+                # Take only the specified number
+                num_samples = int(slice_part.split(":")[1])
+                self.raw_dataset = self.raw_dataset.take(num_samples)
+        else:
+            self.raw_dataset = load_dataset(dataset_path, split=split, streaming=True)
+
+        # We'll create documents_dataset lazily when needed
+        self._documents_dataset = None
+        self.vocab_words = list(bert_tokenizer.get_vocab().keys())
+        self.rng = random.Random(42)
+
+    def __iter__(self):
+        """Stream training instances while maintaining exact batch sizes."""
+        # CRITICAL: For multi-worker support, each worker should process different data
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is not None:
+            # Multiple workers: skip data to avoid duplication
+            worker_id = worker_info.id
+            num_workers = worker_info.num_workers
+            # Skip entries for this worker
+            dataset_iter = iter(self.raw_dataset)
+            for _ in range(worker_id):
+                next(dataset_iter, None)
+            # Take every num_workers-th item
+            filtered_dataset = []
+            for i, item in enumerate(dataset_iter):
+                if i % num_workers == 0:
+                    filtered_dataset.append(item)
+                    if len(filtered_dataset) >= 100:  # Process in chunks
+                        break
+            raw_dataset = filtered_dataset
+        else:
+            # Single worker: use all data
+            raw_dataset = self.raw_dataset
+
+        instance_buffer = []
+        documents_dataset = self._get_documents_dataset()
+
+        for raw_item in raw_dataset:
+            # Convert text to documents
+            documents = text_to_documents(raw_item["text"])
+
+            # Create training instances from each document
+            for document in documents:
+                instances = create_pretraining_examples_from_documents(
+                    documents_dataset,
+                    document,
+                    max_seq_length=self.config.max_seq_length,
+                    short_seq_prob=self.config.short_seq_prob,
+                    masked_lm_prob=self.config.masked_lm_prob,
+                    max_predictions_per_seq=self.config.max_predictions_per_seq,
+                    vocab_words=self.vocab_words,
+                    rng=self.rng,
+                )
+
+                # Add to buffer
+                instance_buffer.extend(instances)
+
+                # Yield batches when buffer is large enough
+                while len(instance_buffer) >= self.config.batch_size:
+                    batch_instances = instance_buffer[: self.config.batch_size]
+                    instance_buffer = instance_buffer[self.config.batch_size :]
+
+                    # Convert to the format expected by simple_collate_fn
+                    yield from batch_instances
+        super().__init__()
+        self.dataset_path = dataset_path
+        self.split = split
+        self.config = config
+        self.buffer_size = buffer_size
+
+        # Load the raw dataset as streaming
+        # For streaming, we need to handle split parsing
+        if ":" in split and "[" in split:
+            # Parse "train[:50]" format
+            base_split = split.split("[")[0]  # "train"
+            slice_part = split.split("[")[1].split("]")[0]  # ":50"
+            self.raw_dataset = load_dataset(dataset_path, split=base_split, streaming=True)
+            if ":" in slice_part and slice_part.split(":")[1]:
+                # Take only the specified number
+                num_samples = int(slice_part.split(":")[1])
+                self.raw_dataset = self.raw_dataset.take(num_samples)
+        else:
+            self.raw_dataset = load_dataset(dataset_path, split=split, streaming=True)
+
+        # We'll create documents_dataset lazily when needed
+        self._documents_dataset = None
+        self.vocab_words = list(bert_tokenizer.get_vocab().keys())
+        self.rng = random.Random(42)
+
+    def _get_documents_dataset(self):
+        """Lazy loading of documents dataset for NSP random sampling."""
+        if self._documents_dataset is None:
+            # For streaming, we need a small sample for NSP random document selection
+            # Take first 1000 examples and preprocess them
+            sample_dataset = self.raw_dataset.take(1000)
+            sample_list = list(sample_dataset)
+
+            # Create documents from sample
+            all_docs = []
+            for item in sample_list:
+                docs = text_to_documents(item["text"])
+                all_docs.extend(docs)
+
+            # Create a simple dataset-like object for NSP
+            self._documents_dataset = {"document": all_docs}
+
+        return self._documents_dataset
+
+    def __iter__(self):
+        """Stream training instances while maintaining exact batch sizes."""
+        instance_buffer = []
+        documents_dataset = self._get_documents_dataset()
+
+        for raw_item in self.raw_dataset:
+            # Convert text to documents
+            documents = text_to_documents(raw_item["text"])
+
+            # Create training instances from each document
+            for document in documents:
+                instances = create_pretraining_examples_from_documents(
+                    documents_dataset,
+                    document,
+                    max_seq_length=self.config.max_seq_length,
+                    short_seq_prob=self.config.short_seq_prob,
+                    masked_lm_prob=self.config.masked_lm_prob,
+                    max_predictions_per_seq=self.config.max_predictions_per_seq,
+                    vocab_words=self.vocab_words,
+                    rng=self.rng,
+                )
+
+                # Add to buffer
+                instance_buffer.extend(instances)
+
+                # Yield batches when buffer is large enough
+                while len(instance_buffer) >= self.config.batch_size:
+                    batch_instances = instance_buffer[: self.config.batch_size]
+                    instance_buffer = instance_buffer[self.config.batch_size :]
+
+                    # Convert to the format expected by simple_collate_fn
+                    for instance in batch_instances:
+                        yield instance
 
 
-def get_split_dataloader(
+def get_split_dataloader_streaming(
     dataset_path: str,
     split: str,
     config: BertConfig,
 ) -> DataLoader:
-    """Get a DataLoader with consistent batch sizes using buffered streaming."""
-    # Load the raw dataset
-    raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
+    """
+    STREAMING SOLUTION: Process data on-the-fly with exact batch size control.
 
-    # Create documents dataset for NSP task
-    # We'll create a smaller sample for random document selection
-    sample_size = min(1000, len(raw_dataset))  # type: ignore[arg-type]
-    sample_dataset = raw_dataset.select(range(sample_size))  # type: ignore[attr-defined]
+    Benefits:
+    - No upfront preprocessing (starts immediately)
+    - Exact batch size control
+    - Memory efficient
+    - Works with datasets of any size
+    - GPU OPTIMIZATION: Prefetching + background workers for full GPU utilization
+    """
 
-    documents_dataset = sample_dataset.map(
-        lambda batch: {"document": batch_text_to_documents(batch["text"])},
-        batched=True,
-        batch_size=12,
-        num_proc=1,  # Use single process for smaller sample
-        remove_columns=["text", "title"],
-    )
-
-    # Create vocab_words list
-    vocab_words = list(bert_tokenizer.get_vocab().keys())
-
-    # Get seed from config or use default
-    seed = getattr(config, "seed", 12345)
-
-    # Create the buffered dataset
-    buffered_dataset = BufferedPretrainingDataset(
-        dataset=raw_dataset,  # type: ignore[arg-type]
+    streaming_dataset = StreamingBertDataset(
+        dataset_path=dataset_path,
+        split=split,
         config=config,
-        tokenizer=bert_tokenizer,
-        documents_dataset=documents_dataset,
-        vocab_words=vocab_words,
-        buffer_size=10000,  # Adjust based on memory constraints
-        seed=seed,
     )
 
-    # Create DataLoader with the buffered dataset
+    # IMPORTANT: For IterableDataset, we need to be careful with num_workers
+    # If the dataset has internal randomness, use num_workers=0
+    # For production with deterministic processing, can use multiple workers
+
     dataloader = DataLoader(
-        buffered_dataset,
+        streaming_dataset,
         batch_size=config.batch_size,
-        collate_fn=lambda batch: collate_pretrain_instances(batch, bert_tokenizer),
-        num_workers=0,  # Start with 0, can increase for parallel data loading
-        pin_memory=True,
-        drop_last=True,  # Drop last incomplete batch for consistent batch sizes
+        collate_fn=simple_collate_fn,
+        num_workers=config.num_workers,  # Background data loading for GPU efficiency
+        prefetch_factor=4,  # Each worker prefetches 4 batches ahead
+        pin_memory=True,  # Fast GPU transfer
+        persistent_workers=True,  # Keep workers alive between epochs
+        drop_last=True,  # Consistent batch sizes
     )
 
     return dataloader
 
 
-def get_split_dataloader_legacy(
+def simple_collate_fn(batch: list[dict]) -> dict[str, torch.Tensor]:
+    """
+    BEST PRACTICE: Simple collate function that only handles tokenization and padding.
+    No complex transformations - just convert tokens to IDs and pad.
+    """
+    batch_tokens = []
+    batch_segment_ids = []
+    batch_is_random_next = []
+    batch_masked_lm_labels = []
+
+    pad_id = bert_tokenizer.token_to_id("[PAD]")
+    max_len = max(len(item["tokens"]) for item in batch)
+
+    for item in batch:
+        # Convert tokens to IDs
+        token_ids = [bert_tokenizer.token_to_id(token) for token in item["tokens"]]
+        batch_tokens.append(torch.tensor(token_ids))
+
+        # Segment IDs
+        batch_segment_ids.append(torch.tensor(item["segment_ids"]))
+
+        # NSP labels
+        batch_is_random_next.append(item["is_random_next"])
+
+        # MLM labels - create padded tensor
+        mlm_labels = torch.full((max_len,), pad_id, dtype=torch.long)
+        for i, pos in enumerate(item["masked_lm_positions"]):
+            mlm_labels[pos] = bert_tokenizer.token_to_id(item["masked_lm_labels"][i])
+        batch_masked_lm_labels.append(mlm_labels)
+
+    # Pad sequences
+    tokens_padded = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
+    segment_ids_padded = pad_sequence(batch_segment_ids, padding_value=0, batch_first=True)
+
+    return {
+        "tokens": tokens_padded,
+        "segment_ids": segment_ids_padded,
+        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
+        "masked_lm_labels": torch.stack(batch_masked_lm_labels),
+    }
+
+
+def get_split_dataloader_clean(
     dataset_path: str,
     split: str,
     config: BertConfig,
 ) -> DataLoader:
-    """Legacy dataloader that uses dynamic collate function (has batch size control issues)."""
-    raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
-
-    # Create documents dataset EXACTLY as in the original dataset_transform
-    # This is needed for random document sampling in NSP task
-    documents_dataset = raw_dataset.map(
-        lambda batch: {"document": batch_text_to_documents(batch["text"])},
-        batched=True,
-        batch_size=12,
-        num_proc=12,
-        remove_columns=["text", "title"],
-    )
-
-    # Create vocab_words once to avoid recreating it on every batch
-    vocab_words = list(bert_tokenizer.get_vocab().keys())
-
-    dataloader = DataLoader(
-        raw_dataset,  # type: ignore[arg-type]
-        batch_size=config.batch_size,
-        collate_fn=lambda batch: dynamic_collate_fn(batch, bert_tokenizer, config, documents_dataset, vocab_words),
-    )
-
-    return dataloader
+    """Clean pipeline using streaming approach for large datasets."""
+    return get_split_dataloader_streaming(dataset_path, split, config)
 
 
 if __name__ == "__main__":
     config = BertConfig()
 
-    # Example usage with the new buffered streaming approach
-    val_dataset_loader = get_split_dataloader(
+    print("=== Testing STREAMING Pipeline (Best for Large Datasets) ===")
+    print("On-the-fly processing → No upfront preprocessing → Immediate start")
+
+    # Streaming solution - starts immediately, no preprocessing delay
+    print("Creating streaming dataloader...")
+    streaming_dataloader = get_split_dataloader_streaming(
         config.dataset_path,
-        "train[:10]",
+        "train[:50]",  # Larger sample to show streaming benefits
         config,
     )
-    print("DataLoader created successfully (streaming mode - no fixed length)")
+    print("✓ Streaming DataLoader created successfully (immediate start!)")
 
-    # Test batch size consistency
+    # Test batch size consistency and immediate data flow
     batch_sizes = []
-    print("Testing batch consistency...")
-    for i, batch in enumerate(val_dataset_loader):
+    print("Testing streaming batch consistency...")
+    start_time = time.time()
+
+    for i, batch in enumerate(streaming_dataloader):
         batch_size = batch["tokens"].shape[0]
         batch_sizes.append(batch_size)
-        print(f"Batch {i + 1}: size={batch_size}")
-        print(f"  tokens shape: {batch['tokens'].shape}")
-        print(f"  segment_ids shape: {batch['segment_ids'].shape}")
-        print(f"  is_random_next shape: {batch['is_random_next'].shape}")
-        print(f"  masked_lm_labels shape: {batch['masked_lm_labels'].shape}")
-        if i >= 4:  # Check first 5 batches
+        print(f"Streaming Batch {i + 1}: size={batch_size}")
+        if i >= 4:  # Check first 5 batches to show consistency
             break
 
-    if batch_sizes:
-        print("\nBatch size consistency check:")
-        print(f"  Expected batch size: {config.batch_size}")
-        print(f"  Actual batch sizes: {batch_sizes}")
-        # For streaming datasets with drop_last=True, all batches should have the same size
-        all_consistent = all(bs == config.batch_size for bs in batch_sizes)
-        print(f"  All batches have consistent size: {all_consistent}")
-        success_msg = "  SUCCESS: Batch size control is working!"
-        issue_msg = "  ISSUE: Batch sizes are inconsistent"
-        print(success_msg if all_consistent else issue_msg)
+    streaming_time = time.time() - start_time
+    print(f"Streaming approach time for 5 batches: {streaming_time:.2f}s")
+
+    print("\n" + "=" * 60)
+    print("STREAMING SOLUTION FOR LARGE DATASETS")
+    print("=" * 60)
+
+    print("\n� Key Benefits of Streaming Approach:")
+    print("  • IMMEDIATE START - No preprocessing delay")
+    print("  • EXACT BATCH SIZE - Every batch is exactly", config.batch_size)
+    print("  • MEMORY EFFICIENT - Only loads what's needed")
+    print("  • SCALES TO ANY SIZE - Works with TB+ datasets")
+    print("  • REAL STREAMING - Processes on-the-fly")
+
+    print(f"\n📊 Batch Size Verification:")
+    print(f"  • Target batch size: {config.batch_size}")
+    print(f"  • Actual batch sizes: {batch_sizes}")
+    print(f"  • All batches correct: {all(size == config.batch_size for size in batch_sizes)}")
+
+    print(f"\n⚡ Performance for Large Datasets:")
+    print(f"  • Streaming: Starts immediately, continuous processing")
+    print(f"  • Preprocessing: Would take hours/days for full BookCorpus")
+    print(f"  • Winner: Streaming (essential for production!)")

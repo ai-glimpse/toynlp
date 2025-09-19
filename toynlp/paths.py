@@ -1,7 +1,7 @@
 import pathlib
 
-# _MODEL_PATH = pathlib.Path(__file__).parents[1] / "models"
-_MODEL_PATH = pathlib.Path("/data/models")
+_MODEL_PATH = pathlib.Path(__file__).parents[1] / "models"
+# _MODEL_PATH = pathlib.Path("/data/models")
 _MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
 
