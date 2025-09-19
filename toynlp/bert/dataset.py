@@ -483,25 +483,6 @@ class StreamingBertDataset(torch.utils.data.IterableDataset):
 
                     # Convert to the format expected by simple_collate_fn
                     yield from batch_instances
-        super().__init__()
-        self.dataset_path = dataset_path
-        self.split = split
-        self.config = config
-        self.buffer_size = buffer_size
-
-        # Load the raw dataset as streaming
-        # For streaming, we need to handle split parsing
-        if ":" in split and "[" in split:
-            # Parse "train[:50]" format
-            base_split = split.split("[")[0]  # "train"
-            slice_part = split.split("[")[1].split("]")[0]  # ":50"
-            self.raw_dataset = load_dataset(dataset_path, split=base_split, streaming=True)
-            if ":" in slice_part and slice_part.split(":")[1]:
-                # Take only the specified number
-                num_samples = int(slice_part.split(":")[1])
-                self.raw_dataset = self.raw_dataset.take(num_samples)
-        else:
-            self.raw_dataset = load_dataset(dataset_path, split=split, streaming=True)
 
         # We'll create documents_dataset lazily when needed
         self._documents_dataset = None
