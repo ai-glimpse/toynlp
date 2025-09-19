@@ -328,7 +328,7 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
     documents_dataset = raw_dataset.map(
         lambda batch: {"document": batch_text_to_documents(batch["text"])},
         batched=True,
-        batch_size=12,
+        batch_size=8,
         # num_proc=12,
         remove_columns=["text", "title"],
     )
@@ -353,7 +353,7 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
         )
         else {},
         batched=True,
-        batch_size=1000,
+        batch_size=64,
         # num_proc=12,
         remove_columns=["document"],
     )
@@ -418,14 +418,14 @@ def get_split_dataloader(
 ) -> DataLoader:
     # raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
     raw_dataset = load_dataset(path=dataset_path, name=None, split=split)
-    raw_dataset = raw_dataset.shuffle(seed=42).to_iterable_dataset(num_shards=10)
+    raw_dataset = raw_dataset.shuffle(seed=42).to_iterable_dataset(num_shards=32)
     pretrain_dataset = dataset_transform(raw_dataset, config)
     dataloader = torch.utils.data.DataLoader(
         pretrain_dataset.with_format(type="torch"),
         batch_size=config.batch_size,
         collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
         num_workers=8,
-        prefetch_factor=4,
+        prefetch_factor=2,
         pin_memory=True,
         persistent_workers=True,
     )
