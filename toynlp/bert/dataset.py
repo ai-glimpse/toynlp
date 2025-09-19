@@ -55,7 +55,7 @@ def create_masked_lm_predictions(  # noqa: C901, PLR0912
     do_whole_word_mask=False,
 ):
     """Creates the predictions for the masked LM objective."""
-    cand_indexes = []
+    cand_indexes = []  # type: ignore[var-annotated]
     for i, token in enumerate(tokens):
         if token in {"[CLS]", "[SEP]"}:
             continue
@@ -82,7 +82,7 @@ def create_masked_lm_predictions(  # noqa: C901, PLR0912
         max(1, round(len(tokens) * masked_lm_prob)),
     )
 
-    masked_lms = []
+    masked_lms = []  # type: ignore[var-annotated]
     covered_indexes = set()
     for index_set in cand_indexes:
         if len(masked_lms) >= num_to_predict:
@@ -128,7 +128,7 @@ def create_masked_lm_predictions(  # noqa: C901, PLR0912
 
 
 def create_pretraining_examples_from_documents(  # noqa: C901, PLR0912, PLR0915
-    documents_dataset: Dataset,
+    random_document: list[list[str]],
     document: list[list[str]],
     max_seq_length: int,
     short_seq_prob: float,
@@ -187,13 +187,13 @@ def create_pretraining_examples_from_documents(  # noqa: C901, PLR0912, PLR0915
                     # corpora. However, just to be careful, we try to make sure that
                     # the random document is not the same as the document
                     # we're processing.
-                    for _ in range(10):
-                        random_document_index = rng.randint(0, len(documents_dataset) - 1)
-                        # if random_document_index != document_index:
-                        if documents_dataset["document"][random_document_index][0] != document:
-                            break
+                    # for _ in range(10):
+                    #     random_document_index = rng.randint(0, len(documents_dataset) - 1)
+                    #     # if random_document_index != document_index:
+                    #     if documents_dataset["document"][random_document_index][0] != document:
+                    #         break
 
-                    random_document = documents_dataset["document"][random_document_index]
+                    # random_document = documents_dataset["document"][random_document_index]
                     random_start = rng.randint(0, len(random_document) - 1)
                     for j in range(random_start, len(random_document)):
                         tokens_b.extend(random_document[j])
@@ -260,7 +260,7 @@ def create_pretraining_examples_from_documents(  # noqa: C901, PLR0912, PLR0915
 
 
 def text_to_documents(text: str) -> list[list[str]]:
-    all_documents = [[]]
+    all_documents = [[]]  # type: ignore[var-annotated]
     lines = text.split("\n")
     for line in lines:
         line = convert_to_unicode(line).strip()  # noqa: PLW2901
@@ -287,7 +287,6 @@ def batch_text_to_documents(batch: list[str]) -> list[list[str]]:
 
 
 def batch_create_pretraining_examples_from_documents(
-    documents_dataset: Dataset,
     batch: list[list[list[str]]],
     max_seq_length: int,
     short_seq_prob: float,
@@ -297,9 +296,11 @@ def batch_create_pretraining_examples_from_documents(
     rng: random.Random,
 ) -> list[dict]:
     all_instances = []
-    for document in batch:
+    for i, document in enumerate(batch):
+        # random doc except self
+        random_document = batch[rng.choice([j for j in range(len(batch)) if j != i])]
         document_instances = create_pretraining_examples_from_documents(
-            documents_dataset,
+            random_document,
             document,
             max_seq_length,
             short_seq_prob,
@@ -317,7 +318,7 @@ def get_dataset(
     dataset_name: str | None,
     split: str,
 ) -> Dataset:
-    dataset = load_dataset(path=dataset_path, name=dataset_name, split=split)
+    dataset = load_dataset(path=dataset_path, name=dataset_name, split=split, streaming=True)
     return dataset  # type: ignore[return-value]
 
 
@@ -328,7 +329,7 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
         lambda batch: {"document": batch_text_to_documents(batch["text"])},
         batched=True,
         batch_size=12,
-        num_proc=12,
+        # num_proc=12,
         remove_columns=["text", "title"],
     )
     pre_train_dataset = documents_dataset.map(
@@ -341,7 +342,6 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
         }
         if (
             batch_instances := batch_create_pretraining_examples_from_documents(
-                documents_dataset,
                 batch["document"],
                 max_seq_length=config.max_seq_length,
                 short_seq_prob=config.short_seq_prob,
@@ -354,7 +354,7 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
         else {},
         batched=True,
         batch_size=1000,
-        num_proc=12,
+        # num_proc=12,
         remove_columns=["document"],
     )
 
@@ -416,18 +416,26 @@ def get_split_dataloader(
     split: str,
     config: BertConfig,
 ) -> DataLoader:
-    raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
+    # raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
+    raw_dataset = load_dataset(path=dataset_path, name=None, split=split)
+    raw_dataset = raw_dataset.shuffle(seed=42).to_iterable_dataset(num_shards=10)
     pretrain_dataset = dataset_transform(raw_dataset, config)
     dataloader = torch.utils.data.DataLoader(
         pretrain_dataset.with_format(type="torch"),
         batch_size=config.batch_size,
         collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
+        num_workers=8,
+        prefetch_factor=4,
+        pin_memory=True,
+        persistent_workers=True,
     )
 
     return dataloader
 
 
 if __name__ == "__main__":
+    from tqdm import tqdm
+
     config = BertConfig()
 
     # raw_dataset = get_dataset(config.dataset_path, config.dataset_name, split="train[:1790]")  # 10%
@@ -438,15 +446,15 @@ if __name__ == "__main__":
     val_dataset_loader = get_split_dataloader(
         config.dataset_path,
         # config.dataset_split_of_model_val,
-        "train[:10]",
+        "train[:10%]",
         config,
     )
-    print(f"Number of training batches: {len(val_dataset_loader)}")
-    for batch in val_dataset_loader:
+    # print(f"Number of training batches: {len(val_dataset_loader)}")
+    for i, batch in enumerate(tqdm(val_dataset_loader)):
         # Process each batch
-        print(batch)
+        # print(batch)
         print(batch["tokens"].shape)
         print(batch["segment_ids"].shape)
         print(batch["is_random_next"].shape)
         print(batch["masked_lm_labels"].shape)
-        break
+        print("=" * 20, i, "=" * 20)
