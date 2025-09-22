@@ -213,6 +213,23 @@ File "/toynlp/.venv/lib/python3.12/site-packages/torch/utils/data/_utils/signal_
 RuntimeError: DataLoader worker (pid 2972) is killed by signal: Killed.
 ```
 
+I try to solve this problem by reducing the `num_workers` and `prefetch_factor` and remove the `pin_memory` and `persistent_workers` options:
+
+```python
+dataloader = torch.utils.data.DataLoader(
+    pretrain_dataset.with_format(type="torch"),
+    batch_size=config.batch_size,
+    collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
+    num_workers=8,
+    prefetch_factor=4,
+)
+```
+
+The training is going on and I don't know if this problem will happen again.
+I find both [pytorch/issues/13246](https://github.com/pytorch/pytorch/issues/13246)
+and [datasets/issues/7269](https://github.com/huggingface/datasets/issues/7269) have
+memory leak problems in a way or another, but I am not sure if my problem is caused by these issues.
+
 
 
 ## References
