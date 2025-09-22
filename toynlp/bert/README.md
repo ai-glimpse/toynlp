@@ -87,6 +87,8 @@ Observations:
 
 ## The mistakes that I made
 
+![](../../docs/images/bert/times.png)
+
 ### Can not overfit even on a very small dataset
 
 I want to make sure that the full pipeline(data loading, tokenization, model training) is working correctly and that the model can overfit on a small dataset before scaling up. To speed up the overfitting speed, I set a bigger learning rate(0.01/0.001). But I find I can not overfit even on a very small dataset.
@@ -230,7 +232,7 @@ I find both [pytorch/issues/13246](https://github.com/pytorch/pytorch/issues/132
 and [datasets/issues/7269](https://github.com/huggingface/datasets/issues/7269) have
 memory leak problems in a way or another, but I am not sure if my problem is caused by these issues.
 
-
+![](../../docs/images/bert/no_fear_future.png)
 
 ## References
 - [google-research/bert](https://github.com/google-research/bert)
