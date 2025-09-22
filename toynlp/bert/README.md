@@ -167,6 +167,52 @@ def get_split_dataloader(
 The `pretrain_dataset = dataset_transform(raw_dataset, config)` will transform the whole dataset at once, which is very time-consuming(with 12 CPUs( 2.1 GHz), which took more than 7 days...). It is better to do this transformation at training batch level.
 
 
+### Use self-define buffer for DataLoader
+
+To resolve the above problem, I try to use a self-defined buffer to store the transformed data samples, but it is still slow and not efficient. With this method, the GPU is often idle, waiting for the CPU to prepare the data.
+
+
+I realized that I should not use a self-defined buffer(even it seems easy(It's actually not so that easy)), but rather use the built-in features of the `datasets` library and `DataLoader` to optimize data loading and transformation. The key changes are as fellows:
+
+Instead of transforming the whole dataset at once, we can use the `streaming=True` feature of `datasets` library to load and transform the dataset on-the-fly during training. And we can shard the dataset to speed up the data loading:
+
+```python
+dataset = load_dataset(path=dataset_path, name=dataset_name, split=split, streaming=True)
+...
+raw_dataset = raw_dataset.shuffle(seed=42).to_iterable_dataset(num_shards=32)
+```
+
+Use `prefetch_factor` in DataLoader to speed up data loading:
+
+> This method can solve the problem that the GPU is often idle, waiting for the CPU to prepare the data. But may introduce other problems, see the fellowing mistake for details.
+
+```python
+dataloader = torch.utils.data.DataLoader(
+    pretrain_dataset.with_format(type="torch"),
+    batch_size=config.batch_size,
+    collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
+    num_workers=16,
+    prefetch_factor=10,
+    pin_memory=True,
+    persistent_workers=True,
+)
+```
+
+### Use too many workers and too big prefetch factor for DataLoader
+
+When I set `num_workers=16`(my CPU has 16 cores) and `prefetch_factor=10`,
+the GPU never idle(keep brrrrrr), but the dataloader process memory usage is keep increasing and finally the system runs out of memory(OOM) and killed the process:
+> The error occur after about 16 hours training with 16GB memory.
+
+```python
+File "/toynlp/.venv/lib/python3.12/site-packages/torch/nn/modules/linear.py", line 125, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/toynlp/.venv/lib/python3.12/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+RuntimeError: DataLoader worker (pid 2972) is killed by signal: Killed.
+```
+
 
 
 ## References
