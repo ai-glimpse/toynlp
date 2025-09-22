@@ -424,8 +424,8 @@ def get_split_dataloader(
         pretrain_dataset.with_format(type="torch"),
         batch_size=config.batch_size,
         collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
-        num_workers=8,
-        prefetch_factor=2,
+        num_workers=16,
+        prefetch_factor=10,
         pin_memory=True,
         persistent_workers=True,
     )
