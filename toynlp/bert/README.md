@@ -202,7 +202,7 @@ dataloader = torch.utils.data.DataLoader(
 
 When I set `num_workers=16`(my CPU has 16 cores) and `prefetch_factor=10`,
 the GPU never idle(keep brrrrrr), but the dataloader process memory usage is keep increasing and finally the system runs out of memory(OOM) and killed the process:
-> The error occur after about 16 hours training with 16GB memory.
+> The error occured after about 16 hours training and the memory usage beyond 16GB.
 
 ```python
 File "/toynlp/.venv/lib/python3.12/site-packages/torch/nn/modules/linear.py", line 125, in forward
