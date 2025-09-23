@@ -9,7 +9,7 @@ from toynlp.bert.config import BertConfig, create_config_from_cli
 from toynlp.bert.model import BertPretrainModel
 from toynlp.bert.tokenizer import BertTokenizer
 from toynlp.util import setup_seed, set_deterministic_mode
-from toynlp.bert.dataset import get_split_dataloader
+from toynlp.bert.dataset import get_split_dataloader, is_empty_batch
 
 
 setup_seed(1234)  # Set a random seed for reproducibility
@@ -118,6 +118,11 @@ class BertTrainer:
         total_samples = 0
         nsp_total, nsp_correct = 0, 0  # Initialize counters for NSP accuracy
         for batch in train_dataloader:
+            # Skip empty batches to avoid wasting computation
+            if is_empty_batch(batch):
+                print("Skipping empty batch during training")
+                continue
+
             # Update learning rate before each step
             self.update_lr()
 
@@ -231,11 +236,16 @@ class BertTrainer:
 
         nsp_total, nsp_correct = 0, 0  # Initialize counters for NSP accuracy
         for batch in data_loader:
-            input_batch_device = batch["tokens"].to(self.device)
+            # Skip empty batches to avoid wasting computation
+            if is_empty_batch(batch):
+                print("Skipping empty batch during validation")
+                continue
+
+            input_batch_device = batch["tokens"].to(self.device, non_blocking=True)
             batch_size = input_batch_device.size(0)
-            segment_batch_device = batch["segment_ids"].to(self.device)
-            is_random_next_batch_device = batch["is_random_next"].to(self.device)
-            target_batch_device = batch["masked_lm_labels"].to(self.device)
+            segment_batch_device = batch["segment_ids"].to(self.device, non_blocking=True)
+            is_random_next_batch_device = batch["is_random_next"].to(self.device, non_blocking=True)
+            target_batch_device = batch["masked_lm_labels"].to(self.device, non_blocking=True)
             loss_stats = self.calc_loss_batch(
                 input_batch_device, segment_batch_device, is_random_next_batch_device, target_batch_device, "Val/Test"
             )
@@ -246,6 +256,8 @@ class BertTrainer:
 
             nsp_total += loss_stats["nsp_total"]  # type: ignore[assignment]
             nsp_correct += loss_stats["nsp_correct"]  # type: ignore[assignment]
+
+            torch.cuda.empty_cache()  # Clear cache to prevent OOM
 
         avg_loss = total_loss / total_samples  # Correct average
         mlm_loss = mlm_loss / total_samples if total_samples > 0 else 0

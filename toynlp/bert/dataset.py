@@ -281,8 +281,13 @@ def text_to_documents(text: str) -> list[list[str]]:
 def batch_text_to_documents(batch: list[str]) -> list[list[str]]:
     all_documents = []
     for text in batch:
-        for doc in text_to_documents(text):
-            all_documents.append(doc)  # noqa: PERF402
+        try:
+            for doc in text_to_documents(text):
+                all_documents.append(doc)  # noqa: PERF402
+        except Exception as e:
+            # Skip malformed text data that causes tokenization errors
+            print(f"Error processing text in batch_text_to_documents: {e}")
+            continue
     return all_documents
 
 
@@ -297,19 +302,24 @@ def batch_create_pretraining_examples_from_documents(
 ) -> list[dict]:
     all_instances = []
     for i, document in enumerate(batch):
-        # random doc except self
-        random_document = batch[rng.choice([j for j in range(len(batch)) if j != i])]
-        document_instances = create_pretraining_examples_from_documents(
-            random_document,
-            document,
-            max_seq_length,
-            short_seq_prob,
-            masked_lm_prob,
-            max_predictions_per_seq,
-            vocab_words,
-            rng,
-        )
-        all_instances.extend(document_instances)
+        try:
+            # random doc except self
+            random_document = batch[rng.choice([j for j in range(len(batch)) if j != i])]
+            document_instances = create_pretraining_examples_from_documents(
+                random_document,
+                document,
+                max_seq_length,
+                short_seq_prob,
+                masked_lm_prob,
+                max_predictions_per_seq,
+                vocab_words,
+                rng,
+            )
+            all_instances.extend(document_instances)
+        except Exception as e:
+            # Skip documents that cause processing errors
+            print(f"Error processing document in batch_create_pretraining_examples_from_documents: {e}")
+            continue
     return all_instances
 
 
@@ -326,32 +336,43 @@ def dataset_transform(raw_dataset: Dataset, config: BertConfig) -> Dataset:
     # Apply any necessary transformations to the dataset here
     # https://huggingface.co/docs/datasets/en/about_map_batch#input-size--output-size
     documents_dataset = raw_dataset.map(
-        lambda batch: {"document": batch_text_to_documents(batch["text"])},
+        lambda batch: ({"document": batch_text_to_documents(batch["text"])} if batch.get("text") else {"document": []}),
         batched=True,
         batch_size=8,
         # num_proc=12,
         remove_columns=["text", "title"],
     )
     pre_train_dataset = documents_dataset.map(
-        lambda batch: {
-            "tokens": [instance["tokens"] for instance in batch_instances],
-            "segment_ids": [instance["segment_ids"] for instance in batch_instances],
-            "is_random_next": [instance["is_random_next"] for instance in batch_instances],
-            "masked_lm_positions": [instance["masked_lm_positions"] for instance in batch_instances],
-            "masked_lm_labels": [instance["masked_lm_labels"] for instance in batch_instances],
-        }
-        if (
-            batch_instances := batch_create_pretraining_examples_from_documents(
-                batch["document"],
-                max_seq_length=config.max_seq_length,
-                short_seq_prob=config.short_seq_prob,
-                masked_lm_prob=config.masked_lm_prob,
-                max_predictions_per_seq=config.max_predictions_per_seq,
-                vocab_words=list(bert_tokenizer.get_vocab().keys()),
-                rng=random.Random(12345),
+        lambda batch: (
+            {
+                "tokens": [instance["tokens"] for instance in batch_instances],
+                "segment_ids": [instance["segment_ids"] for instance in batch_instances],
+                "is_random_next": [instance["is_random_next"] for instance in batch_instances],
+                "masked_lm_positions": [instance["masked_lm_positions"] for instance in batch_instances],
+                "masked_lm_labels": [instance["masked_lm_labels"] for instance in batch_instances],
+            }
+            if (
+                batch.get("document")
+                and (
+                    batch_instances := batch_create_pretraining_examples_from_documents(
+                        batch["document"],
+                        max_seq_length=config.max_seq_length,
+                        short_seq_prob=config.short_seq_prob,
+                        masked_lm_prob=config.masked_lm_prob,
+                        max_predictions_per_seq=config.max_predictions_per_seq,
+                        vocab_words=list(bert_tokenizer.get_vocab().keys()),
+                        rng=random.Random(12345),
+                    )
+                )
             )
-        )
-        else {},
+            else {
+                "tokens": [],
+                "segment_ids": [],
+                "is_random_next": [],
+                "masked_lm_positions": [],
+                "masked_lm_labels": [],
+            }
+        ),
         batched=True,
         batch_size=32,
         # num_proc=12,
@@ -383,32 +404,57 @@ def collate_fn(
     batch: list[dict],
     tokenizer: Tokenizer,
 ) -> dict[str, torch.Tensor]:
-    batch_tokens = []
-    batch_segment_ids = []
-    batch_is_random_next = []
-    batch_masked_lm_labels = []
-    pad_id = tokenizer.token_to_id("[PAD]")
+    try:
+        batch_tokens = []
+        batch_segment_ids = []
+        batch_is_random_next = []
+        batch_masked_lm_labels = []
+        pad_id = tokenizer.token_to_id("[PAD]")
 
-    batch_max_seq_length = max(len(item["tokens"]) for item in batch)
+        batch_max_seq_length = max(len(item["tokens"]) for item in batch)
 
-    for item in batch:
-        batch_tokens.append(torch.tensor([tokenizer.token_to_id(token) for token in item["tokens"]]))
-        batch_segment_ids.append(item["segment_ids"])
-        batch_is_random_next.append(item["is_random_next"])
-        # length batch_max_seq_length tensor for masked_lm_labels
-        padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
-        for i, pos in enumerate(item["masked_lm_positions"].tolist()):
-            padded_masked_lm_label_token_ids[pos] = tokenizer.token_to_id(item["masked_lm_labels"][i])
-        batch_masked_lm_labels.append(padded_masked_lm_label_token_ids)
-    batch_padded_token_id_tensor = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
-    batch_segment_ids_tensor = pad_sequence(batch_segment_ids, padding_value=pad_id, batch_first=True)
+        for item in batch:
+            batch_tokens.append(torch.tensor([tokenizer.token_to_id(token) for token in item["tokens"]]))
+            batch_segment_ids.append(item["segment_ids"])
+            batch_is_random_next.append(item["is_random_next"])
+            # length batch_max_seq_length tensor for masked_lm_labels
+            padded_masked_lm_label_token_ids = torch.full((batch_max_seq_length,), pad_id)
+            for i, pos in enumerate(item["masked_lm_positions"].tolist()):
+                padded_masked_lm_label_token_ids[pos] = tokenizer.token_to_id(item["masked_lm_labels"][i])
+            batch_masked_lm_labels.append(padded_masked_lm_label_token_ids)
+        batch_padded_token_id_tensor = pad_sequence(batch_tokens, padding_value=pad_id, batch_first=True)
+        batch_segment_ids_tensor = pad_sequence(batch_segment_ids, padding_value=pad_id, batch_first=True)
 
-    return {
-        "tokens": batch_padded_token_id_tensor,
-        "segment_ids": batch_segment_ids_tensor,
-        "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
-        "masked_lm_labels": torch.stack(batch_masked_lm_labels),
-    }
+        result = {
+            "tokens": batch_padded_token_id_tensor,
+            "segment_ids": batch_segment_ids_tensor,
+            "is_random_next": torch.tensor(batch_is_random_next, dtype=torch.long),
+            "masked_lm_labels": torch.stack(batch_masked_lm_labels),
+        }
+
+        # Check if batch is effectively empty (all zeros or very small)
+        if batch_padded_token_id_tensor.numel() == 0 or batch_padded_token_id_tensor.shape[0] == 0:
+            # Mark as empty batch for filtering in training loop
+            result["_empty_batch"] = True
+        else:
+            result["_empty_batch"] = False
+
+        return result
+    except Exception as e:
+        print(f"Error in collate_fn: {e}")
+        # Return empty tensors marked as empty batch
+        return {
+            "tokens": torch.empty(0, 0, dtype=torch.long),
+            "segment_ids": torch.empty(0, 0, dtype=torch.long),
+            "is_random_next": torch.empty(0, dtype=torch.long),
+            "masked_lm_labels": torch.empty(0, 0, dtype=torch.long),
+            "_empty_batch": True,
+        }
+
+
+def is_empty_batch(batch: dict[str, torch.Tensor]) -> bool:
+    """Check if a batch is empty and should be skipped during training."""
+    return batch.get("_empty_batch", False) or batch["tokens"].shape[0] == 0  # type: ignore[return-value]
 
 
 def get_split_dataloader(
@@ -426,6 +472,7 @@ def get_split_dataloader(
         collate_fn=lambda batch: collate_fn(batch, bert_tokenizer),
         num_workers=8,
         prefetch_factor=4,
+        drop_last=True,
         # pin_memory=True,
         # persistent_workers=True,
     )
