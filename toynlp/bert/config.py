@@ -72,6 +72,6 @@ if __name__ == "__main__":
     config = tyro.cli(BertConfig)
     print("Configuration loaded:")
     print(f"  Dataset: {config.dataset_path}")
-    print(f"  Max length: {config.max_length}")
+    print(f"  Max length: {config.max_seq_length}")
     print(f"  Learning rate: {config.learning_rate}")
     print(f"  Epochs: {config.epochs}")

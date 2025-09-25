@@ -90,14 +90,14 @@ def collate_fn(batch, max_sequence_length: int = 128) -> dict[str, torch.Tensor]
         labels.append(item["label"])
 
     padding_id = bert_tokenizer.token_to_id("[PAD]")
-    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=padding_id)
-    token_type_ids = pad_sequence(token_type_ids, batch_first=True, padding_value=padding_id)
-    labels = torch.tensor(labels)
+    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=padding_id)  # type: ignore[assignment]
+    token_type_ids = pad_sequence(token_type_ids, batch_first=True, padding_value=padding_id)  # type: ignore[assignment]
+    labels = torch.tensor(labels)  # type: ignore[assignment]
 
     return {
-        "input_ids": input_ids,
-        "token_type_ids": token_type_ids,
-        "labels": labels,
+        "input_ids": input_ids,  # type: ignore[dict-item]
+        "token_type_ids": token_type_ids,   # type: ignore[dict-item]
+        "labels": labels,   # type: ignore[dict-item]
     }
 
 

@@ -134,7 +134,7 @@ class BertTrainer:
             loss_stats = self.calc_loss_batch(
                 batch_input_tokens, batch_segment_ids, batch_is_random_next, batch_masked_lm_labels, "train"
             )
-            loss: torch.Tensor = loss_stats["loss"]
+            loss: torch.Tensor = loss_stats["loss"]  # type: ignore[assignment]
 
             nsp_total += loss_stats["nsp_total"]  # type: ignore[assignment]
             nsp_correct += loss_stats["nsp_correct"]  # type: ignore[assignment]

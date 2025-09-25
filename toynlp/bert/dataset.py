@@ -435,9 +435,9 @@ def collate_fn(
         # Check if batch is effectively empty (all zeros or very small)
         if batch_padded_token_id_tensor.numel() == 0 or batch_padded_token_id_tensor.shape[0] == 0:
             # Mark as empty batch for filtering in training loop
-            result["_empty_batch"] = True
+            result["_empty_batch"] = True  # type: ignore[assignment]
         else:
-            result["_empty_batch"] = False
+            result["_empty_batch"] = False  # type: ignore[assignment]
 
         return result
     except Exception as e:
@@ -448,7 +448,7 @@ def collate_fn(
             "segment_ids": torch.empty(0, 0, dtype=torch.long),
             "is_random_next": torch.empty(0, dtype=torch.long),
             "masked_lm_labels": torch.empty(0, 0, dtype=torch.long),
-            "_empty_batch": True,
+            "_empty_batch": True,  # type: ignore[dict-item]
         }
 
 
