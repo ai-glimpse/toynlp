@@ -17,9 +17,6 @@ setup_seed(1234)  # Set a random seed for reproducibility
 set_deterministic_mode()  # Set deterministic mode for reproducibility
 
 
-bert_tokenizer = BertTokenizer().load()
-
-
 @dataclass
 class EvaluationConfig:
     with_pretrained: bool = False
@@ -96,8 +93,8 @@ def collate_fn(batch, max_sequence_length: int = 128) -> dict[str, torch.Tensor]
 
     return {
         "input_ids": input_ids,  # type: ignore[dict-item]
-        "token_type_ids": token_type_ids,   # type: ignore[dict-item]
-        "labels": labels,   # type: ignore[dict-item]
+        "token_type_ids": token_type_ids,  # type: ignore[dict-item]
+        "labels": labels,  # type: ignore[dict-item]
     }
 
 
@@ -326,6 +323,7 @@ def main(config: BertConfig) -> None:
 
 
 if __name__ == "__main__":
+    bert_tokenizer = BertTokenizer().load()
     bert_config = BertConfig(
         max_seq_length=128,
         vocab_size=30522,

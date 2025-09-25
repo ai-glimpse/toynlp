@@ -10,8 +10,6 @@ from torch.nn.utils.rnn import pad_sequence
 from toynlp.bert.config import BertConfig
 from toynlp.bert.tokenizer import BertTokenizer
 
-bert_tokenizer = BertTokenizer().load()
-
 
 # https://github.com/google-research/bert/blob/eedf5716ce1268e56f0a50264a88cafad334ac61/tokenization.py#L78
 def convert_to_unicode(text):
@@ -482,6 +480,8 @@ def get_split_dataloader(
 
 if __name__ == "__main__":
     from tqdm import tqdm
+
+    bert_tokenizer = BertTokenizer().load()
 
     config = BertConfig()
 
