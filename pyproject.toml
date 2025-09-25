@@ -194,7 +194,11 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["ALL"]
+
+# Vscode extension: Ruff Rule Explainer helps a lot
 ignore = [
+    "BLE001",
+    "TRY300",
     "I001",    # Unsorted imports  # TODO: Enable this rule after find ruff's bug
     "FIX002",  # TODO checker
     "TD002",  # TODO checker
