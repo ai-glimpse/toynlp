@@ -19,7 +19,7 @@ set_deterministic_mode()  # Set deterministic mode for reproducibility
 
 @dataclass
 class EvaluationConfig:
-    with_pretrained: bool = False
+    with_pretrained: bool = True
     dataset_path: str = "stanfordnlp/sst2"
     test_dataset_path: str = "SetFit/sst2"  # test set labels
     dataset_name: str | None = None
@@ -38,6 +38,10 @@ class EvaluationConfig:
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
         return asdict(self)
+
+    def __post_init__(self) -> None:
+        if self.wandb_name is None:
+            self.wandb_name = f"lr({self.learning_rate})_bs({self.batch_size})_withpre({self.with_pretrained})"
 
 
 evaluation_config = EvaluationConfig()
