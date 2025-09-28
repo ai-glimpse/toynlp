@@ -1,31 +1,12 @@
+![](../../docs/images/bert/no_fear_future.png)
 # Bert
 
+A from scratch PyTorch implementation of Bert model based on the paper: [*BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*](https://arxiv.org/abs/1810.04805).
 
-## Pretaining
 
-We reproduced the pattern shown at paper *Characterizing Learning Curves During Language Model Pre-Training: Learning, Forgetting, and Stability*:
-> Althought the paper focuses on GPT-2, we do see similar phenomena in BERT pretraining.
+## Pre-training
 
-1. "Early in pre-training, models generate short repetitive phrases."
 
-We do see this phenomenon when we pretrain the BERT model on bookcorpus dataset, and the generated text looks like this:
-
-```bash
-Input Tokens: [CLS]|#|#|skyscr|##aper|arch|##ipe|##lag|##o|[SEP]|trying|to|recover|nuclear|weapons|now|[MASK]|[MASK]|bottom|[MASK]|the|ocean|.|.|.|.|[MASK]|were|trying|to|keep|a|nuclear|power|-|plant|from|melting|down|.|hait|.|.|[MASK]|high|[MASK]|ranking|officials|were|still|alive|at|the|submerged|un|compound|.|.|.|.|all|[MASK]|of|[SEP]
-Target Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
-Predicted Tokens: .|.|.|.|.|.|.|.|.|.
-```
-We found at each step the model tends to predict the same token "."(or "the", "a", "and", ...) for all the masked positions.
-
-2. "Models later generate longer and more coherent text."
-
-After more training steps, the model can predict more meaningful tokens:
-
-```bash
-Input Tokens: [CLS]|"|never|mind|.|i|was|only|making|##ival|joke|familial|[MASK]|he|said|,|and|then|he|questioned|his|new|companion|.|"|i|don|'|t|feel|the|[MASK]|strap|anymore|.|how|is|it|that|i|delir|[MASK]|you|?|"|[SEP]|[MASK]|workers|be|sent|into|fields|for|the|harvest|.|the|very|next|verses|in|matthew|[MASK]|s|[MASK]|are|jesus|sending|out|the|apostles|to|do|the|exact|same|thing|he|had|been|[MASK]|(|matt|10|:|[MASK]|-|7|[MASK]|.|they|were|to|be|the|[MASK]|that|were|sent|out|to|gather|[MASK]|harvest|.|this|is|our|call|[MASK]|,|to|go|to|[MASK]|lost|,|hungry|and|thirsty|(|the|lost|sheep|of|this|[MASK]|[SEP]
-Target Tokens: a|,|"|translator|anymore|can|understand|more|'|gospel|doing|matt|1|)|workers|the|too|the|age
-[train]Predicted Tokens: a|,|"|same|anymore|can|about|more|'|gospel|born|matt|1|)|workers|the|too|the|age
-```
 
 
 ## Finetune: W/O Pretraining on SST2
@@ -82,6 +63,38 @@ Observations:
 - With a learning rate of `5e-5`, the model achieves best test accuracy of around 80%
 - With learning rates of `1e-5` and `1e-6`, the model got worse performance
 - All the learning rates lead to overfitting after several epochs
+
+
+## The interesting observations during pretraining
+
+### The phenomenas during pretraining
+
+We reproduced the pattern shown at paper *Characterizing Learning Curves During Language Model Pre-Training: Learning, Forgetting, and Stability*:
+> Althought the paper focuses on GPT-2, we do see similar phenomena in BERT pretraining.
+
+1. "Early in pre-training, models generate short repetitive phrases."
+
+We do see this phenomenon when we pretrain the BERT model on bookcorpus dataset, and the generated text looks like this:
+
+```bash
+Input Tokens: [CLS]|#|#|skyscr|##aper|arch|##ipe|##lag|##o|[SEP]|trying|to|recover|nuclear|weapons|now|[MASK]|[MASK]|bottom|[MASK]|the|ocean|.|.|.|.|[MASK]|were|trying|to|keep|a|nuclear|power|-|plant|from|melting|down|.|hait|.|.|[MASK]|high|[MASK]|ranking|officials|were|still|alive|at|the|submerged|un|compound|.|.|.|.|all|[MASK]|of|[SEP]
+Target Tokens: skyscr|at|the|of|they|power|.|some|-|sorts
+Predicted Tokens: .|.|.|.|.|.|.|.|.|.
+```
+We found at each step the model tends to predict the same token "."(or "the", "a", "and", ...) for all the masked positions.
+
+2. "Models later generate longer and more coherent text."
+
+After more training steps, the model can predict more meaningful tokens:
+
+```bash
+Input Tokens: [CLS]|"|never|mind|.|i|was|only|making|##ival|joke|familial|[MASK]|he|said|,|and|then|he|questioned|his|new|companion|.|"|i|don|'|t|feel|the|[MASK]|strap|anymore|.|how|is|it|that|i|delir|[MASK]|you|?|"|[SEP]|[MASK]|workers|be|sent|into|fields|for|the|harvest|.|the|very|next|verses|in|matthew|[MASK]|s|[MASK]|are|jesus|sending|out|the|apostles|to|do|the|exact|same|thing|he|had|been|[MASK]|(|matt|10|:|[MASK]|-|7|[MASK]|.|they|were|to|be|the|[MASK]|that|were|sent|out|to|gather|[MASK]|harvest|.|this|is|our|call|[MASK]|,|to|go|to|[MASK]|lost|,|hungry|and|thirsty|(|the|lost|sheep|of|this|[MASK]|[SEP]
+Target Tokens: a|,|"|translator|anymore|can|understand|more|'|gospel|doing|matt|1|)|workers|the|too|the|age
+[train]Predicted Tokens: a|,|"|same|anymore|can|about|more|'|gospel|born|matt|1|)|workers|the|too|the|age
+```
+
+### The importance of data
+
 
 
 
@@ -232,7 +245,28 @@ I find both [pytorch/issues/13246](https://github.com/pytorch/pytorch/issues/132
 and [datasets/issues/7269](https://github.com/huggingface/datasets/issues/7269) have
 memory leak problems in a way or another, but I am not sure if my problem is caused by these issues.
 
-![](../../docs/images/bert/no_fear_future.png)
+
+### Don't handle the error in dataloader worker gracefully
+
+I train the model with **10%** bookscorpus dataset, and it runs well.
+But when I try to train with the **whole** bookscorpus dataset, an error occurs after 26 hours training, which crashes the whole training process:
+
+```python
+  File "/app/toynlp/toynlp/bert/dataset.py", line 344, in <lambda>
+    batch_instances := batch_create_pretraining_examples_from_documents(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/toynlp/toynlp/bert/dataset.py", line 301, in batch_create_pretraining_examples_from_documents
+    random_document = batch[rng.choice([j for j in range(len(batch)) if j != i])]
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.local/share/uv/python/cpython-3.12.10-linux-x86_64-gnu/lib/python3.12/random.py", line 347, in choice
+    raise IndexError('Cannot choose from an empty sequence')
+IndexError: Cannot choose from an empty sequence
+```
+
+As a result, I added many try-except blocks to handle the error in dataloader worker gracefully, so that the training process can continue even if some errors occur in the data loading process. You can see this in the current implementation code(the `bert/dataset.py` file).
+The code is not clean at all, but it just works.
+
+
 
 ## References
 - [google-research/bert](https://github.com/google-research/bert)
