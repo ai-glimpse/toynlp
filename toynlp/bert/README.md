@@ -124,8 +124,7 @@ Before train the model with full bookscorpus dataset, I try to train the model w
 
 Here is the observations:
 - In first 5 epochs, the 100% dataset got a much more lower perplexity than the 10% dataset. For example, the test perplexity of 100% dataset is about 9.67, while the test perplexity of 10% dataset is about 70.41.
-- The 10% dataset got overfitting within 10 epochs, while the best
-test perplexity is about 47.46.
+- The 10% dataset got overfitting within 10 epochs, while the best test perplexity is about 47.46.
 
 
 ## The mistakes that I made
