@@ -165,7 +165,7 @@ class SST2BertTrainer:
         val_dataloader: DataLoader,
         test_dataloader: DataLoader,
     ) -> None:
-        best_val_loss = float("inf")
+        best_val_acc = 0.0
         for epoch in range(evaluation_config.epochs):
             train_loss, train_acc = self._train_epoch(train_dataloader)
             val_loss, val_acc, test_loss, test_acc = self._validate_epoch(val_dataloader, test_dataloader)
@@ -176,8 +176,8 @@ class SST2BertTrainer:
                 f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, "
                 f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.4f}",
             )
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
                 torch.save(self.model, self.model_path)
                 print(f"Saved best model({val_loss=:.4f}, {val_acc=:.4f}) from epoch {epoch + 1} to {self.model_path}")
 

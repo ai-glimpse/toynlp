@@ -12,14 +12,14 @@ The differences with the original BERT model:
 |:--------:|:---------------:|:-------------------:|
 | Max Sequence Length | 512 | 128 |
 | Pretraining Dataset | BookCorpus + English Wikipedia | BookCorpus only |
-| Training Epochs | 40 | 5 |
+| Training Epochs | 40 | 6 |
 
 Performance comparison:
 
 | Metric | Original BERT | This Implementation |
 |:--------:|:---------------:|:-------------------:|
-| Perplexity(#L=12, #H=768, #A=12) | 3.99 | 9.67 |
-| SST2 Accuracy | 93.5 | 83.8 |
+| Perplexity(#L=12, #H=768, #A=12) | 3.99 | 8.87 |
+| SST2 Accuracy | 93.5% | 88.6% |
 
 
 ## Finetune: W/O Pretraining on SST2
@@ -124,7 +124,7 @@ Before train the model with full bookscorpus dataset, I try to train the model w
 
 Here is the observations:
 - In first 5 epochs, the 100% dataset got a much more lower perplexity than the 10% dataset. For example, the test perplexity of 100% dataset is about 9.67, while the test perplexity of 10% dataset is about 70.41.
-- The 10% dataset got overfitting within 10 epochs, while the best 
+- The 10% dataset got overfitting within 10 epochs, while the best
 test perplexity is about 47.46.
 
 
@@ -273,7 +273,7 @@ dataloader = torch.utils.data.DataLoader(
 The training is going on and I don't know if this problem will happen again.
 I find both [pytorch/issues/13246](https://github.com/pytorch/pytorch/issues/13246)
 and [datasets/issues/7269](https://github.com/huggingface/datasets/issues/7269) have
-memory leak problems in a way or another. 
+memory leak problems in a way or another.
 To avoid OOM as much as possible, I use `torch.cuda.empty_cache()` to clear the GPU cache after each epoch as discussed in [pytorch/issues/13246](https://github.com/pytorch/pytorch/issues/13246) and it seems to work well.
 (It have run for about one week and no OOM problem so far)
 
@@ -296,6 +296,13 @@ IndexError: Cannot choose from an empty sequence
 
 As a result, I added many try-except blocks to handle the error in dataloader worker gracefully, so that the training process can continue even if some errors occur in the data loading process. You can see this in the current implementation code(the `bert/dataset.py` file).
 The code is not clean at all, but it just works.
+
+### Use wrong tokenizer at evaluation
+
+When I evaluate the pre-train model by finetuning on SST2 dataset,
+I mistakenly use the old tokenizer(trained on 10% bookcorpus dataset)
+instead of the new tokenizer(trained on 90% bookcorpus dataset, the holdout 10% data is used for val/test) to tokenize the input text, which leads to poor performance of the finetune model on SST2 dataset.
+With wrong tokenizer, the best test accuracy is about 83%, while with the correct tokenizer, the best test accuracy is about 89%.
 
 
 
