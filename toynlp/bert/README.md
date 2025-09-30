@@ -6,15 +6,30 @@ A from scratch PyTorch implementation of Bert model based on the paper: [*BERT: 
 
 ## Pre-training
 
+The differences with the original BERT model:
 
+| Aspect | Original BERT | This Implementation |
+|:--------:|:---------------:|:-------------------:|
+| Max Sequence Length | 512 | 128 |
+| Pretraining Dataset | BookCorpus + English Wikipedia | BookCorpus only |
+| Training Epochs | 40 | 5 |
+
+Performance comparison:
+
+| Metric | Original BERT | This Implementation |
+|:--------:|:---------------:|:-------------------:|
+| Perplexity(#L=12, #H=768, #A=12) | 3.99 | 9.67 |
+| SST2 Accuracy | 93.5 | 83.8 |
 
 
 ## Finetune: W/O Pretraining on SST2
 
 The SST2 dataset:
+> We use another SST2 test dataset(SetFit/sst2) to evaluate the model, because the original SST2 test dataset(stanfordnlp/sst2) does not have labels.
 
 - train/validation dataset: [stanfordnlp/sst2](https://huggingface.co/datasets/stanfordnlp/sst2)
 - test dataset: [SetFit/sst2](https://huggingface.co/datasets/SetFit/sst2)
+
 
 
 The model architecture:
@@ -65,6 +80,14 @@ Observations:
 - All the learning rates lead to overfitting after several epochs
 
 
+### With Pretraining on SST2
+
+With the pretrained BERT model on bookcorpus dataset, the training curve on SST2 dataset with different learning rates:
+
+
+![](../../docs/images/bert/SST2Bert-With-Pretrain.png)
+
+
 ## The interesting observations during pretraining
 
 ### The phenomenas during pretraining
@@ -95,7 +118,14 @@ Target Tokens: a|,|"|translator|anymore|can|understand|more|'|gospel|doing|matt|
 
 ### The importance of data
 
+Before train the model with full bookscorpus dataset, I try to train the model with a small subset of bookscorpus dataset(about 10% of the full dataset). The training result is as fellows:
 
+![](../../docs/images/bert/pretrain-data.png)
+
+Here is the observations:
+- In first 5 epochs, the 100% dataset got a much more lower perplexity than the 10% dataset. For example, the test perplexity of 100% dataset is about 9.67, while the test perplexity of 10% dataset is about 70.41.
+- The 10% dataset got overfitting within 10 epochs, while the best 
+test perplexity is about 47.46.
 
 
 ## The mistakes that I made
@@ -213,7 +243,7 @@ dataloader = torch.utils.data.DataLoader(
 )
 ```
 
-### Use too many workers and too big prefetch factor for DataLoader
+### Use too many workers and too big prefetch factor for DataLoader and cause OOM
 
 When I set `num_workers=16`(my CPU has 16 cores) and `prefetch_factor=10`,
 the GPU never idle(keep brrrrrr), but the dataloader process memory usage is keep increasing and finally the system runs out of memory(OOM) and killed the process:
@@ -243,8 +273,9 @@ dataloader = torch.utils.data.DataLoader(
 The training is going on and I don't know if this problem will happen again.
 I find both [pytorch/issues/13246](https://github.com/pytorch/pytorch/issues/13246)
 and [datasets/issues/7269](https://github.com/huggingface/datasets/issues/7269) have
-memory leak problems in a way or another, but I am not sure if my problem is caused by these issues.
-
+memory leak problems in a way or another. 
+To avoid OOM as much as possible, I use `torch.cuda.empty_cache()` to clear the GPU cache after each epoch as discussed in [pytorch/issues/13246](https://github.com/pytorch/pytorch/issues/13246) and it seems to work well.
+(It have run for about one week and no OOM problem so far)
 
 ### Don't handle the error in dataloader worker gracefully
 
