@@ -56,8 +56,7 @@ class TransformerInference:
         tokenized_texts = [self.tokenizer.encode(text).ids for text in texts]
         max_length = max(len(tokens) for tokens in tokenized_texts)
         padded_tokens = [
-            tokens + [self.tokenizer.token_to_id("[PAD]")] * (max_length - len(tokens))
-            for tokens in tokenized_texts
+            tokens + [self.tokenizer.token_to_id("[PAD]")] * (max_length - len(tokens)) for tokens in tokenized_texts
         ]
         return torch.tensor(padded_tokens, dtype=torch.long).to(self.device)
 
@@ -106,9 +105,7 @@ class TransformerInference:
             batch_output_tokens = []
             for token_seq in output_tokens.tolist():
                 truncated_tokens = (
-                    token_seq[1:token_seq.index(eos_token_id)]
-                    if eos_token_id in token_seq
-                    else token_seq[1:]
+                    token_seq[1 : token_seq.index(eos_token_id)] if eos_token_id in token_seq else token_seq[1:]
                 )
                 batch_output_tokens.append(truncated_tokens)
 
