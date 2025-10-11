@@ -49,6 +49,10 @@ class SST2BertModel(torch.nn.Module):
 ```
 
 
+![](../../docs/images/bert/bert-cls-finetune.png)
+
+> The figure is from [Speech and Language Processing (3rd ed. draft)](https://web.stanford.edu/~jurafsky/slp3/).
+
 
 ### Without Pretraining on SST2
 
