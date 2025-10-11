@@ -34,6 +34,10 @@ FASTTEXT_MODEL_PATH = _MODEL_PATH / "fasttext" / "fasttext_model.pt"
 TRANSFORMER_TOKENIZER_PATH = _MODEL_PATH / "transformer" / "tokenizer.json"
 TRANSFORMER_MODEL_PATH = _MODEL_PATH / "transformer" / "transformer_model.pt"
 
+# GPT paths
+GPT_TOKENIZER_PATH = _MODEL_PATH / "gpt" / "tokenizer.json"
+GPT_MODEL_PATH = _MODEL_PATH / "gpt" / "gpt_model.pt"
+
 
 # Bert paths
 BERT_TOKENIZER_PATH = _MODEL_PATH / "bert" / "tokenizer.json"
