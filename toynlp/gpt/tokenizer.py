@@ -1,7 +1,6 @@
 from datasets import Dataset, load_dataset
-from tokenizers import Tokenizer, normalizers
+from tokenizers import Tokenizer
 from tokenizers.models import BPE
-from tokenizers.normalizers import Lowercase
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
 from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import BpeTrainer
@@ -23,11 +22,6 @@ class GPTTokenizer:
                 Punctuation(behavior="isolated"),
                 Whitespace(),
             ],
-        )
-        self.tokenizer.normalizer = normalizers.Sequence(
-            [
-                Lowercase(),
-            ],  # type: ignore[assignment]
         )
         self.tokenizer.post_processor = TemplateProcessing(
             single="<bos> $A <eos>",

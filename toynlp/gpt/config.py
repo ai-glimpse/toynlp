@@ -19,6 +19,7 @@ class GPTConfig:
     # model configs
     vocab_size: int = 40000  # paper: (BPE) vocabulary with 40,000 merges
     special_tokens: list[str] = field(
+        # eod: end of document; bos: begin of sequence; eos: end of sequence
         default_factory=lambda: ["<pad>", "<bos>", "<eos>", "<unk>"],
     )
     # model arch configs
@@ -43,8 +44,8 @@ class GPTConfig:
     # dataset_split_of_model_val: str = "train[90%:95%]"
     # dataset_split_of_model_test: str = "train[95%:]"
 
-    dataset_split_of_tokenizer: str = "train[7:8]"
-    dataset_split_of_model_train: str = "train[7:8]"
+    dataset_split_of_tokenizer: str = "train[:8]"
+    dataset_split_of_model_train: str = "train[:8]"
     dataset_split_of_model_val: str = "train[8:9]"
     dataset_split_of_model_test: str = "train[9:10]"
 
