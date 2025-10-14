@@ -10,7 +10,7 @@ class GPTConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 63  # paper setting: 64
+    batch_size: int = 16  # paper setting: 64
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -44,7 +44,7 @@ class GPTConfig:
     # dataset_split_of_model_val: str = "train[90%:95%]"
     # dataset_split_of_model_test: str = "train[95%:]"
 
-    dataset_split_of_tokenizer: str = "train[:8]"
+    dataset_split_of_tokenizer: str = "train[:1%]"
     dataset_split_of_model_train: str = "train[:8]"
     dataset_split_of_model_val: str = "train[8:9]"
     dataset_split_of_model_test: str = "train[9:10]"
@@ -54,7 +54,7 @@ class GPTConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "GPT"
-    wandb_enabled: bool = False
+    wandb_enabled: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""

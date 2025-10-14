@@ -193,7 +193,6 @@ class GPTModel(torch.nn.Module):
         return pad_mask & causal_mask
 
 
-
 def get_nn_model_params_count(model: torch.nn.Module) -> int:
     """Get the number of parameters in a PyTorch model.
 

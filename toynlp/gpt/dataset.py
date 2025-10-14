@@ -32,9 +32,11 @@ def get_split_dataloader(
     dataset_path: str,
     split: str,
     config: GPTConfig,
+    gpt_tokenizer: Tokenizer,
 ) -> DataLoader:
     raw_dataset = load_dataset(path=dataset_path, name=None, split=split)
-    raw_dataset = raw_dataset.shuffle(seed=42).to_iterable_dataset(num_shards=32)  # type: ignore[call-arg]
+    num_shards = min(32, raw_dataset.num_rows)
+    raw_dataset = raw_dataset.shuffle(seed=42).to_iterable_dataset(num_shards=num_shards)  # type: ignore[call-arg]
     context_dataset = raw_dataset.map(
         lambda batch: {
             "input_ids": split_text_into_contexts(
@@ -69,6 +71,7 @@ if __name__ == "__main__":
         config.dataset_path,
         "train[:1%]",
         config,
+        gpt_tokenizer,
     )
     # print(f"Number of training batches: {len(val_dataset_loader)}")
     for i, batch in enumerate(tqdm(demo_dataset_loader)):
