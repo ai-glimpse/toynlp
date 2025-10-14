@@ -10,17 +10,17 @@ class GPTConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 128  # paper setting: 256
+    batch_size: int = 63  # paper setting: 64
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
     # min_frequency: int = 1
     num_proc: int = 8
     # model configs
-    vocab_size: int = 40000  # paper: (BPE) vocabulary with 40,000 merges
+    vocab_size: int = 40478  # paper: (BPE) vocabulary with 40,478 merges
     special_tokens: list[str] = field(
         # eod: end of document; bos: begin of sequence; eos: end of sequence
-        default_factory=lambda: ["<pad>", "<bos>", "<eos>", "<unk>"],
+        default_factory=lambda: ["<bos>", "<eos>", "<unk>", "<pad>"],
     )
     # model arch configs
     max_seq_length: int = 512  # paper setting: 128, 512
@@ -30,14 +30,14 @@ class GPTConfig:
     attention_d_v: int = 768  # value, paper setting: 768
     head_num: int = 12  # paper setting: 12
     d_feed_forward: int = 3072  # paper setting: 3072
-    encoder_layers: int = 12  # paper setting: 12
+    decoder_layers: int = 12  # paper setting: 12
 
     dropout_ratio: float = 0.1  # paper setting: 0.1
 
     # optimizer configs
-    learning_rate: float = 2e-5  # paper setting: 0.0001
-    weight_decay: float = 0.01  # paper setting: 0.01
-    warmup_steps: int = 10000  # paper setting: 10000
+    learning_rate: float = 2.5e-4  # paper setting: 2.5e-4
+    weight_decay: float = 0.01
+    warmup_steps: int = 2000  # paper setting: 2000
     # training configs
     # dataset_split_of_tokenizer: str = "train[:90%]"
     # dataset_split_of_model_train: str = "train[:90%]"

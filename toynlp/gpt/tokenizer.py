@@ -27,8 +27,8 @@ class GPTTokenizer:
             single="<bos> $A <eos>",
             pair="<bos> $A <eos> $B:1 <eos>:1",
             special_tokens=[
-                ("<bos>", 1),
-                ("<eos>", 2),
+                ("<bos>", 0),
+                ("<eos>", 1),
             ],
         )
 
