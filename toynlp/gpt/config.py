@@ -37,7 +37,7 @@ class GPTConfig:
     # optimizer configs
     learning_rate: float = 2.5e-4  # paper setting: 2.5e-4
     weight_decay: float = 0.01
-    warmup_steps: int = 2000  # paper setting: 2000
+    warmup_steps: int = 200  # paper setting: 2000
     # training configs
     # dataset_split_of_tokenizer: str = "train[:90%]"
     # dataset_split_of_model_train: str = "train[:90%]"
