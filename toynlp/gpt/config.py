@@ -10,7 +10,7 @@ class GPTConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 16  # paper setting: 64
+    batch_size: int = 12  # paper setting: 64
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -35,7 +35,7 @@ class GPTConfig:
     dropout_ratio: float = 0.1  # paper setting: 0.1
 
     # optimizer configs
-    learning_rate: float = 2.5e-4  # paper setting: 2.5e-4
+    learning_rate: float = 1e-4  # paper setting: 2.5e-4
     weight_decay: float = 0.01
     warmup_steps: int = 200  # paper setting: 2000
     # training configs
@@ -44,12 +44,12 @@ class GPTConfig:
     # dataset_split_of_model_val: str = "train[90%:95%]"
     # dataset_split_of_model_test: str = "train[95%:]"
 
-    dataset_split_of_tokenizer: str = "train[:1%]"
-    dataset_split_of_model_train: str = "train[:8]"
-    dataset_split_of_model_val: str = "train[8:9]"
-    dataset_split_of_model_test: str = "train[9:10]"
+    dataset_split_of_tokenizer: str = "train[:8%]"
+    dataset_split_of_model_train: str = "train[:8%]"
+    dataset_split_of_model_val: str = "train[8%:9%]"
+    dataset_split_of_model_test: str = "train[9%:10%]"
 
-    epochs: int = 100
+    epochs: int = 100  # paper setting: 100
     clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping
     # wandb configs
     wandb_name: str | None = None
