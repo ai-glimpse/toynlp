@@ -35,7 +35,7 @@ def get_split_dataloader(
     gpt_tokenizer: Tokenizer,
 ) -> DataLoader:
     raw_dataset = load_dataset(path=dataset_path, name=None, split=split)
-    num_shards = min(32, raw_dataset.num_rows)
+    num_shards = min(32, raw_dataset.num_rows)  # type: ignore[possible-missing-attribute]
     raw_dataset = raw_dataset.shuffle(seed=42).to_iterable_dataset(num_shards=num_shards)  # type: ignore[call-arg]
     context_dataset = raw_dataset.map(
         lambda batch: {
