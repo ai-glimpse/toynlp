@@ -4,18 +4,6 @@ from toynlp.gpt.config import GPTConfig
 from toynlp.util import current_device
 
 
-class PositionalEncoding(torch.nn.Module):
-    def __init__(self, max_length: int, d_model: int) -> None:
-        super().__init__()
-        self.max_length = max_length
-        self.d_model = d_model
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply positional encoding to the input tensor."""
-        # x shape (batch_size, seq_length, d_model)
-        return self.pe(x)
-
-
 class PositionwiseFeedForward(torch.nn.Module):
     def __init__(self, d_model: int, d_feed_forward: int, dropout: float) -> None:
         super().__init__()
