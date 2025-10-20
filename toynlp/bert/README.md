@@ -12,14 +12,19 @@ The differences with the original BERT model:
 |:--------:|:---------------:|:-------------------:|
 | Max Sequence Length | 512 | 128 |
 | Pretraining Dataset | BookCorpus + English Wikipedia | BookCorpus only |
-| Training Epochs | 40 | 14 |
+| Training Epochs | 40 | 23 |
 
 Performance comparison:
 
 | Metric | Original BERT | This Implementation |
 |:--------:|:---------------:|:-------------------:|
-| Perplexity(#L=12, #H=768, #A=12) | 3.99 | 6.62 |
-| SST2 Accuracy | 93.5% | 90.77% |
+| Perplexity(#L=12, #H=768, #A=12) | 3.99 | 5.90 |
+| SST2 Accuracy | 93.5% | 91.93% |
+
+The training curve on BookCorpus dataset:
+
+![](../../docs/images/bert/bert-pretrain-loss.png)
+
 
 
 ## Finetune: W/O Pretraining on SST2
