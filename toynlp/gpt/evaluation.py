@@ -262,12 +262,11 @@ class SST2GPTTrainer:
         correct_predictions = 0
 
         for batch in data_loader:
-            input_batch_device, segment_ids_batch, target_batch_device = (
+            input_batch_device, target_batch_device = (
                 batch["input_ids"].to(self.device),
-                batch["token_type_ids"].to(self.device),
                 batch["labels"].to(self.device),
             )
-            logits = self.model(input_batch_device, segment_ids_batch)
+            logits = self.model(input_batch_device)
             predictions = torch.argmax(logits, dim=-1)
             loss = self.criterion(logits, target_batch_device)
 
