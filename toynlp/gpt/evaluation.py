@@ -108,12 +108,12 @@ def get_split_dataloader(
     config: GPTConfig,
 ) -> DataLoader:
     raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
-    if split in {"train", "validation"}:
+    if split.split("[")[0] in {"train", "validation"}:
         # add column label_text: if label=0 -> negative, if label=1 -> positive
         raw_dataset = raw_dataset.map(
             lambda example: {"label_text": "positive" if example["label"] == 1 else "negative", **example},
         )
-    if split == "test":
+    if split.split("[")[0] == "test":
         raw_dataset = raw_dataset.rename_column("text", "sentence")
     dataloader = torch.utils.data.DataLoader(
         raw_dataset.with_format(type="torch"),
@@ -235,26 +235,16 @@ class SST2GPTTrainer:
     def calc_loss_batch(
         self,
         input_batch: torch.Tensor,
-        segment_ids_batch: torch.Tensor,
         target_batch: torch.Tensor,
     ) -> torch.Tensor:
-        logits = self.model(input_batch, segment_ids_batch)
-        loss = self.criterion(logits, target_batch)
-        return loss
-
-    def calc_loss_loader(self, data_loader: DataLoader) -> float:
-        total_loss = 0.0
-        total_samples = 0  # Track total samples
-        for batch in data_loader:
-            input_batch_device, segment_ids_batch, target_batch_device = (
-                batch["input_ids"].to(self.device),
-                batch["token_type_ids"].to(self.device),
-                batch["labels"].to(self.device),
-            )
-            loss = self.calc_loss_batch(input_batch_device, segment_ids_batch, target_batch_device)
-            total_loss += loss.item() * batch["input_ids"].size(0)  # Multiply by batch size
-            total_samples += batch["input_ids"].size(0)
-        return total_loss / total_samples  # Correct average
+        logits = self.model(input_batch)
+        full_token_logits = logits[:, -1, :]
+        # positive, negative token logits
+        neg_logits = full_token_logits[:, self.negative_token_id]
+        pos_logits = full_token_logits[:, self.positive_token_id]
+        label_token_logits = torch.stack((neg_logits, pos_logits), dim=1)
+        loss = self.criterion(label_token_logits, target_batch)
+        return loss, label_token_logits
 
     def calc_loss_and_accuracy_loader(self, data_loader: DataLoader) -> tuple[float, float]:
         total_loss = 0.0
@@ -266,10 +256,8 @@ class SST2GPTTrainer:
                 batch["input_ids"].to(self.device),
                 batch["labels"].to(self.device),
             )
-            logits = self.model(input_batch_device)
-            predictions = torch.argmax(logits, dim=-1)
-            loss = self.criterion(logits, target_batch_device)
-
+            loss, label_token_logits = self.calc_loss_batch(input_batch_device, target_batch_device)
+            predictions = torch.argmax(label_token_logits, dim=-1)
             # Calculate accuracy
             correct_predictions += (predictions == target_batch_device).sum().item()
 
