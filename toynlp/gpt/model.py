@@ -139,10 +139,10 @@ class Decoder(torch.nn.Module):
 
     def forward(
         self,
-        target_input_ids: torch.Tensor,
+        input_ids: torch.Tensor,
         mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        embeddings = self.embedding(target_input_ids)
+        embeddings = self.embedding(input_ids)
         embeddings = embeddings + self.pe(
             torch.arange(embeddings.size(1), device=embeddings.device).unsqueeze(0),
         )
@@ -172,11 +172,11 @@ class GPTModel(torch.nn.Module):
         return decoder_output
 
     def _get_mask(self, input_token_ids: torch.Tensor) -> torch.Tensor:
-        # shape: (batch_size, 1, target_seq_length, 1)
+        # shape: (batch_size, 1, seq_length, 1)
         pad_mask = (input_token_ids != self.padding_idx).unsqueeze(1).unsqueeze(3)
-        target_seq_length = input_token_ids.size(1)
-        # shape: (batch_size, 1, target_seq_length, target_seq_length)
-        causal_mask = torch.tril(torch.ones((target_seq_length, target_seq_length), device=self.device)).bool()
+        seq_length = input_token_ids.size(1)
+        # shape: (batch_size, 1, seq_length, seq_length)
+        causal_mask = torch.tril(torch.ones((seq_length, seq_length), device=self.device)).bool()
 
         return pad_mask & causal_mask
 
