@@ -33,7 +33,7 @@ class EvaluationConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "SST2GPT"
-    wandb_enabled: bool = False
+    wandb_enabled: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
