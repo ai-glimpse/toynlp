@@ -236,7 +236,7 @@ class SST2GPTTrainer:
         self,
         input_batch: torch.Tensor,
         target_batch: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         logits = self.model(input_batch)
         full_token_logits = logits[:, -1, :]
         # positive, negative token logits
