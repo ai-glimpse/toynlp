@@ -44,10 +44,10 @@ class GPTConfig:
     dataset_split_of_model_val: str = "train[90%:95%]"
     dataset_split_of_model_test: str = "train[95%:]"
 
-    dataset_split_of_tokenizer: str = "train[:8%]"
-    dataset_split_of_model_train: str = "train[:8%]"
-    dataset_split_of_model_val: str = "train[8%:9%]"
-    dataset_split_of_model_test: str = "train[9%:10%]"
+    # dataset_split_of_tokenizer: str = "train[:8%]"
+    # dataset_split_of_model_train: str = "train[:8%]"
+    # dataset_split_of_model_val: str = "train[8%:9%]"
+    # dataset_split_of_model_test: str = "train[9%:10%]"
 
     epochs: int = 100  # paper setting: 100
     clip_norm: float | None = 1.0  # Gradient clipping norm, None means no clipping
