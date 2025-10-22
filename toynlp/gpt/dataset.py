@@ -50,7 +50,7 @@ def get_split_dataloader(
     )
 
     dataloader = torch.utils.data.DataLoader(
-        dataset=context_dataset.with_format("torch"),
+        dataset=context_dataset,
         batch_size=config.batch_size,
         num_workers=8,
         prefetch_factor=8,
