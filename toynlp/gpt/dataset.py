@@ -53,7 +53,7 @@ def get_split_dataloader(
         dataset=context_dataset.with_format("torch"),
         batch_size=config.batch_size,
         num_workers=8,
-        prefetch_factor=4,
+        prefetch_factor=8,
         drop_last=False,
     )
 
