@@ -2,6 +2,7 @@ from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import ByteLevel
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 from tokenizers.trainers import BpeTrainer
 from toynlp.gpt.config import GPTConfig, create_config_from_cli
 
@@ -17,6 +18,7 @@ class GPTTokenizer:
 
         self.tokenizer = Tokenizer(BPE(vocab=None, unk_token="<unk>"))
         self.tokenizer.pre_tokenizer = ByteLevel()
+        self.tokenizer.decoder = ByteLevelDecoder()
 
     def train(self, dataset: Dataset, vocab_size: int, special_tokens: list[str]) -> Tokenizer:
         trainer = BpeTrainer(
@@ -77,10 +79,16 @@ def test_tokenizers() -> None:
     # Test target language tokenizer
     text = "Two men are at the stove preparing food and vibecoding."
     output = tokenizer.encode(text)
+    decode_text = tokenizer.decode(output.ids)
+    decode_text_by_token_ids = tokenizer.decode([int(id_) for id_ in output.ids])
     print(f"Text: {text}")
     print(f"Tokens: {output.tokens}")
     print(f"Token Ids: {output.ids}")
     print(f"Type Ids: {output.type_ids}")
+    print(f"Decoded Text: {decode_text}")
+    print(text == decode_text)
+    print(f"Decoded Text by Token Ids: {decode_text_by_token_ids}")
+    print(text == decode_text_by_token_ids)
 
     # encode tokens
     # token_ids = tokenizer.encode(output.tokens, is_pretokenized=True, add_special_tokens=False).ids
@@ -89,9 +97,11 @@ def test_tokenizers() -> None:
 
     texts = ("Hello, y'all!", "How are you 😁 ?")
     output = tokenizer.encode(*texts)
+    decode_texts = tokenizer.decode(output.ids)
     print(f"Texts: {texts}")
     print(f"Tokens: {output.tokens}")
     print(f"Type Ids: {output.type_ids}")
+    print(f"Decoded Texts: {decode_texts}")
 
 
 def main() -> None:
