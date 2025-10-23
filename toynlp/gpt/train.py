@@ -154,10 +154,10 @@ class GPTTrainer:
 
         print("=" * 100)
         print(f"[{data_split.upper()}] Sample Predictions:")
-        print("Input tokens:", " | ".join([self.tokenizer.id_to_token(int(token_id)) for token_id in input_ids[:10]]))
-        print("Target tokens:", " | ".join([self.tokenizer.id_to_token(int(token_id)) for token_id in target_ids[:10]]))
+        print("Input tokens:", " | ".join([self.tokenizer.id_to_token(int(token_id)) for token_id in input_ids[:50]]))
+        print("Target tokens:", " | ".join([self.tokenizer.id_to_token(int(token_id)) for token_id in target_ids[:50]]))
         print(
-            "Predicted tokens:", " | ".join([self.tokenizer.id_to_token(int(token_id)) for token_id in pred_ids[:10]])
+            "Predicted tokens:", " | ".join([self.tokenizer.id_to_token(int(token_id)) for token_id in pred_ids[:50]])
         )
         print("=" * 100)
 

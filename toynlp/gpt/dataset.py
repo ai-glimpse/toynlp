@@ -2,13 +2,12 @@ from datasets import load_dataset
 from tokenizers import Tokenizer
 import torch
 from torch.utils.data import DataLoader
-from torch.nn.utils.rnn import pad_sequence
 
 from toynlp.gpt.config import GPTConfig
 from toynlp.gpt.tokenizer import GPTTokenizer
 
 
-def split_text_into_contexts(texts: list[str], max_length: int, tokenizer: Tokenizer) -> torch.Tensor:
+def split_text_into_contexts(texts: list[str], max_length: int, tokenizer: Tokenizer) -> list[torch.Tensor]:
     contexts = []
     # print(f"len texts: {len(texts)}")
     for text in texts:
@@ -18,14 +17,9 @@ def split_text_into_contexts(texts: list[str], max_length: int, tokenizer: Token
             start_idx = i * max_length
             end_idx = (i + 1) * max_length
             # print(f"i: {i}, start_idx: {start_idx}, end_idx: {end_idx}, len(token_ids): {len(token_ids)}")
-            if start_idx < len(token_ids):
-                contexts.append(token_ids[start_idx:end_idx])
-    context_tensor = pad_sequence(
-        [torch.tensor(context, dtype=torch.long) for context in contexts],
-        batch_first=True,
-        padding_value=tokenizer.token_to_id("<pad>"),
-    )
-    return context_tensor
+            if end_idx < len(token_ids):
+                contexts.append(torch.tensor(token_ids[start_idx:end_idx], dtype=torch.long))
+    return contexts
 
 
 def get_split_dataloader(
@@ -54,7 +48,7 @@ def get_split_dataloader(
         batch_size=config.batch_size,
         num_workers=8,
         prefetch_factor=8,
-        drop_last=False,
+        drop_last=True,
     )
 
     return dataloader

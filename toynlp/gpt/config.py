@@ -10,7 +10,7 @@ class GPTConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 12  # paper setting: 64
+    batch_size: int = 24  # paper setting: 64
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs
@@ -19,8 +19,7 @@ class GPTConfig:
     # model configs
     vocab_size: int = 40478  # paper: (BPE) vocabulary with 40,478 merges
     special_tokens: list[str] = field(
-        # eod: end of document; bos: begin of sequence; eos: end of sequence
-        default_factory=lambda: ["<bos>", "<eos>", "<unk>", "<pad>"],
+        default_factory=lambda: ["<unk>", "<pad>"],
     )
     # model arch configs
     max_seq_length: int = 512  # paper setting: 128, 512

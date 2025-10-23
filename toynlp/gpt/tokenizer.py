@@ -2,7 +2,6 @@ from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
-from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import BpeTrainer
 from toynlp.gpt.config import GPTConfig, create_config_from_cli
 
@@ -21,14 +20,6 @@ class GPTTokenizer:
             [
                 Punctuation(behavior="isolated"),
                 Whitespace(),
-            ],
-        )
-        self.tokenizer.post_processor = TemplateProcessing(
-            single="<bos> $A <eos>",
-            pair="<bos> $A <eos> $B:1 <eos>:1",
-            special_tokens=[
-                ("<bos>", 0),
-                ("<eos>", 1),
             ],
         )
 
