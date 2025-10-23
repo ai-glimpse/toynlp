@@ -1,7 +1,7 @@
 from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
-from tokenizers.pre_tokenizers import Punctuation, Sequence, Whitespace
+from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.trainers import BpeTrainer
 from toynlp.gpt.config import GPTConfig, create_config_from_cli
 
@@ -16,17 +16,13 @@ class GPTTokenizer:
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.tokenizer = Tokenizer(BPE(vocab=None, unk_token="<unk>"))
-        self.tokenizer.pre_tokenizer = Sequence(
-            [
-                Punctuation(behavior="isolated"),
-                Whitespace(),
-            ],
-        )
+        self.tokenizer.pre_tokenizer = ByteLevel()
 
     def train(self, dataset: Dataset, vocab_size: int, special_tokens: list[str]) -> Tokenizer:
         trainer = BpeTrainer(
             vocab_size=vocab_size,  # type: ignore[unknown-argument]
             special_tokens=special_tokens,  # type: ignore[unknown-argument]
+            initial_alphabet=ByteLevel.alphabet(),
         )
         self.tokenizer.train_from_iterator(dataset["text"], trainer=trainer)
         self.tokenizer.save(str(self.model_path))
