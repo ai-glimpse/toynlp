@@ -127,7 +127,6 @@ class Decoder(torch.nn.Module):
         self.pe = torch.nn.Embedding(
             num_embeddings=config.max_seq_length,
             embedding_dim=config.d_model,
-            padding_idx=padding_idx,
         )
         self.embedding_dropout = torch.nn.Dropout(p=config.dropout_ratio)
         self.layers = torch.nn.ModuleList(
