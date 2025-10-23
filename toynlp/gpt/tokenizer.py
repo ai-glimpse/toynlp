@@ -80,7 +80,7 @@ def test_tokenizers() -> None:
     text = "Two men are at the stove preparing food and vibecoding."
     output = tokenizer.encode(text)
     decode_text = tokenizer.decode(output.ids)
-    decode_text_by_token_ids = tokenizer.decode([int(id_) for id_ in output.ids])
+    decode_text_by_token_ids = " | ".join([tokenizer.decode([tid]) for tid in output.ids])
     print(f"Text: {text}")
     print(f"Tokens: {output.tokens}")
     print(f"Token Ids: {output.ids}")
