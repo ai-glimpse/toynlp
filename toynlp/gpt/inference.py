@@ -70,8 +70,6 @@ class GPTInference:
         """
         input_tensor = self.preprocess_text(prompt)
         generated_ids = input_tensor
-        eos_id = self.gpt_tokenizer.token_to_id("<eos>")
-        dot_id = self.gpt_tokenizer.token_to_id(".")
 
         with torch.no_grad():
             length = 0
@@ -80,7 +78,7 @@ class GPTInference:
                 next_token_logits = outputs[:, -1, :]
                 next_token_id = torch.argmax(next_token_logits, dim=-1).unsqueeze(1)
                 generated_ids = torch.cat((generated_ids, next_token_id), dim=1)
-                if next_token_id.item() == eos_id or next_token_id.item() == dot_id:
+                if next_token_id.item() == self.gpt_tokenizer.token_to_id("."):
                     break
                 length += 1
 
@@ -93,7 +91,7 @@ if __name__ == "__main__":
     config = GPTConfig()
     gpt_inference = GPTInference(config)
 
-    prompt = "I like poems because"
-    generated_text = gpt_inference.generate_text(prompt, max_length=50)
+    prompt = "This is"
+    generated_text = gpt_inference.generate_text(prompt, max_length=100)
     print("Generated Text:")
     print(generated_text)
