@@ -92,6 +92,6 @@ if __name__ == "__main__":
     gpt_inference = GPTInference(config)
 
     prompt = "This is"
+    print(f"Prompt: {prompt}")
     generated_text = gpt_inference.generate_text(prompt, max_length=100)
-    print("Generated Text:")
-    print(generated_text)
+    print(f"Generated: {generated_text}")
