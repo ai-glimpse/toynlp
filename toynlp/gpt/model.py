@@ -31,7 +31,6 @@ class ScaleDotProductionAttention(torch.nn.Module):
         attention_weight = q @ k.transpose(-2, -1) / (head_dim**0.5)
         # pad mask
         if mask is not None:
-            # TODO: -inf?
             attention_weight = attention_weight.masked_fill(mask == 0, float("-inf"))
 
         attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
@@ -171,10 +170,8 @@ class GPTModel(torch.nn.Module):
         return decoder_output
 
     def _get_mask(self, input_token_ids: torch.Tensor) -> torch.Tensor:
-        # shape:  (batch_size, seq_length) -> (batch_size, 1, seq_length, 1)
-        # FIXME: use .unsqueeze(1).unsqueeze(2) here to proper broadcast ??
-        #       Is the reason that cause mask fill -inf got NAN ???
-        pad_mask = (input_token_ids != self.padding_idx).unsqueeze(1).unsqueeze(3)
+        # shape:  (batch_size, seq_length) -> (batch_size, 1, 1, seq_length)
+        pad_mask = (input_token_ids != self.padding_idx).unsqueeze(1).unsqueeze(2)
         seq_length = input_token_ids.size(1)
         # shape: (seq_length, seq_length)
         causal_mask = torch.tril(torch.ones((seq_length, seq_length), device=self.device)).bool()
