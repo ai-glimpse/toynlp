@@ -26,7 +26,7 @@ class EvaluationConfig:
     # train
     epochs: int = 10
     # optimizer configs
-    learning_rate: float = 2e-5  # paper setting: 6.25e-5
+    learning_rate: float = 1e-5  # paper setting: 6.25e-5
     weight_decay: float = 0.01
 
     # wandb configs
