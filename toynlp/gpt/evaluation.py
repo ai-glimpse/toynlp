@@ -1,6 +1,5 @@
 from datasets import load_dataset, Dataset
 import torch
-from torch.nn.utils.rnn import pad_sequence
 from dataclasses import dataclass, asdict
 from typing import Any
 from torch.utils.data import DataLoader
@@ -23,7 +22,7 @@ class EvaluationConfig:
     dataset_path: str = "stanfordnlp/sst2"
     test_dataset_path: str = "SetFit/sst2"  # test set labels
     dataset_name: str | None = None
-    batch_size: int = 32
+    batch_size: int = 8
     # train
     epochs: int = 10
     # optimizer configs
@@ -33,7 +32,7 @@ class EvaluationConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "SST2GPT"
-    wandb_enabled: bool = True
+    wandb_enabled: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
@@ -77,28 +76,31 @@ def load_sst2_dataset():
     return load_dataset("stanfordnlp/sst2")
 
 
-def collate_fn(batch, max_sequence_length: int = 128) -> dict[str, torch.Tensor]:
-    input_ids = []
-    token_type_ids = []
-    labels = []
+def collate_fn(batch, max_sequence_length: int = 512) -> dict[str, torch.Tensor]:
+    pad_token_id = gpt_tokenizer.token_to_id("<pad>")
+    batch_size = len(batch)
+    input_ids = torch.full((batch_size, max_sequence_length), pad_token_id, dtype=torch.long)
+    labels = torch.zeros((batch_size,), dtype=torch.long)
+    end_positions = torch.zeros((batch_size,), dtype=torch.long)
 
-    for item in batch:
+    for i, item in enumerate(batch):
         encoded = gpt_tokenizer.encode(
             item["sentence"] + " very",
         )
-        input_ids.append(torch.tensor(encoded.ids[:max_sequence_length], dtype=torch.long))
-        token_type_ids.append(torch.tensor(encoded.type_ids[:max_sequence_length], dtype=torch.long))
-        # labels.append(gpt_tokenizer.token_to_id(item["label_text"]))
-        labels.append(item["label"])  # 0 or 1
-    padding_id = gpt_tokenizer.token_to_id("<pad>")
-    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=padding_id)  # type: ignore[assignment]
-    token_type_ids = pad_sequence(token_type_ids, batch_first=True, padding_value=padding_id)  # type: ignore[assignment]
-    labels = torch.tensor(labels)  # type: ignore[assignment]
+        end_position = min(len(encoded.ids), max_sequence_length)
+        end_positions[i] = end_position
+        labels[i] = item["label"]  # 0 or 1
+        if end_position <= max_sequence_length:
+            # context + " very" + <pad>
+            input_ids[i, :end_position] = torch.tensor(encoded.ids[:end_position], dtype=torch.long)
+        else:
+            # keep last max_sequence_length tokens: truncated_context + " very"
+            input_ids[i, :] = torch.tensor(encoded.ids[-max_sequence_length:], dtype=torch.long)
 
     return {
-        "input_ids": input_ids,  # type: ignore[dict-item]
-        "token_type_ids": token_type_ids,  # type: ignore[dict-item]
-        "labels": labels,  # type: ignore[dict-item]
+        "input_ids": input_ids,
+        "labels": labels,
+        "end_positions": end_positions,
     }
 
 
@@ -116,7 +118,7 @@ def get_split_dataloader(
     if split.split("[")[0] == "test":
         raw_dataset = raw_dataset.rename_column("text", "sentence")
     dataloader = torch.utils.data.DataLoader(
-        raw_dataset.with_format(type="torch"),
+        raw_dataset,
         batch_size=evaluation_config.batch_size,
         collate_fn=lambda batch: collate_fn(batch, config.max_seq_length),
     )
@@ -200,13 +202,19 @@ class SST2GPTTrainer:
                 batch["input_ids"].to(self.device),
                 batch["labels"].to(self.device),
             )
+            end_positions = batch["end_positions"]
             logits = self.model(input_batch_device)
-            full_token_logits = logits[:, -1, :]
+            # TODO: improve indexing efficiency
+            full_token_logits = torch.stack(
+                [logits[i, end_positions[i], :] for i in range(logits.size(0))],
+                dim=0,
+            )
             # positive, negative token logits
             neg_logits = full_token_logits[:, self.negative_token_id]
             pos_logits = full_token_logits[:, self.positive_token_id]
             label_token_logits = torch.stack((neg_logits, pos_logits), dim=1)
             loss = self.criterion(label_token_logits, target_batch_device)
+            # print(f"Batch loss: {loss.item():.4f}")
             loss.backward()
             if self.clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_norm)
@@ -236,9 +244,10 @@ class SST2GPTTrainer:
         self,
         input_batch: torch.Tensor,
         target_batch: torch.Tensor,
+        end_positions: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         logits = self.model(input_batch)
-        full_token_logits = logits[:, -1, :]
+        full_token_logits = logits[:, end_positions, :]
         # positive, negative token logits
         neg_logits = full_token_logits[:, self.negative_token_id]
         pos_logits = full_token_logits[:, self.positive_token_id]
@@ -256,7 +265,9 @@ class SST2GPTTrainer:
                 batch["input_ids"].to(self.device),
                 batch["labels"].to(self.device),
             )
-            loss, label_token_logits = self.calc_loss_batch(input_batch_device, target_batch_device)
+            loss, label_token_logits = self.calc_loss_batch(
+                input_batch_device, target_batch_device, batch["end_positions"]
+            )
             predictions = torch.argmax(label_token_logits, dim=-1)
             # Calculate accuracy
             correct_predictions += (predictions == target_batch_device).sum().item()
