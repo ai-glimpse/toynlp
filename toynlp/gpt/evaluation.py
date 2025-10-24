@@ -32,7 +32,7 @@ class EvaluationConfig:
     # wandb configs
     wandb_name: str | None = None
     wandb_project: str = "SST2GPT"
-    wandb_enabled: bool = False
+    wandb_enabled: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary for logging/serialization."""
@@ -76,7 +76,8 @@ def load_sst2_dataset():
     return load_dataset("stanfordnlp/sst2")
 
 
-def collate_fn(batch, max_sequence_length: int = 512) -> dict[str, torch.Tensor]:
+def collate_fn(batch, max_sequence_length: int = 128) -> dict[str, torch.Tensor]:
+    """SST2 sentences max length is 283 characters."""
     pad_token_id = gpt_tokenizer.token_to_id("<pad>")
     batch_size = len(batch)
     input_ids = torch.full((batch_size, max_sequence_length), pad_token_id, dtype=torch.long)
@@ -87,15 +88,17 @@ def collate_fn(batch, max_sequence_length: int = 512) -> dict[str, torch.Tensor]
         encoded = gpt_tokenizer.encode(
             item["sentence"] + " very",
         )
-        end_position = min(len(encoded.ids), max_sequence_length)
-        end_positions[i] = end_position
         labels[i] = item["label"]  # 0 or 1
-        if end_position <= max_sequence_length:
+        if len(encoded.ids) <= max_sequence_length:
             # context + " very" + <pad>
-            input_ids[i, :end_position] = torch.tensor(encoded.ids[:end_position], dtype=torch.long)
+            end_position = len(encoded.ids) - 1  # Index of "very" token (0-indexed)
+            input_ids[i, : len(encoded.ids)] = torch.tensor(encoded.ids, dtype=torch.long)
         else:
             # keep last max_sequence_length tokens: truncated_context + " very"
+            # "very" is now at the last position
+            end_position = max_sequence_length - 1
             input_ids[i, :] = torch.tensor(encoded.ids[-max_sequence_length:], dtype=torch.long)
+        end_positions[i] = end_position
 
     return {
         "input_ids": input_ids,
@@ -202,13 +205,11 @@ class SST2GPTTrainer:
                 batch["input_ids"].to(self.device),
                 batch["labels"].to(self.device),
             )
-            end_positions = batch["end_positions"]
+            end_positions = batch["end_positions"].to(self.device)
             logits = self.model(input_batch_device)
-            # TODO: improve indexing efficiency
-            full_token_logits = torch.stack(
-                [logits[i, end_positions[i], :] for i in range(logits.size(0))],
-                dim=0,
-            )
+            # Use advanced indexing to gather logits at end positions efficiently
+            batch_indices = torch.arange(logits.size(0), device=logits.device)
+            full_token_logits = logits[batch_indices, end_positions, :]
             # positive, negative token logits
             neg_logits = full_token_logits[:, self.negative_token_id]
             pos_logits = full_token_logits[:, self.positive_token_id]
@@ -247,7 +248,8 @@ class SST2GPTTrainer:
         end_positions: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         logits = self.model(input_batch)
-        full_token_logits = logits[:, end_positions, :]
+        batch_indices = torch.arange(logits.size(0), device=logits.device)
+        full_token_logits = logits[batch_indices, end_positions, :]
         # positive, negative token logits
         neg_logits = full_token_logits[:, self.negative_token_id]
         pos_logits = full_token_logits[:, self.positive_token_id]
@@ -265,8 +267,9 @@ class SST2GPTTrainer:
                 batch["input_ids"].to(self.device),
                 batch["labels"].to(self.device),
             )
+            end_positions_device = batch["end_positions"].to(self.device)
             loss, label_token_logits = self.calc_loss_batch(
-                input_batch_device, target_batch_device, batch["end_positions"]
+                input_batch_device, target_batch_device, end_positions_device
             )
             predictions = torch.argmax(label_token_logits, dim=-1)
             # Calculate accuracy
