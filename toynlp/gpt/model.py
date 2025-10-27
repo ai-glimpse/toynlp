@@ -47,7 +47,7 @@ class ScaleDotProductionAttention(torch.nn.Module):
 class MultiHeadAttention(torch.nn.Module):
     def __init__(self, config: GPTConfig) -> None:
         super().__init__()
-        self.config = config
+        self.config: GPTConfig = config
         self.spda = ScaleDotProductionAttention()
         self.Wq = torch.nn.Linear(config.d_model, config.attention_d_k)
         self.Wk = torch.nn.Linear(config.d_model, config.attention_d_k)
@@ -92,7 +92,7 @@ class MultiHeadAttention(torch.nn.Module):
 class DecoderGPTBlock(torch.nn.Module):
     def __init__(self, config: GPTConfig) -> None:
         super().__init__()
-        self.config = config
+        self.config: GPTConfig = config
         self.causal_mha = MultiHeadAttention(config=config)
         self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
         self.layernorm_causal_mha = torch.nn.LayerNorm(config.d_model)
@@ -115,8 +115,8 @@ class DecoderGPTBlock(torch.nn.Module):
 class Decoder(torch.nn.Module):
     def __init__(self, config: GPTConfig, padding_idx: int) -> None:
         super().__init__()
-        self.config = config
-        self.padding_idx = padding_idx
+        self.config: GPTConfig = config
+        self.padding_idx: int = padding_idx
         self.embedding = torch.nn.Embedding(
             num_embeddings=config.vocab_size,
             embedding_dim=config.d_model,
@@ -156,13 +156,13 @@ class Decoder(torch.nn.Module):
 class GPTModel(torch.nn.Module):
     def __init__(self, config: GPTConfig, padding_idx: int) -> None:
         super().__init__()
-        self.config = config
-        self.padding_idx = padding_idx
+        self.config: GPTConfig = config
+        self.padding_idx: int = padding_idx
         self.decoder = Decoder(
             config=self.config,
             padding_idx=padding_idx,
         )
-        self.device = current_device
+        self.device: torch.device = current_device
 
     def forward(self, input_token_ids: torch.Tensor) -> torch.Tensor:
         mask = self._get_mask(input_token_ids)
