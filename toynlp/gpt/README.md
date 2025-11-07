@@ -4,6 +4,23 @@
 
 ## Pre-Training
 
+
+### The results
+
+The differences with the original GPT model:
+
+| Aspect | Original GPT | This Implementation |
+|:--------:|:---------------:|:-------------------:|
+| Training Epochs | 100 | 14 |
+
+Performance comparison:
+
+| Metric | Original GPT | This Implementation |
+|:--------:|:---------------:|:-------------------:|
+| Perplexity| 18.4 | 27.07|
+| SST2 Accuracy | 91.3% | **91.54%** |
+
+
 ### The dataset is around 800M words(1B tokens)
 
 We use BooksCorpus dataset for pre-training.
