@@ -60,8 +60,7 @@ class ScaleDotProductionAttention(torch.nn.Module):
         attention_weight = q @ k.transpose(-2, -1) / (head_dim**0.5)
         # pad mask
         if mask is not None:
-            # TODO: -inf?
-            attention_weight = attention_weight.masked_fill(mask == 0, float("-10000"))
+            attention_weight = attention_weight.masked_fill(mask == 0, float("-inf"))
 
         attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
         attention_score = self.dropout(attention_score)
