@@ -112,7 +112,7 @@ def main() -> None:
     print("Training tokenizers")
     print(f"Dataset: {config.dataset_path}")
 
-    # Train tokenizers for both languages
+    # Train tokenizer for the specified language
     train_tokenizer(config)
 
     # Test tokenizers
