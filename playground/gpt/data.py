@@ -74,7 +74,7 @@ def _(mo):
 
 @app.cell
 def _(Tokenizer, torch):
-    def split_text_into_contexts(texts: str, max_length: int, tokenizer: Tokenizer) -> list[torch.Tensor]:
+    def split_text_into_contexts(texts: list[str], max_length: int, tokenizer: Tokenizer) -> list[torch.Tensor]:
         contexts = []
         for text in texts:
             token_ids = tokenizer.encode(text).ids  # type: ignore[call-arg,index]
