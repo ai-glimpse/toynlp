@@ -11,7 +11,7 @@
 [![Build Docs](https://github.com/ai-glimpse/toynlp/actions/workflows/build_docs.yaml/badge.svg)](https://github.com/ai-glimpse/toynlp/actions/workflows/build_docs.yaml)
 [![Test](https://github.com/ai-glimpse/toynlp/actions/workflows/test.yaml/badge.svg)](https://github.com/ai-glimpse/toynlp/actions/workflows/test.yaml)
 [![Codecov](https://codecov.io/gh/ai-glimpse/toynlp/branch/master/graph/badge.svg)](https://codecov.io/gh/ai-glimpse/toynlp)
-[![GitHub License](https://img.shields.io/github/license/ai-glimpse/toynlp)](https://github.com/ai-glimpse/toynlp/blob/master/LICENSE)
+<!-- [![GitHub License](https://img.shields.io/github/license/ai-glimpse/toynlp)](https://github.com/ai-glimpse/toynlp/blob/master/LICENSE) -->
 
 
 # ToyNLP
@@ -27,7 +27,7 @@ Implementing classic NLP models from scratch with clean code and easy-to-underst
 
 ## Models
 
-10 important NLP models range from 2003 to 2020:
+8 important NLP models range from 2003 to 2020:
 
 - [x] NNLM(2003)
 - [x] Word2Vec(2013)
