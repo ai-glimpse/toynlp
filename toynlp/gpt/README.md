@@ -11,14 +11,14 @@ The differences with the original GPT model:
 
 | Aspect | Original GPT | This Implementation |
 |:--------:|:---------------:|:-------------------:|
-| Training Epochs | 100 | 14 |
+| Training Epochs | 100 | 27 |
 
 Performance comparison:
 
 | Metric | Original GPT | This Implementation |
 |:--------:|:---------------:|:-------------------:|
-| Perplexity| 18.4 | 27.07|
-| SST2 Accuracy | 91.3% | **91.54%** |
+| Perplexity| 18.4 | 25.27|
+| SST2 Accuracy | 91.3% | **TBD** |
 
 
 ### The dataset is around 800M words(1B tokens)
