@@ -35,10 +35,6 @@ class ScaleDotProductionAttention(torch.nn.Module):
 
         attention_score = torch.nn.functional.softmax(attention_weight, dim=-1)
 
-        # check nan
-        # if torch.isnan(attention_score).any():
-        #     print("[SelfAttention] NaN detected in attention_score")
-
         # (b, h, s, s) @ (b, h, s, dv/h) -> (b, h, s, dv/h)
         value = attention_score @ v
         return value
@@ -177,18 +173,6 @@ class GPTModel(torch.nn.Module):
         causal_mask = torch.tril(torch.ones((seq_length, seq_length), device=self.device)).bool()
         # shape: (batch_size, 1, seq_length, seq_length)
         return pad_mask & causal_mask
-
-
-def get_nn_model_params_count(model: torch.nn.Module) -> int:
-    """Get the number of parameters in a PyTorch model.
-
-    Args:
-        model: PyTorch model
-    Returns:
-
-        Number of parameters
-    """
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)  # type: ignore[attr-defined]
 
 
 if __name__ == "__main__":

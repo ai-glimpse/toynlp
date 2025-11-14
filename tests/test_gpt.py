@@ -1,3 +1,4 @@
+import torch
 from toynlp.gpt.model import GPTConfig, GPTModel
 
 
@@ -18,3 +19,15 @@ def test_gpt_architecture() -> None:
     # Make sure the parameter count matches the expected value for OpenAI GPT
     # 116534784 match EXACTLY with Huggingface: AutoModelForCausalLM.from_pretrained("openai-community/openai-gpt")
     assert gpt_param_count == 116534784  # 116M params
+
+
+def test_gpt_model_shapes() -> None:
+    """Test GPT model forward pass and output shapes."""
+    config = GPTConfig()
+    device = torch.device("cpu")
+
+    # Test GPTModel shapes
+    gpt_model = GPTModel(config, padding_idx=3).to(device=device)
+    input_token_ids = torch.randint(0, config.vocab_size, (2, 10), dtype=torch.long, device=device)
+    output = gpt_model(input_token_ids)
+    assert output.shape == (2, 10, config.vocab_size)
