@@ -27,7 +27,7 @@ class PositionalEncoding:
 
 
 class PositionwiseFeedForward(torch.nn.Module):
-    def __init__(self, d_model: int, d_feed_forward: int, dropout: float) -> None:
+    def __init__(self, d_model: int, d_feed_forward: int) -> None:
         super().__init__()
         self.linear1 = torch.nn.Linear(d_model, d_feed_forward)
         self.linear2 = torch.nn.Linear(d_feed_forward, d_model)
