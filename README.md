@@ -35,8 +35,8 @@ Implementing classic NLP models from scratch with clean code and easy-to-underst
 - [x] Attention(2014)
 - [x] fastText(2016)
 - [x] Transformer(2017)
+- [x] GPT(2018)
 - [x] BERT(2018)
-- [ ] GPT(2018)
 
 
 

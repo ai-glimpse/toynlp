@@ -72,3 +72,14 @@ bert-eval:
     uv run python toynlp/bert/evaluation.py
 
 bert-train-eval: bert-train bert-eval
+
+
+# GPT Model Tasks
+gpt-tokenize:
+    uv run python toynlp/gpt/tokenizer.py
+
+gpt-train *args:
+    uv run python toynlp/gpt/train.py {{args}}
+
+gpt-eval:
+    uv run python toynlp/gpt/evaluation.py
