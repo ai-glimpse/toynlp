@@ -27,14 +27,13 @@ class PositionalEncoding:
 
 
 class PositionwiseFeedForward(torch.nn.Module):
-    def __init__(self, d_model: int, d_feed_forward: int, dropout: float) -> None:
+    def __init__(self, d_model: int, d_feed_forward: int) -> None:
         super().__init__()
         self.linear1 = torch.nn.Linear(d_model, d_feed_forward)
         self.linear2 = torch.nn.Linear(d_feed_forward, d_model)
-        self.dropout = torch.nn.Dropout(p=dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.linear2(self.dropout(torch.nn.functional.relu(self.linear1(x))))
+        return self.linear2(torch.nn.functional.relu(self.linear1(x)))
 
 
 class ScaleDotProductionAttention(torch.nn.Module):
@@ -117,7 +116,7 @@ class EncoderTransformerBlock(torch.nn.Module):
         super().__init__()
         self.config = config
         self.mha = MultiHeadAttention(config)
-        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
+        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward)
         self.layernorm_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
 
@@ -166,7 +165,7 @@ class DecoderTransformerBlock(torch.nn.Module):
         self.config = config
         self.causal_mha = MultiHeadAttention(config=config)
         self.cross_mha = MultiHeadAttention(config)
-        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
+        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward)
         self.layernorm_causal_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_cross_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
