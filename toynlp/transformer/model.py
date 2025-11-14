@@ -116,7 +116,7 @@ class EncoderTransformerBlock(torch.nn.Module):
         super().__init__()
         self.config = config
         self.mha = MultiHeadAttention(config)
-        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
+        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward)
         self.layernorm_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
 
@@ -165,7 +165,7 @@ class DecoderTransformerBlock(torch.nn.Module):
         self.config = config
         self.causal_mha = MultiHeadAttention(config=config)
         self.cross_mha = MultiHeadAttention(config)
-        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward, config.dropout_ratio)
+        self.ffn = PositionwiseFeedForward(config.d_model, config.d_feed_forward)
         self.layernorm_causal_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_cross_mha = torch.nn.LayerNorm(config.d_model)
         self.layernorm_ffn = torch.nn.LayerNorm(config.d_model)
