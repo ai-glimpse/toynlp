@@ -31,10 +31,9 @@ class PositionwiseFeedForward(torch.nn.Module):
         super().__init__()
         self.linear1 = torch.nn.Linear(d_model, d_feed_forward)
         self.linear2 = torch.nn.Linear(d_feed_forward, d_model)
-        self.dropout = torch.nn.Dropout(p=dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.linear2(self.dropout(torch.nn.functional.relu(self.linear1(x))))
+        return self.linear2(torch.nn.functional.relu(self.linear1(x)))
 
 
 class ScaleDotProductionAttention(torch.nn.Module):

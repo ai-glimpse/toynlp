@@ -38,9 +38,9 @@ class TransformerConfig:
     encoder_layers: int = 6  # paper setting: 6
     decoder_layers: int = 6  # paper setting: 6
 
-    dropout_ratio: float = 0.5
+    dropout_ratio: float = 0.1  # paper setting: 0.1
     # optimizer configs
-    learning_rate: float = 0.001
+    learning_rate: float = 1e-4
     weight_decay: float = 0.01
     # training configs
     epochs: int = 20
