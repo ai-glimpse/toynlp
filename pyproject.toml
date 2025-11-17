@@ -1,7 +1,7 @@
 [project]
 name = "toynlp"
-version = "0.2.0"
-description = "A toy NLP library for educational purposes."
+version = "0.3.0"
+description = "Implementing classic NLP models from scratch."
 authors = [
     {name = "Xiangzhuang Shen", email = "datahonor@gmail.com"},
 ]
