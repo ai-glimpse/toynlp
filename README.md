@@ -27,7 +27,7 @@ Implementing classic NLP models from scratch with clean code and easy-to-underst
 
 ## Models
 
-8 important NLP models ranging from 2003 to 2020:
+8 important NLP models ranging from 2003 to 2018:
 
 | Model & Paper | Code | Doc(EN) | Blog(ZH) |
 |:--------------|:----:|:--------:|:--------:|
