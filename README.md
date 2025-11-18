@@ -29,14 +29,16 @@ Implementing classic NLP models from scratch with clean code and easy-to-underst
 
 8 important NLP models range from 2003 to 2020:
 
-- [x] NNLM(2003)
-- [x] Word2Vec(2013)
-- [x] Seq2Seq(2014)
-- [x] Attention(2014)
-- [x] fastText(2016)
-- [x] Transformer(2017)
-- [x] GPT(2018)
-- [x] BERT(2018)
+| Model & Paper | Code | Doc(EN) | Blog(ZH) |
+|---------------|------|----------|----------|
+| NNLM(2003): [Paper](https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf)  | ✅ | Coming soon | Coming soon |
+| Word2Vec(2013) [![arXiv](https://img.shields.io/badge/arXiv-1301.3781-b31b1b.svg)](https://arxiv.org/abs/1301.3781) | ✅ | Coming soon) | Coming soon |
+| Seq2Seq(2014) [![arXiv](https://img.shields.io/badge/arXiv-1409.3215-b31b1b.svg)](https://arxiv.org/abs/1409.3215) | ✅ | Coming soon | Coming soon |
+| Attention(2014) [![arXiv](https://img.shields.io/badge/arXiv-1409.0473-b31b1b.svg)](https://arxiv.org/abs/1409.0473) | ✅ | Coming soon | Coming soon |
+| fastText(2016) [![arXiv](https://img.shields.io/badge/arXiv-1607.04606-b31b1b.svg)](https://arxiv.org/abs/1607.04606) | ✅ | Coming soon | Coming soon |
+| Transformer(2017) [![arXiv](https://img.shields.io/badge/arXiv-1706.03762-b31b1b.svg)](https://arxiv.org/abs/1706.03762) | ✅ | [Transformer Doc](./toynlp/transformer/README.md) | Coming soon |
+| GPT(2018): [Paper](https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf) | ✅ | [GPT Doc](./toynlp/gpt/README.md) | Coming soon |
+| BERT(2018) [![arXiv](https://img.shields.io/badge/arXiv-1810.04805-b31b1b.svg)](https://arxiv.org/abs/1810.04805) | ✅ | [BERT Doc](./toynlp/bert/README.md)| [Bert Blog](https://datahonor.com/blog/2025/11/02/bert/) |
 
 
 
