@@ -56,6 +56,10 @@ class GPTTrainer:
         for param_group in self.optimizer.param_groups:
             param_group["lr"] = lr
 
+    def save_model(self) -> None:
+        """Save the current model to the specified path."""
+        torch.save(self.model, self.model_path)
+
     def train(
         self,
         train_dataloader: DataLoader,
@@ -80,7 +84,8 @@ class GPTTrainer:
             )
             if val_loss_stats["loss"] < best_val_loss:
                 best_val_loss = val_loss_stats["loss"]
-                torch.save(self.model, self.model_path)
+                # torch.save(self.model, self.model_path)
+                self.save_model()
                 print(f"Saved best model({val_loss_stats['loss']:.4f}) from epoch {epoch + 1} to {self.model_path}")
             # log metrics to wandb
             if self.config.wandb_enabled:

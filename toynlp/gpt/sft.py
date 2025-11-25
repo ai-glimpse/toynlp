@@ -1,8 +1,10 @@
+from pickle import TRUE
 from typing import Any
 from datasets import load_dataset, Dataset
 import torch.nn as nn
 import torch
 import math
+from toynlp.gpt import train
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.tokenizer import GPTTokenizer
 from tokenizers import Tokenizer
@@ -81,9 +83,7 @@ def get_sft_dataloaders(
     train_dataset = sft_token_dataset.select(range(train_size))
     val_dataset = sft_token_dataset.select(range(train_size, train_size + val_size))
     test_dataset = sft_token_dataset.select(range(train_size + val_size, total_size))
-    print(f"Train size: {len(train_dataset)}")
-    print(f"Validation size: {len(val_dataset)}")
-    print(f"Test size: {len(test_dataset)}")
+
 
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset.with_format("torch"),
@@ -125,13 +125,12 @@ def apply_lora(
     if target_modules is None:
         target_modules = ["causal_mha", "ffn", "lm_head"]
     for name, module in model.named_modules():
-        print(f"Checking module: {name}")
         if isinstance(module, nn.Linear) and any(t in name for t in target_modules):
             lora = LoRALayer(module.in_features, module.out_features, r, alpha, dropout)
             lora.to(device=model.device)
             # monkey-patch
             orig_forward = module.forward
-            module.forward = lambda x, orig_forward=orig_forward, l=lora: l(orig_forward(x))
+            module.forward = lambda x, orig_forward=orig_forward, l=lora: orig_forward(x) + l(x)
     return model
 
 
@@ -147,6 +146,28 @@ class LoRALayer(nn.Module):
 
     def forward(self, x):
         return self.dropout(x @ self.lora_A.T) @ self.lora_B.T * self.scaling
+
+
+class GPTSFTTrainer(GPTTrainer):
+    def save_model(self):
+        """Save the current model to the specified path."""
+        # save merged model
+        self._merge_lora()
+        torch.save(self.model.state_dict(), self.model_path)
+
+    def _merge_lora(self):
+        for name, module in self.model.named_modules():
+            if isinstance(module, nn.Linear):
+                # retrieve LoRA parameters
+                lora_A = getattr(module, "lora_A", None)
+                lora_B = getattr(module, "lora_B", None)
+                if lora_A is not None and lora_B is not None:
+                    delta_weight = (lora_B @ lora_A) * (module.scaling if hasattr(module, "scaling") else 1.0)
+                    print(f"Merging LoRA into module: {name}")
+                    module.weight.data += delta_weight
+                    # Remove LoRA parameters
+                    delattr(module, "lora_A")
+                    delattr(module, "lora_B")
 
 
 def train_model(config: GPTConfig) -> None:
@@ -171,7 +192,9 @@ def train_model(config: GPTConfig) -> None:
     model = apply_lora(model)
     mark_only_lora_as_trainable(model)
 
-    trainer = GPTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
+    trainer = GPTSFTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
+    trainer.base_lr = 1e-4  # set a different base learning rate for SFT
+    trainer.current_step = 2000  # start from step 2000 for SFT
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
@@ -179,7 +202,7 @@ if __name__ == "__main__":
     from toynlp.gpt.config import GPTConfig
 
     config = GPTConfig(
-        wandb_enabled=False,
+        wandb_enabled=True,
         wandb_name="gpt_sft_test",
     )
     tokenizer = GPTTokenizer().load()

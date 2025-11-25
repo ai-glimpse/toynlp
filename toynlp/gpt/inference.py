@@ -2,7 +2,7 @@ from toynlp.gpt.config import GPTConfig
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.tokenizer import GPTTokenizer
 
-from toynlp.paths import GPT_MODEL_PATH
+from toynlp.paths import GPT_MODEL_PATH, GPT_SFT_MODEL_PATH
 import torch
 from pathlib import Path
 from toynlp.util import current_device
@@ -89,7 +89,7 @@ class GPTInference:
 if __name__ == "__main__":
     # Example usage of GPTInference
     config = GPTConfig()
-    gpt_inference = GPTInference(config)
+    gpt_inference = GPTInference(config, GPT_MODEL_PATH)
 
     prompt = "This is"
     print(f"Prompt: {prompt}")
