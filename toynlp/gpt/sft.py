@@ -1,5 +1,4 @@
 from typing import Any
-from textwrap import dedent
 from datasets import load_dataset, Dataset
 import torch.nn as nn
 import torch
@@ -11,7 +10,6 @@ from toynlp.gpt.train import GPTTrainer
 from toynlp.gpt.config import GPTConfig
 import wandb
 from toynlp.paths import GPT_SFT_MODEL_PATH
-from toynlp.gpt.dataset import split_text_into_contexts
 
 
 class SftDataset:
@@ -39,12 +37,26 @@ class SftDataset:
             input_text = self.template(with_context=True).format(prompt=prompt, context=context, response=response)
         else:
             input_text = self.template(with_context=False).format(prompt=prompt, response=response)
-        return {"input_text": dedent(input_text)}
+        return {"input_text": input_text}
 
     def template(self, with_context: bool = False) -> str:
         if with_context:
             return """Human: {prompt}\n\nContext: {context}\n\nAssistant: {response}""" + self.eos_token
         return """Human: {prompt}\n\nAssistant: {response}""" + self.eos_token
+
+
+def text_to_token_ids(
+    texts: list[str],
+    tokenizer: Tokenizer,
+    max_length: int,
+) -> list[torch.Tensor]:
+    token_id_list = []
+    for text in texts:
+        token_ids = tokenizer.encode(text).ids[:max_length]
+        if len(token_ids) < max_length:
+            token_ids += [tokenizer.token_to_id("<pad>")] * (max_length - len(token_ids))
+        token_id_list.append(torch.tensor(token_ids, dtype=torch.long))
+    return token_id_list
 
 
 def get_sft_dataloaders(
@@ -54,44 +66,42 @@ def get_sft_dataloaders(
     sft_dataset = SftDataset().load_sft_dataset()
     sft_token_dataset = sft_dataset.map(
         lambda batch: {
-            "input_ids": split_text_into_contexts(
-                batch["input_text"],
-                config.max_seq_length,
-                gpt_tokenizer,
-            )
+            "input_ids": text_to_token_ids(batch["input_text"], gpt_tokenizer, config.max_seq_length),
         },
         remove_columns=["input_text"],
         batched=True,
+        num_proc=4,
     )
 
     # Split into train, val, test
-    # total_size = len(sft_dataset)
-    # train_size = int(0.8 * total_size)
-    # val_size = int(0.1 * total_size)
+    total_size = len(sft_token_dataset)
+    train_size = int(0.8 * total_size)
+    val_size = int(0.1 * total_size)
 
-    train_size = 100
-    val_size = 50
-
-    train_dataset = sft_token_dataset[:train_size]
-    val_dataset = sft_token_dataset[train_size : train_size + val_size]
-    test_dataset = sft_token_dataset[train_size + val_size :]
+    train_dataset = sft_token_dataset.select(range(train_size))
+    val_dataset = sft_token_dataset.select(range(train_size, train_size + val_size))
+    test_dataset = sft_token_dataset.select(range(train_size + val_size, total_size))
+    print(f"Train size: {len(train_dataset)}")
+    print(f"Validation size: {len(val_dataset)}")
+    print(f"Test size: {len(test_dataset)}")
 
     train_dataloader = torch.utils.data.DataLoader(
-        dataset=train_dataset,
+        dataset=train_dataset.with_format("torch"),
+        # dataset=train_dataset,
         batch_size=config.batch_size,
         num_workers=4,
         prefetch_factor=4,
         drop_last=True,
     )
     val_dataloader = torch.utils.data.DataLoader(
-        dataset=val_dataset,
+        dataset=val_dataset.with_format("torch"),
         batch_size=config.batch_size,
         num_workers=4,
         prefetch_factor=4,
         drop_last=True,
     )
     test_dataloader = torch.utils.data.DataLoader(
-        dataset=test_dataset,
+        dataset=test_dataset.with_format("torch"),
         batch_size=config.batch_size,
         num_workers=4,
         prefetch_factor=4,
@@ -115,10 +125,13 @@ def apply_lora(
     if target_modules is None:
         target_modules = ["causal_mha", "ffn", "lm_head"]
     for name, module in model.named_modules():
+        print(f"Checking module: {name}")
         if isinstance(module, nn.Linear) and any(t in name for t in target_modules):
             lora = LoRALayer(module.in_features, module.out_features, r, alpha, dropout)
+            lora.to(device=model.device)
             # monkey-patch
-            module.forward = lambda x, mod=module, l=lora: l(mod(x))
+            orig_forward = module.forward
+            module.forward = lambda x, orig_forward=orig_forward, l=lora: l(orig_forward(x))
     return model
 
 
@@ -177,11 +190,14 @@ if __name__ == "__main__":
     #     print(sft_dataset[i]["input_text"])
     #     print("---"*20)
 
-    train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
-        config=config,
-        gpt_tokenizer=tokenizer,
-    )
-    for batch in train_dataloader:
-        print(batch["input_ids"].shape)
+    # train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
+    #     config=config,
+    #     gpt_tokenizer=tokenizer,
+    # )
+    # for batch in train_dataloader:
+    #     for item in batch["input_ids"]:
+    #         print("Item shape:", item.shape)
+    #         print(tokenizer.decode(item.tolist(), skip_special_tokens=False))
+    #         print("-" * 20)
 
-    # train_model(config)
+    train_model(config)
