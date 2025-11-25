@@ -1,10 +1,8 @@
-from pickle import TRUE
 from typing import Any
 from datasets import load_dataset, Dataset
-import torch.nn as nn
+from torch import nn
 import torch
 import math
-from toynlp.gpt import train
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.tokenizer import GPTTokenizer
 from tokenizers import Tokenizer
@@ -19,8 +17,8 @@ class SftDataset:
         self,
         dataset_name: str = "databricks/databricks-dolly-15k",
         split: str = "train",
-        eos_token: str = "___",
-    ):
+        eos_token: str = "___",  # noqa: S107
+    ) -> None:
         self.dataset_name = dataset_name
         self.split = split
         self.eos_token = eos_token
@@ -29,7 +27,7 @@ class SftDataset:
     def load_sft_dataset(self) -> Dataset:
         return self.raw_dataset.map(self._dataset_transform, remove_columns=self.raw_dataset.column_names, num_proc=4)
 
-    def _load_raw_dataset(self, dataset_name: str, split: str):
+    def _load_raw_dataset(self, dataset_name: str, split: str) -> Dataset:
         dataset = load_dataset(dataset_name, split=split)
         return dataset
 
@@ -80,10 +78,13 @@ def get_sft_dataloaders(
     train_size = int(0.8 * total_size)
     val_size = int(0.1 * total_size)
 
+    # train_size = 24
+    # val_size = 24
+    # total_size = train_size + val_size + 24
+
     train_dataset = sft_token_dataset.select(range(train_size))
     val_dataset = sft_token_dataset.select(range(train_size, train_size + val_size))
     test_dataset = sft_token_dataset.select(range(train_size + val_size, total_size))
-
 
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset.with_format("torch"),
@@ -126,16 +127,24 @@ def apply_lora(
         target_modules = ["causal_mha", "ffn", "lm_head"]
     for name, module in model.named_modules():
         if isinstance(module, nn.Linear) and any(t in name for t in target_modules):
+            if hasattr(module, "lora_adapter"):
+                continue  # already patched
             lora = LoRALayer(module.in_features, module.out_features, r, alpha, dropout)
             lora.to(device=model.device)
-            # monkey-patch
-            orig_forward = module.forward
-            module.forward = lambda x, orig_forward=orig_forward, l=lora: orig_forward(x) + l(x)
+            module.add_module("lora_adapter", lora)
+            if not hasattr(module, "_original_forward"):
+                module._original_forward = module.forward  # noqa: SLF001
+
+            def lora_forward(x, orig_forward=module._original_forward, lora_layer=lora) -> torch.Tensor:  # noqa: SLF001
+                base_out = orig_forward(x)
+                return base_out + lora_layer(x)
+
+            module.forward = lora_forward
     return model
 
 
 class LoRALayer(nn.Module):
-    def __init__(self, in_features, out_features, r, alpha, dropout):
+    def __init__(self, in_features, out_features, r, alpha, dropout) -> None:
         super().__init__()
         self.scaling = alpha / r
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
@@ -151,23 +160,25 @@ class LoRALayer(nn.Module):
 class GPTSFTTrainer(GPTTrainer):
     def save_model(self):
         """Save the current model to the specified path."""
-        # save merged model
-        self._merge_lora()
-        torch.save(self.model.state_dict(), self.model_path)
+        torch.save(self._merge_lora_state_dict(), self.model_path)
 
-    def _merge_lora(self):
-        for name, module in self.model.named_modules():
-            if isinstance(module, nn.Linear):
-                # retrieve LoRA parameters
-                lora_A = getattr(module, "lora_A", None)
-                lora_B = getattr(module, "lora_B", None)
-                if lora_A is not None and lora_B is not None:
-                    delta_weight = (lora_B @ lora_A) * (module.scaling if hasattr(module, "scaling") else 1.0)
-                    print(f"Merging LoRA into module: {name}")
-                    module.weight.data += delta_weight
-                    # Remove LoRA parameters
-                    delattr(module, "lora_A")
-                    delattr(module, "lora_B")
+    def _merge_lora_state_dict(self) -> dict[str, torch.Tensor]:
+        merged_state = {
+            name: param.clone() for name, param in self.model.state_dict().items() if "lora_adapter" not in name
+        }
+
+        for module_name, module in self.model.named_modules():
+            lora_adapter = getattr(module, "lora_adapter", None)
+            if not module_name or not isinstance(lora_adapter, LoRALayer):
+                continue
+
+            delta_weight = (lora_adapter.lora_B @ lora_adapter.lora_A) * lora_adapter.scaling
+            weight_key = f"{module_name}.weight"
+            if weight_key not in merged_state:
+                continue
+            merged_state[weight_key] = merged_state[weight_key] + delta_weight.to(merged_state[weight_key].device)
+
+        return merged_state
 
 
 def train_model(config: GPTConfig) -> None:

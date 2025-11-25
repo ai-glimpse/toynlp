@@ -89,7 +89,7 @@ class GPTInference:
 if __name__ == "__main__":
     # Example usage of GPTInference
     config = GPTConfig()
-    gpt_inference = GPTInference(config, GPT_MODEL_PATH)
+    gpt_inference = GPTInference(config, GPT_SFT_MODEL_PATH)
 
     prompt = "This is"
     print(f"Prompt: {prompt}")
