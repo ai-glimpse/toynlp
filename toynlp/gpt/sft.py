@@ -1,0 +1,187 @@
+from typing import Any
+from textwrap import dedent
+from datasets import load_dataset, Dataset
+import torch.nn as nn
+import torch
+import math
+from toynlp.gpt.model import GPTModel
+from toynlp.gpt.tokenizer import GPTTokenizer
+from tokenizers import Tokenizer
+from toynlp.gpt.train import GPTTrainer
+from toynlp.gpt.config import GPTConfig
+import wandb
+from toynlp.paths import GPT_SFT_MODEL_PATH
+from toynlp.gpt.dataset import split_text_into_contexts
+
+
+class SftDataset:
+    def __init__(
+        self,
+        dataset_name: str = "databricks/databricks-dolly-15k",
+        split: str = "train",
+        eos_token: str = "___",
+    ):
+        self.dataset_name = dataset_name
+        self.split = split
+        self.eos_token = eos_token
+        self.raw_dataset = self._load_raw_dataset(dataset_name, split)
+
+    def load_sft_dataset(self) -> Dataset:
+        return self.raw_dataset.map(self._dataset_transform, remove_columns=self.raw_dataset.column_names, num_proc=4)
+
+    def _load_raw_dataset(self, dataset_name: str, split: str):
+        dataset = load_dataset(dataset_name, split=split)
+        return dataset
+
+    def _dataset_transform(self, row: dict[str, Any]) -> dict[str, Any]:
+        prompt, context, response = row["instruction"], row.get("context", ""), row["response"]
+        if context:
+            input_text = self.template(with_context=True).format(prompt=prompt, context=context, response=response)
+        else:
+            input_text = self.template(with_context=False).format(prompt=prompt, response=response)
+        return {"input_text": dedent(input_text)}
+
+    def template(self, with_context: bool = False) -> str:
+        if with_context:
+            return """Human: {prompt}\n\nContext: {context}\n\nAssistant: {response}""" + self.eos_token
+        return """Human: {prompt}\n\nAssistant: {response}""" + self.eos_token
+
+
+def get_sft_dataloaders(
+    config: GPTConfig,
+    gpt_tokenizer: Tokenizer,
+) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    sft_dataset = SftDataset().load_sft_dataset()
+    sft_token_dataset = sft_dataset.map(
+        lambda batch: {
+            "input_ids": split_text_into_contexts(
+                batch["input_text"],
+                config.max_seq_length,
+                gpt_tokenizer,
+            )
+        },
+        remove_columns=["input_text"],
+        batched=True,
+    )
+
+    # Split into train, val, test
+    # total_size = len(sft_dataset)
+    # train_size = int(0.8 * total_size)
+    # val_size = int(0.1 * total_size)
+
+    train_size = 100
+    val_size = 50
+
+    train_dataset = sft_token_dataset[:train_size]
+    val_dataset = sft_token_dataset[train_size : train_size + val_size]
+    test_dataset = sft_token_dataset[train_size + val_size :]
+
+    train_dataloader = torch.utils.data.DataLoader(
+        dataset=train_dataset,
+        batch_size=config.batch_size,
+        num_workers=4,
+        prefetch_factor=4,
+        drop_last=True,
+    )
+    val_dataloader = torch.utils.data.DataLoader(
+        dataset=val_dataset,
+        batch_size=config.batch_size,
+        num_workers=4,
+        prefetch_factor=4,
+        drop_last=True,
+    )
+    test_dataloader = torch.utils.data.DataLoader(
+        dataset=test_dataset,
+        batch_size=config.batch_size,
+        num_workers=4,
+        prefetch_factor=4,
+        drop_last=True,
+    )
+
+    return train_dataloader, val_dataloader, test_dataloader
+
+
+def mark_only_lora_as_trainable(model: GPTModel) -> None:
+    for n, p in model.named_parameters():
+        if "lora_" not in n:
+            p.requires_grad = False
+        else:
+            p.requires_grad = True
+
+
+def apply_lora(
+    model: GPTModel, r: int = 64, alpha: int = 16, dropout: float = 0.05, target_modules: list[str] | None = None
+) -> GPTModel:
+    if target_modules is None:
+        target_modules = ["causal_mha", "ffn", "lm_head"]
+    for name, module in model.named_modules():
+        if isinstance(module, nn.Linear) and any(t in name for t in target_modules):
+            lora = LoRALayer(module.in_features, module.out_features, r, alpha, dropout)
+            # monkey-patch
+            module.forward = lambda x, mod=module, l=lora: l(mod(x))
+    return model
+
+
+class LoRALayer(nn.Module):
+    def __init__(self, in_features, out_features, r, alpha, dropout):
+        super().__init__()
+        self.scaling = alpha / r
+        self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
+        self.lora_A = nn.Parameter(torch.zeros(r, in_features))
+        self.lora_B = nn.Parameter(torch.zeros(out_features, r))
+        nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+        nn.init.zeros_(self.lora_B)
+
+    def forward(self, x):
+        return self.dropout(x @ self.lora_A.T) @ self.lora_B.T * self.scaling
+
+
+def train_model(config: GPTConfig) -> None:
+    """Train the GPT model with the given configuration."""
+    if config.wandb_enabled:
+        wandb.init(
+            project=config.wandb_project,
+            name=config.wandb_name,
+            config=config.to_dict(),
+        )
+
+    tokenizer = GPTTokenizer().load()
+
+    train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
+        config=config,
+        gpt_tokenizer=tokenizer,
+    )
+
+    padding_token_id = tokenizer.token_to_id("<pad>")
+    model = GPTModel(config, padding_idx=padding_token_id)
+    # apply lora
+    model = apply_lora(model)
+    mark_only_lora_as_trainable(model)
+
+    trainer = GPTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
+    trainer.train(train_dataloader, val_dataloader, test_dataloader)
+
+
+if __name__ == "__main__":
+    from toynlp.gpt.config import GPTConfig
+
+    config = GPTConfig(
+        wandb_enabled=False,
+        wandb_name="gpt_sft_test",
+    )
+    tokenizer = GPTTokenizer().load()
+
+    # dataset = Dataset()
+    # sft_dataset = dataset.load_sft_dataset()
+    # for i in range(3):
+    #     print(sft_dataset[i]["input_text"])
+    #     print("---"*20)
+
+    train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
+        config=config,
+        gpt_tokenizer=tokenizer,
+    )
+    for batch in train_dataloader:
+        print(batch["input_ids"].shape)
+
+    # train_model(config)

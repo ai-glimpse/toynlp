@@ -132,3 +132,10 @@ Now the mask starts at `(batch, 1, 1, seq_len)` and broadcasting preserves the c
 Rows 2 and 3 still attend to the earlier valid tokens, so the logits stay finite and the model trains normally.
 
 **Lessons learned.** Masks are just tensors, so broadcast semantics matter. Printing the exact shapes before and after each operation (or writing a quick unit test) is a cheap way to catch mistakes that otherwise only show up hours into training.
+
+
+### We don't add a special token for end of sentence
+
+This makes the supervised fine-tuning task harder, because the model has to predict the end of sentence by itself.
+
+For continue the sft, we choose to use `___` as the end of sentence token temporarily.

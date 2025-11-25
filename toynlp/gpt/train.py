@@ -1,4 +1,5 @@
 import random
+import pathlib
 import torch
 from torch.utils.data import DataLoader
 
@@ -17,10 +18,10 @@ set_deterministic_mode()  # Set deterministic mode for reproducibility
 
 
 class GPTTrainer:
-    def __init__(self, config: GPTConfig, pad_token_id: int) -> None:
+    def __init__(self, config: GPTConfig, pad_token_id: int, model: GPTModel, model_path: pathlib.Path) -> None:
         self.config = config
-        self.model = GPTModel(self.config, pad_token_id)
-        self.model_path = GPT_MODEL_PATH
+        self.model = model
+        self.model_path = model_path
         self.device = current_device
         self.model.to(self.device)
         self.tokenizer = GPTTokenizer().load()
@@ -242,7 +243,9 @@ def train_model(config: GPTConfig) -> None:
         gpt_tokenizer=tokenizer,
     )
 
-    trainer = GPTTrainer(config=config, pad_token_id=tokenizer.token_to_id("<pad>"))
+    padding_token_id = tokenizer.token_to_id("<pad>")
+    model = GPTModel(config, padding_idx=padding_token_id)
+    trainer = GPTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_MODEL_PATH)
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
