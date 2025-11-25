@@ -91,7 +91,7 @@ if __name__ == "__main__":
     config = GPTConfig()
     gpt_inference = GPTInference(config, GPT_SFT_MODEL_PATH)
 
-    prompt = "This is"
+    prompt = "Human: Why sky is blue?\n\nAssistant:"
     print(f"Prompt: {prompt}")
     generated_text = gpt_inference.generate_text(prompt, max_length=100)
     print(f"Generated: {generated_text}")
