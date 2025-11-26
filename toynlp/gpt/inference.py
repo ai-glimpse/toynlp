@@ -77,7 +77,7 @@ class GPTInference:
                 outputs = self.model(generated_ids)
                 next_token_logits = outputs[:, -1, :]
                 next_token_id = torch.argmax(next_token_logits, dim=-1).unsqueeze(1)
-                generated_ids = torch.cat((generated_ids, next_token_id), dim=1)
+                # TODO: define proper stopping criteria
                 if next_token_id.item() in [self.gpt_tokenizer.token_to_id("___")]:
                     break
                 length += 1
@@ -92,6 +92,7 @@ if __name__ == "__main__":
     gpt_inference = GPTInference(config, GPT_SFT_MODEL_PATH)
 
     prompt = "Human: what is REST API?\n\nAssistant:"
+    # prompt = "Human: Why sky is blue?\n\nAssistant:"
     print(f"Prompt: {prompt}")
     generated_text = gpt_inference.generate_text(prompt, max_length=100)
     print(f"Generated:\n{generated_text}")

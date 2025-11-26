@@ -178,7 +178,7 @@ def mark_only_lora_as_trainable(model: GPTModel) -> None:
 
 
 def apply_lora(
-    model: GPTModel, r: int = 64, alpha: int = 16, dropout: float = 0.05, target_modules: list[str] | None = None
+    model: GPTModel, r: int = 16, alpha: int = 32, dropout: float = 0.05, target_modules: list[str] | None = None
 ) -> GPTModel:
     if target_modules is None:
         target_modules = ["causal_mha", "ffn", "lm_head"]
@@ -201,7 +201,7 @@ def apply_lora(
 
 
 class LoRALayer(nn.Module):
-    def __init__(self, in_features, out_features, r, alpha, dropout) -> None:
+    def __init__(self, in_features: int, out_features: int, r: int, alpha: int, dropout: float) -> None:
         super().__init__()
         self.scaling = alpha / r
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
@@ -262,8 +262,7 @@ def train_model(config: GPTConfig) -> None:
 
     trainer = GPTSFTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
     trainer.base_lr = 1e-4  # set a different base learning rate for SFT
-    # trainer.current_step = 2000  # start from step 2000 for SFT
-    trainer.config.epochs = 10  # set a smaller number of epochs for SFT
+    trainer.config.epochs = 100  # set a smaller number of epochs for SFT
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
@@ -272,7 +271,7 @@ if __name__ == "__main__":
 
     config = GPTConfig(
         wandb_enabled=True,
-        wandb_name="gpt_sft_test",
+        wandb_name="gpt_sft_lora_r16_alpha32",
     )
     tokenizer = GPTTokenizer().load()
 
@@ -286,11 +285,11 @@ if __name__ == "__main__":
         config=config,
         gpt_tokenizer=tokenizer,
     )
-    # for batch in train_dataloader:
-    #     for item in batch["input_ids"]:
-    #         print("Item shape:", item.shape)
-    #         print(tokenizer.decode(item.tolist(), skip_special_tokens=False))
-    #         print("-" * 20)
-    #         break
+    for batch in train_dataloader:
+        for item in batch["input_ids"]:
+            print("Item shape:", item.shape)
+            print(tokenizer.decode(item.tolist(), skip_special_tokens=False))
+            print("-" * 20)
+            break
 
     # train_model(config)
