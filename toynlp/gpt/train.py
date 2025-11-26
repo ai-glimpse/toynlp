@@ -113,12 +113,13 @@ class GPTTrainer:
 
             self.optimizer.zero_grad()
             batch_input_ids = batch["input_ids"].to(self.device)
+            batch_target_ids = batch["labels"].to(self.device)
 
             # For causal language modeling, input is shifted by 1 position
             # Input: [BOS, token1, token2, token3]
             # Target: [token1, token2, token3, EOS]
             input_ids = batch_input_ids[:, :-1]  # Remove last token
-            target_ids = batch_input_ids[:, 1:]  # Remove first token (BOS)
+            target_ids = batch_target_ids[:, 1:]  # Remove first token (BOS)
 
             # Forward pass
             logits = self.model(input_ids)
@@ -186,11 +187,13 @@ class GPTTrainer:
 
         for batch in data_loader:
             batch_input_ids = batch["input_ids"].to(self.device, non_blocking=True)
+            batch_target_ids = batch["labels"].to(self.device, non_blocking=True)
+
             batch_size = batch_input_ids.size(0)
 
             # For causal language modeling, input is shifted by 1 position
             input_ids = batch_input_ids[:, :-1]  # Remove last token
-            target_ids = batch_input_ids[:, 1:]  # Remove first token (BOS)
+            target_ids = batch_target_ids[:, 1:]  # Remove first token (BOS)
 
             # Forward pass
             logits = self.model(input_ids)

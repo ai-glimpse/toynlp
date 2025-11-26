@@ -49,14 +49,28 @@ def text_to_token_ids(
     texts: list[str],
     tokenizer: Tokenizer,
     max_length: int,
-) -> list[torch.Tensor]:
-    token_id_list = []
+) -> dict[str, list[torch.Tensor]]:
+    input_ids = []
+    labels = []
+    pad_id = tokenizer.token_to_id("<pad>")
     for text in texts:
         token_ids = tokenizer.encode(text).ids[:max_length]
+        # use re find "Assistant:" position
         if len(token_ids) < max_length:
-            token_ids += [tokenizer.token_to_id("<pad>")] * (max_length - len(token_ids))
-        token_id_list.append(torch.tensor(token_ids, dtype=torch.long))
-    return token_id_list
+            token_ids += [pad_id] * (max_length - len(token_ids))
+        input_id = torch.tensor(token_ids, dtype=torch.long)
+        input_ids.append(input_id)
+        label = input_id.clone()
+        assistant_marker = "Assistant:"
+        assistant_pos = text.find(assistant_marker)
+        if assistant_pos == -1:
+            prompt_token_count = 0
+        else:
+            prompt_text = text[: assistant_pos + len(assistant_marker)]
+            prompt_token_count = len(tokenizer.encode(prompt_text).ids[:max_length])
+        label[:prompt_token_count] = pad_id  # ignore prompt tokens in loss calculation
+        labels.append(label)
+    return {"input_ids": input_ids, "labels": labels}
 
 
 def get_sft_dataloaders(
@@ -65,9 +79,7 @@ def get_sft_dataloaders(
 ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     sft_dataset = SftDataset().load_sft_dataset()
     sft_token_dataset = sft_dataset.map(
-        lambda batch: {
-            "input_ids": text_to_token_ids(batch["input_text"], gpt_tokenizer, config.max_seq_length),
-        },
+        lambda batch: text_to_token_ids(batch["input_text"], gpt_tokenizer, config.max_seq_length),
         remove_columns=["input_text"],
         batched=True,
         num_proc=4,
