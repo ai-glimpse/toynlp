@@ -1,5 +1,6 @@
 from typing import Any
-from datasets import load_dataset, Dataset
+from collections.abc import Iterable
+from datasets import load_dataset, Dataset, concatenate_datasets
 from torch import nn
 import torch
 import math
@@ -15,29 +16,72 @@ from toynlp.paths import GPT_SFT_MODEL_PATH
 class SftDataset:
     def __init__(
         self,
-        dataset_name: str = "databricks/databricks-dolly-15k",
+        dataset_names: str | Iterable[str] | None = None,
         split: str = "train",
         eos_token: str = "___",  # noqa: S107
     ) -> None:
-        self.dataset_name = dataset_name
+        if dataset_names is None:
+            dataset_names = ["databricks/databricks-dolly-15k", "teknium/GPT4-LLM-Cleaned"]
+        if isinstance(dataset_names, str):
+            dataset_names = [dataset_names]
+        self.dataset_names = list(dataset_names)
         self.split = split
         self.eos_token = eos_token
-        self.raw_dataset = self._load_raw_dataset(dataset_name, split)
+        self.raw_dataset = self._load_raw_dataset(self.dataset_names, split)
 
     def load_sft_dataset(self) -> Dataset:
         return self.raw_dataset.map(self._dataset_transform, remove_columns=self.raw_dataset.column_names, num_proc=4)
 
-    def _load_raw_dataset(self, dataset_name: str, split: str) -> Dataset:
-        dataset = load_dataset(dataset_name, split=split)
+    def _load_raw_dataset(self, dataset_names: list[str], split: str) -> Dataset:
+        datasets = [self._load_dataset_by_name(name, split) for name in dataset_names]
+        if len(datasets) == 1:
+            return datasets[0]
+        return concatenate_datasets(datasets)
+
+    def _load_dataset_by_name(self, dataset_name: str, split: str) -> Dataset:
+        if dataset_name == "databricks/databricks-dolly-15k":
+            return self._load_dolly_dataset(split)
+        if dataset_name == "teknium/GPT4-LLM-Cleaned":
+            return self._load_gpt4_llm_dataset(split)
+        # fallback to raw load for any additional datasets
+        return load_dataset(dataset_name, split=split)
+
+    def _load_dolly_dataset(self, split: str) -> Dataset:
+        dataset = load_dataset("databricks/databricks-dolly-15k", split=split)
         return dataset
 
+    def _load_gpt4_llm_dataset(self, split: str) -> Dataset:
+        dataset = load_dataset("teknium/GPT4-LLM-Cleaned", split=split)
+
+        def _transform(row: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "instruction": row.get("instruction") or "",
+                "context": row.get("input") or "",
+                "response": row.get("output") or "",
+            }
+
+        standard_cols = [col for col in dataset.column_names if col not in {"instruction", "context", "response"}]
+        return dataset.map(_transform, remove_columns=standard_cols)
+
     def _dataset_transform(self, row: dict[str, Any]) -> dict[str, Any]:
-        prompt, context, response = row["instruction"], row.get("context", ""), row["response"]
+        prompt_text = self._extract_prompt(row)
+        context = self._extract_context(row)
+        response = self._extract_response(row)
+        prompt = prompt_text or ""
         if context:
             input_text = self.template(with_context=True).format(prompt=prompt, context=context, response=response)
         else:
             input_text = self.template(with_context=False).format(prompt=prompt, response=response)
         return {"input_text": input_text}
+
+    def _extract_prompt(self, row: dict[str, Any]) -> str:
+        return row.get("instruction") or row.get("prompt") or row.get("question") or ""
+
+    def _extract_context(self, row: dict[str, Any]) -> str:
+        return row.get("context") or row.get("system_prompt") or ""
+
+    def _extract_response(self, row: dict[str, Any]) -> str:
+        return row.get("response") or row.get("output") or row.get("completion") or row.get("answer") or ""
 
     def template(self, with_context: bool = False) -> str:
         if with_context:
@@ -89,6 +133,7 @@ def get_sft_dataloaders(
     total_size = len(sft_token_dataset)
     train_size = int(0.8 * total_size)
     val_size = int(0.1 * total_size)
+    print(f"Total dataset size: {total_size}, train size: {train_size}, val size: {val_size}")
 
     # train_size = 24
     # val_size = 24
@@ -217,7 +262,8 @@ def train_model(config: GPTConfig) -> None:
 
     trainer = GPTSFTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
     trainer.base_lr = 1e-4  # set a different base learning rate for SFT
-    trainer.current_step = 2000  # start from step 2000 for SFT
+    # trainer.current_step = 2000  # start from step 2000 for SFT
+    trainer.config.epochs = 10  # set a smaller number of epochs for SFT
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
@@ -236,14 +282,15 @@ if __name__ == "__main__":
     #     print(sft_dataset[i]["input_text"])
     #     print("---"*20)
 
-    # train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
-    #     config=config,
-    #     gpt_tokenizer=tokenizer,
-    # )
+    train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
+        config=config,
+        gpt_tokenizer=tokenizer,
+    )
     # for batch in train_dataloader:
     #     for item in batch["input_ids"]:
     #         print("Item shape:", item.shape)
     #         print(tokenizer.decode(item.tolist(), skip_special_tokens=False))
     #         print("-" * 20)
+    #         break
 
-    train_model(config)
+    # train_model(config)
