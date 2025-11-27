@@ -2,7 +2,7 @@ from toynlp.gpt.config import GPTConfig
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.tokenizer import GPTTokenizer
 
-from toynlp.paths import GPT_MODEL_PATH, GPT_SFT_MODEL_PATH
+from toynlp.paths import GPT_MODEL_PATH
 import torch
 from pathlib import Path
 from toynlp.util import current_device
@@ -82,17 +82,18 @@ class GPTInference:
                     break
                 length += 1
 
-        generated_text = self.gpt_tokenizer.decode(generated_ids.squeeze().tolist())
+        generated_text = self.gpt_tokenizer.decode(generated_ids.squeeze().tolist(), skip_special_tokens=False)
         return generated_text
 
 
 if __name__ == "__main__":
     # Example usage of GPTInference
     config = GPTConfig()
-    gpt_inference = GPTInference(config, GPT_SFT_MODEL_PATH)
+    gpt_inference = GPTInference(config, GPT_MODEL_PATH)
 
-    prompt = "Human: what is REST API?\n\nAssistant:"
+    # prompt = "Human: what is REST API?\n\nAssistant:"
     # prompt = "Human: Why sky is blue?\n\nAssistant:"
+    prompt = "This is"
     print(f"Prompt: {prompt}")
     generated_text = gpt_inference.generate_text(prompt, max_length=100)
     print(f"Generated:\n{generated_text}")

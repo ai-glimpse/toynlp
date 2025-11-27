@@ -10,7 +10,7 @@ from tokenizers import Tokenizer
 from toynlp.gpt.train import GPTTrainer
 from toynlp.gpt.config import GPTConfig
 import wandb
-from toynlp.paths import GPT_SFT_MODEL_PATH
+from toynlp.paths import GPT_MODEL_PATH, GPT_SFT_MODEL_PATH
 
 
 class SftDataset:
@@ -256,6 +256,8 @@ def train_model(config: GPTConfig) -> None:
 
     padding_token_id = tokenizer.token_to_id("<pad>")
     model = GPTModel(config, padding_idx=padding_token_id)
+    # TODO: load pre-trained model weights before SFT
+    model.load_state_dict(torch.load(GPT_MODEL_PATH, map_location=model.device))
     # apply lora
     model = apply_lora(model)
     mark_only_lora_as_trainable(model)
@@ -281,15 +283,15 @@ if __name__ == "__main__":
     #     print(sft_dataset[i]["input_text"])
     #     print("---"*20)
 
-    train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
-        config=config,
-        gpt_tokenizer=tokenizer,
-    )
-    for batch in train_dataloader:
-        for item in batch["input_ids"]:
-            print("Item shape:", item.shape)
-            print(tokenizer.decode(item.tolist(), skip_special_tokens=False))
-            print("-" * 20)
-            break
+    # train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
+    #     config=config,
+    #     gpt_tokenizer=tokenizer,
+    # )
+    # for batch in train_dataloader:
+    #     for item in batch["input_ids"]:
+    #         print("Item shape:", item.shape)
+    #         print(tokenizer.decode(item.tolist(), skip_special_tokens=False))
+    #         print("-" * 20)
+    #         break
 
-    # train_model(config)
+    train_model(config)
