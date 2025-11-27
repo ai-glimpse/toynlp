@@ -2,7 +2,7 @@ from toynlp.gpt.config import GPTConfig
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.tokenizer import GPTTokenizer
 
-from toynlp.paths import GPT_MODEL_PATH
+from toynlp.paths import GPT_MODEL_PATH, GPT_SFT_MODEL_PATH
 import torch
 from pathlib import Path
 from toynlp.util import current_device
@@ -77,23 +77,24 @@ class GPTInference:
                 outputs = self.model(generated_ids)
                 next_token_logits = outputs[:, -1, :]
                 next_token_id = torch.argmax(next_token_logits, dim=-1).unsqueeze(1)
-                # TODO: define proper stopping criteria
-                if next_token_id.item() in [self.gpt_tokenizer.token_to_id("___")]:
+                generated_ids = torch.cat((generated_ids, next_token_id), dim=1)
+                if next_token_id.item() == self.gpt_tokenizer.token_to_id("___"):
                     break
                 length += 1
 
-        generated_text = self.gpt_tokenizer.decode(generated_ids.squeeze().tolist(), skip_special_tokens=False)
+        generated_text = self.gpt_tokenizer.decode(generated_ids.squeeze().tolist())
         return generated_text
 
 
 if __name__ == "__main__":
     # Example usage of GPTInference
     config = GPTConfig()
-    gpt_inference = GPTInference(config, GPT_MODEL_PATH)
+    gpt_inference = GPTInference(config, model_path=GPT_SFT_MODEL_PATH)
 
-    # prompt = "Human: what is REST API?\n\nAssistant:"
-    # prompt = "Human: Why sky is blue?\n\nAssistant:"
-    prompt = "This is"
+    # prompt = "This is"
+    prompt = "Human: Why is the sky blue?\n\nAssistant:"
+    # prompt = "Human: What's the RESTful API?\n\nAssistant:"
+    # prompt = "Human: How are you today?\n\nAssistant:"
     print(f"Prompt: {prompt}")
     generated_text = gpt_inference.generate_text(prompt, max_length=100)
     print(f"Generated:\n{generated_text}")
