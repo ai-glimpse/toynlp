@@ -23,9 +23,9 @@ class SftDataset:
     ) -> None:
         if dataset_names is None:
             dataset_names = [
-                # "databricks/databricks-dolly-15k",
-                # "teknium/GPT4-LLM-Cleaned",
-                # "yahma/alpaca-cleaned",
+                "databricks/databricks-dolly-15k",
+                "teknium/GPT4-LLM-Cleaned",
+                "yahma/alpaca-cleaned",
                 "allenai/ai2_arc",
             ]
         if isinstance(dataset_names, str):
@@ -101,14 +101,18 @@ class SftDataset:
             choice_pairs = [(label, text) for label, text in zip(labels, texts, strict=False) if label and text]
             choice_lines = [f"{label}. {text}" for label, text in choice_pairs]
             choice_block = "\n".join(choice_lines)
-            instruction_parts = ["Answer the multiple-choice question with exactly one letter."]
+            instruction_parts = [
+                "Give the right answer of the multiple-choice question, return the correct letter followed by its text.",
+            ]
             if question_text:
                 instruction_parts.append(f"Question: {question_text}")
             if choice_block:
                 instruction_parts.append("Choices:\n" + choice_block)
             instruction = "\n\n".join(instruction_parts)
-            answer_key = row.get("answerKey") or ""
-            response = f"{answer_key}".strip() if answer_key else ""
+            answer_key = (row.get("answerKey") or "").strip().upper()
+            label_to_text = {label: text for label, text in choice_pairs}
+            answer_text = label_to_text.get(answer_key, "").strip()
+            response = f"{answer_key}. {answer_text}".strip() if answer_key else answer_text
             return {
                 "instruction": instruction,
                 "context": "",

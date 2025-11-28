@@ -5,11 +5,7 @@ from __future__ import annotations
 import argparse
 import re
 from dataclasses import dataclass
-
-from git import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
+from typing import Iterable
 
 from datasets import Dataset, load_dataset
 from rich.console import Console
@@ -68,7 +64,9 @@ class ARCEval:
         texts: list[str] = choices.get("text") or []
         choice_lines = [f"{label}. {text}" for label, text in zip(labels, texts, strict=False) if label and text]
         choice_block = "Choices:\n" + "\n".join(choice_lines) if choice_lines else ""
-        instruction_parts = ["Answer the multiple-choice question with exactly one letter."]
+        instruction_parts = [
+            "Give the right answer of the multiple-choice question, return the correct letter followed by its text.",
+        ]
         if question_text:
             instruction_parts.append(f"Question: {question_text}")
         if choice_block:
@@ -111,14 +109,19 @@ class ARCEval:
 
             for row in ds:
                 prompt = self._build_prompt(row)
-                labels = (row.get("choices") or {}).get("label") or []
+                choices = row.get("choices") or {}
+                labels = choices.get("label") or []
+                texts = choices.get("text") or []
                 generated = self.inference.generate_text(prompt, max_length=self.max_length)
                 predicted = self._extract_choice_letter(generated, prompt, list(labels))
                 answer = str(row.get("answerKey") or "").strip().upper()
+                label_to_text = {label: text for label, text in zip(labels, texts, strict=False)}
+                answer_text = label_to_text.get(answer, "")
+                target_display = f"{answer}. {answer_text}".strip() if answer else answer_text
                 if predicted == answer:
                     split_correct += 1
                 if table is not None:
-                    table.add_row(str(row.get("id")), answer, predicted or "?")
+                    table.add_row(str(row.get("id")), target_display or answer, predicted or "?")
 
             if table is not None:
                 self.console.print(table)
