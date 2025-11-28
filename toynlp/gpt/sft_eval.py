@@ -5,7 +5,11 @@ from __future__ import annotations
 import argparse
 import re
 from dataclasses import dataclass
-from typing import Iterable
+
+from git import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 from datasets import Dataset, load_dataset
 from rich.console import Console
@@ -65,7 +69,7 @@ class ARCEval:
         choice_lines = [f"{label}. {text}" for label, text in zip(labels, texts, strict=False) if label and text]
         choice_block = "Choices:\n" + "\n".join(choice_lines) if choice_lines else ""
         instruction_parts = [
-            "Give the right answer of the multiple-choice question, return the correct letter followed by its text.",
+            "Answer the multiple-choice question with exactly one letter.",
         ]
         if question_text:
             instruction_parts.append(f"Question: {question_text}")
@@ -83,11 +87,10 @@ class ARCEval:
             return ""
         pattern = "|".join(re.escape(label) for label in sorted(valid, key=len, reverse=True))
         completion = generated[len(prompt) :].lstrip() if generated.startswith(prompt) else generated.strip()
-        match = re.search(rf"\b({pattern})\b", completion, re.IGNORECASE)
-        if match:
-            return match.group(1).upper()
-        match = re.search(rf"({pattern})", completion, re.IGNORECASE)
-        return match.group(1).upper() if match else ""
+        matches = list(re.finditer(rf"({pattern})", completion, re.IGNORECASE))
+        if not matches:
+            return ""
+        return matches[-1].group(1).upper()
 
     def evaluate(self, max_samples: int | None = None, show_details: bool = False) -> ARCEvalResult:
         overall_correct = 0
@@ -111,13 +114,10 @@ class ARCEval:
                 prompt = self._build_prompt(row)
                 choices = row.get("choices") or {}
                 labels = choices.get("label") or []
-                texts = choices.get("text") or []
                 generated = self.inference.generate_text(prompt, max_length=self.max_length)
                 predicted = self._extract_choice_letter(generated, prompt, list(labels))
                 answer = str(row.get("answerKey") or "").strip().upper()
-                label_to_text = {label: text for label, text in zip(labels, texts, strict=False)}
-                answer_text = label_to_text.get(answer, "")
-                target_display = f"{answer}. {answer_text}".strip() if answer else answer_text
+                target_display = answer
                 if predicted == answer:
                     split_correct += 1
                 if table is not None:
