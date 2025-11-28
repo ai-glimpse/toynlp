@@ -10,7 +10,8 @@ from tokenizers import Tokenizer
 from toynlp.gpt.train import GPTTrainer
 from toynlp.gpt.config import GPTConfig
 import wandb
-from toynlp.paths import GPT_SFT_MODEL_PATH
+from toynlp.paths import GPT_SFT_MODEL_PATH, GPT_MODEL_PATH
+from toynlp.util import current_device
 
 
 class SftDataset:
@@ -307,12 +308,12 @@ def train_model(config: GPTConfig) -> None:
         gpt_tokenizer=tokenizer,
     )
 
-    # TODO: change to use one line torch load
     padding_token_id = tokenizer.token_to_id("<pad>")
-    model = GPTModel(config, padding_idx=padding_token_id)
-    model.load_state_dict(torch.load(GPT_SFT_MODEL_PATH, map_location=model.device))
 
-    # model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
+    # model = GPTModel(config, padding_idx=padding_token_id)
+    # model.load_state_dict(torch.load(GPT_SFT_MODEL_PATH, map_location=model.device))
+
+    model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
 
     # apply lora
     model = apply_lora(model)
