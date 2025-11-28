@@ -102,7 +102,7 @@ class SftDataset:
             choice_lines = [f"{label}. {text}" for label, text in choice_pairs]
             choice_block = "\n".join(choice_lines)
             instruction_parts = [
-                "Give the right answer of the multiple-choice question, return the correct letter followed by its text.",
+                "Give the right answer of the multiple-choice question, return the correct letter followed by its text.",  # noqa: E501
             ]
             if question_text:
                 instruction_parts.append(f"Question: {question_text}")
@@ -110,7 +110,7 @@ class SftDataset:
                 instruction_parts.append("Choices:\n" + choice_block)
             instruction = "\n\n".join(instruction_parts)
             answer_key = (row.get("answerKey") or "").strip().upper()
-            label_to_text = {label: text for label, text in choice_pairs}
+            label_to_text = {label: text for label, text in choice_pairs}  # noqa: C416
             answer_text = label_to_text.get(answer_key, "").strip()
             response = f"{answer_key}. {answer_text}".strip() if answer_key else answer_text
             return {
@@ -269,7 +269,7 @@ class LoRALayer(nn.Module):
         nn.init.zeros_(self.lora_B)
 
     def forward(self, x):
-        return self.dropout(x @ self.lora_A.T) @ self.lora_B.T * self.scaling
+        return self.dropout(x) @ self.lora_A.T @ self.lora_B.T * self.scaling
 
 
 class GPTSFTTrainer(GPTTrainer):
