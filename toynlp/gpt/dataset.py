@@ -9,16 +9,22 @@ from toynlp.gpt.tokenizer import GPTTokenizer
 
 def split_text_into_contexts(texts: list[str], max_length: int, tokenizer: Tokenizer) -> list[torch.Tensor]:
     contexts = []
-    # print(f"len texts: {len(texts)}")
+    eos_id = tokenizer.token_to_id("<eos>")
+    pad_id = tokenizer.token_to_id("<pad>")
+    if eos_id is None or pad_id is None:
+        msg = "Missing required special tokens <eos> or <pad> in tokenizer vocabulary"
+        raise ValueError(msg)
+
     for text in texts:
-        # print(f"Processing text of length {len(text)}")
         token_ids = tokenizer.encode(text).ids
-        for i in range(len(token_ids) // max_length + 1):
-            start_idx = i * max_length
-            end_idx = (i + 1) * max_length
-            # print(f"i: {i}, start_idx: {start_idx}, end_idx: {end_idx}, len(token_ids): {len(token_ids)}")
-            if end_idx < len(token_ids):
-                contexts.append(torch.tensor(token_ids[start_idx:end_idx], dtype=torch.long))
+        token_ids.append(eos_id)
+
+        for start_idx in range(0, len(token_ids), max_length):
+            chunk = token_ids[start_idx : start_idx + max_length]
+            if len(chunk) < max_length:
+                chunk.extend([pad_id] * (max_length - len(chunk)))
+            contexts.append(torch.tensor(chunk, dtype=torch.long))
+
     return contexts
 
 
