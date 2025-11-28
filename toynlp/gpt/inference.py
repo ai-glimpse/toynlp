@@ -97,10 +97,17 @@ if __name__ == "__main__":
 
     prompts = [
         # "Human: Why is the sky blue?\n\nAssistant:",
-        "Human: What is the capital of France?\n\nAssistant:",
-        "Human: What are the three primary colors?\n\nAssistant:",
-        "Human: Tell me a joke about computers.\n\nAssistant:",
-        "Human: Write a three lines poem.\n\nAssistant:",
+        # "Human: What is the capital of France?\n\nAssistant:",
+        # "Human: What are the three primary colors?\n\nAssistant:",
+        # "Human: Tell me a joke about computers.\n\nAssistant:",
+        # "Human: Write a three lines poem.\n\nAssistant:",
+        """Human: Answer with ONLY the letter A, B, C, or D. No explanation.
+        Which of these is a renewable source of energy?
+        A) Coal
+        B) Oil
+        C) Solar power
+        D) Natural gas
+        \nAssistant:""",
     ]
 
     for prompt in prompts:

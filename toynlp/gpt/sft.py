@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 from collections.abc import Iterable
 from datasets import load_dataset, Dataset, concatenate_datasets
 from torch import nn
@@ -10,8 +10,7 @@ from tokenizers import Tokenizer
 from toynlp.gpt.train import GPTTrainer
 from toynlp.gpt.config import GPTConfig
 import wandb
-from toynlp.paths import GPT_MODEL_PATH, GPT_SFT_MODEL_PATH
-from toynlp.util import current_device
+from toynlp.paths import GPT_SFT_MODEL_PATH
 
 
 class SftDataset:
@@ -22,7 +21,12 @@ class SftDataset:
         eos_token: str = "___",  # noqa: S107
     ) -> None:
         if dataset_names is None:
-            dataset_names = ["databricks/databricks-dolly-15k", "teknium/GPT4-LLM-Cleaned"]
+            dataset_names = [
+                # "databricks/databricks-dolly-15k",
+                # "teknium/GPT4-LLM-Cleaned",
+                # "yahma/alpaca-cleaned",
+                "allenai/ai2_arc",
+            ]
         if isinstance(dataset_names, str):
             dataset_names = [dataset_names]
         self.dataset_names = list(dataset_names)
@@ -44,15 +48,19 @@ class SftDataset:
             return self._load_dolly_dataset(split)
         if dataset_name == "teknium/GPT4-LLM-Cleaned":
             return self._load_gpt4_llm_dataset(split)
+        if dataset_name == "yahma/alpaca-cleaned":
+            return self._load_alpaca_dataset(split)
+        if dataset_name == "allenai/ai2_arc":
+            return self._load_ai2_arc_dataset(split)
         # fallback to raw load for any additional datasets
         return load_dataset(dataset_name, split=split)
 
     def _load_dolly_dataset(self, split: str) -> Dataset:
-        dataset = load_dataset("databricks/databricks-dolly-15k", split=split)
+        dataset = cast("Dataset", load_dataset("databricks/databricks-dolly-15k", split=split))
         return dataset
 
     def _load_gpt4_llm_dataset(self, split: str) -> Dataset:
-        dataset = load_dataset("teknium/GPT4-LLM-Cleaned", split=split)
+        dataset = cast("Dataset", load_dataset("teknium/GPT4-LLM-Cleaned", split=split))
 
         def _transform(row: dict[str, Any]) -> dict[str, Any]:
             return {
@@ -61,8 +69,52 @@ class SftDataset:
                 "response": row.get("output") or "",
             }
 
-        standard_cols = [col for col in dataset.column_names if col not in {"instruction", "context", "response"}]
+        column_names = list(dataset.column_names)
+        standard_cols = [col for col in column_names if col not in {"instruction", "context", "response"}]
         return dataset.map(_transform, remove_columns=standard_cols)
+
+    def _load_alpaca_dataset(self, split: str) -> Dataset:
+        dataset = cast("Dataset", load_dataset("yahma/alpaca-cleaned", split=split))
+
+        def _transform(row: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "instruction": row.get("instruction") or "",
+                "context": row.get("input") or "",
+                "response": row.get("output") or "",
+            }
+
+        column_names = list(dataset.column_names)
+        standard_cols = [col for col in column_names if col not in {"instruction", "context", "response"}]
+        return dataset.map(_transform, remove_columns=standard_cols)
+
+    def _load_ai2_arc_dataset(self, split: str) -> Dataset:
+        configs = ["ARC-Challenge", "ARC-Easy"]
+        datasets = [cast("Dataset", load_dataset("allenai/ai2_arc", config, split=split)) for config in configs]
+        dataset = concatenate_datasets(datasets)
+
+        def _transform(row: dict[str, Any]) -> dict[str, Any]:
+            question_text = str(row.get("question") or "").strip()
+            choices = row.get("choices") or {}
+            labels = choices.get("label") or []
+            texts = choices.get("text") or []
+            choice_pairs = [(label, text) for label, text in zip(labels, texts, strict=False) if label and text]
+            choice_lines = [f"{label}. {text}" for label, text in choice_pairs]
+            choice_block = "\n".join(choice_lines)
+            instruction_parts = ["Answer the multiple-choice question with exactly one letter."]
+            if question_text:
+                instruction_parts.append(f"Question: {question_text}")
+            if choice_block:
+                instruction_parts.append("Choices:\n" + choice_block)
+            instruction = "\n\n".join(instruction_parts)
+            answer_key = row.get("answerKey") or ""
+            response = f"{answer_key}".strip() if answer_key else ""
+            return {
+                "instruction": instruction,
+                "context": "",
+                "response": response,
+            }
+
+        return dataset.map(_transform, remove_columns=list(dataset.column_names))
 
     def _dataset_transform(self, row: dict[str, Any]) -> dict[str, Any]:
         prompt_text = self._extract_prompt(row)
@@ -255,12 +307,13 @@ def train_model(config: GPTConfig) -> None:
         gpt_tokenizer=tokenizer,
     )
 
+    # TODO: change to use one line torch load
     padding_token_id = tokenizer.token_to_id("<pad>")
-    # model = GPTModel(config, padding_idx=padding_token_id)
-    # model.load_state_dict(torch.load(GPT_MODEL_PATH, map_location=model.device))
+    model = GPTModel(config, padding_idx=padding_token_id)
+    model.load_state_dict(torch.load(GPT_SFT_MODEL_PATH, map_location=model.device))
 
-    # TODO: load pre-trained model weights before SFT
-    model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
+    # model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
+
     # apply lora
     model = apply_lora(model)
     mark_only_lora_as_trainable(model)
@@ -276,7 +329,7 @@ if __name__ == "__main__":
 
     config = GPTConfig(
         wandb_enabled=True,
-        wandb_name="gpt_sft_lora_r16_alpha32",
+        wandb_name="gpt_sft_lora_ai2arc",
     )
     tokenizer = GPTTokenizer().load()
 
