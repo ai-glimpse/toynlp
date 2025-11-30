@@ -318,12 +318,12 @@ def train_model(config: GPTConfig) -> None:
     model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
 
     # apply lora
-    model = apply_lora(model, r=16, alpha=32, dropout=0.1)
+    model = apply_lora(model, r=8, alpha=16, dropout=0.1)
     mark_only_lora_as_trainable(model)
 
     trainer = GPTSFTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
     trainer.base_lr = 1e-4  # set a different base learning rate for SFT
-    trainer.config.epochs = 100  # set a smaller number of epochs for SFT
+    trainer.config.epochs = 10  # set a smaller number of epochs for SFT
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
