@@ -234,7 +234,7 @@ def mark_only_lora_as_trainable(model: GPTModel) -> None:
 
 
 def apply_lora(
-    model: GPTModel, r: int = 16, alpha: int = 32, dropout: float = 0.05, target_modules: list[str] | None = None
+    model: GPTModel, r: int = 16, alpha: int = 32, dropout: float = 0.1, target_modules: list[str] | None = None
 ) -> GPTModel:
     if target_modules is None:
         target_modules = ["causal_mha", "ffn", "lm_head"]
@@ -318,7 +318,7 @@ def train_model(config: GPTConfig) -> None:
     model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
 
     # apply lora
-    model = apply_lora(model)
+    model = apply_lora(model, r=16, alpha=32, dropout=0.1)
     mark_only_lora_as_trainable(model)
 
     trainer = GPTSFTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
