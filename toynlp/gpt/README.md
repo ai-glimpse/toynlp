@@ -59,6 +59,16 @@ Epoch 758/1000 - Train Loss: 0.0003, Train Perplexity: 1.0003, LR: 0.000100,
 ====================================================================================================
 ```
 
+## Supervised Fine-Tuning(LoRA)
+
+### The results
+
+> We can get better results sometimes...
+ARC-Challenge: 24.91% (292/1172)
+ARC-Easy: 25.59% (608/2376)
+Overall: 25.37% (900/3548)
+
+
 
 ## The mistakes that I made
 
