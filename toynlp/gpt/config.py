@@ -19,7 +19,7 @@ class GPTConfig:
     # model configs
     vocab_size: int = 40478  # paper: (BPE) vocabulary with 40,478 merges
     special_tokens: list[str] = field(
-        default_factory=lambda: ["<unk>", "<pad>"],
+        default_factory=lambda: ["<unk>", "<pad>", "<eos>"],
     )
     # model arch configs
     max_seq_length: int = 512  # paper setting: 128, 512

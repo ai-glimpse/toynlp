@@ -18,7 +18,7 @@ Performance comparison:
 | Metric | Original GPT | This Implementation |
 |:--------:|:---------------:|:-------------------:|
 | Perplexity| 18.4 | 24.3|
-| SST2 Accuracy | 91.3% | **92.69%** |
+| SST2 Accuracy | 91.3% | **92.04%** |
 
 
 ### The dataset is around 800M words(1B tokens)
