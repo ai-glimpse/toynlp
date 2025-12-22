@@ -149,3 +149,4 @@ Rows 2 and 3 still attend to the earlier valid tokens, so the logits stay finite
 This makes the supervised fine-tuning task harder, because the model has to predict the end of sentence by itself.
 
 For continue the sft, we choose to use `___` as the end of sentence token temporarily.
+Now we have added `<eos>` token for the GPT tokenizer and model and retrained the model.

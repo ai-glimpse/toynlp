@@ -19,7 +19,7 @@ class SftDataset:
         self,
         dataset_names: str | Iterable[str] | None = None,
         split: str = "train",
-        eos_token: str = "___",  # noqa: S107
+        eos_token: str = "<eos>",  # noqa: S107
     ) -> None:
         if dataset_names is None:
             dataset_names = [

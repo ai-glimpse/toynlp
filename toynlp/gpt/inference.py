@@ -81,7 +81,7 @@ class GPTInference:
                 next_token_logits = outputs[:, -1, :]
                 next_token_id = torch.argmax(next_token_logits, dim=-1).unsqueeze(1)
                 generated_ids = torch.cat((generated_ids, next_token_id), dim=1)
-                if next_token_id.item() == self.gpt_tokenizer.token_to_id("___"):
+                if next_token_id.item() == self.gpt_tokenizer.token_to_id("<eos>"):
                     break
                 length += 1
 
