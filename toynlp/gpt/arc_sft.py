@@ -300,8 +300,8 @@ def train_arc_sft(
 
     model.to(current_device)
 
-    # Apply LoRA
-    model = apply_lora(model, r=16, alpha=32, dropout=0.1)
+    # Apply LoRA with higher dropout to reduce overfitting
+    model = apply_lora(model, r=8, alpha=16, dropout=0.2)
     mark_only_lora_as_trainable(model)
 
     # Load ARC dataset
@@ -320,8 +320,9 @@ def train_arc_sft(
         tokenizer=tokenizer,
         eval_max_samples=None,  # Set to a number to limit eval samples per epoch
     )
-    trainer.base_lr = 5e-5
-    trainer.config.epochs = 15
+    # Lower learning rate and fewer epochs to reduce overfitting
+    trainer.base_lr = 1e-5
+    trainer.config.epochs = 5
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
     print("\n" + "=" * 60)
