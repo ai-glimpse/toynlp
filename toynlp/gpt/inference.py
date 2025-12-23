@@ -85,7 +85,7 @@ class GPTInference:
                     break
                 length += 1
 
-        generated_text = self.gpt_tokenizer.decode(generated_ids.squeeze().tolist())[:-3]
+        generated_text = self.gpt_tokenizer.decode(generated_ids.squeeze().tolist())
         return generated_text
 
 
