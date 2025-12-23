@@ -1,7 +1,11 @@
 from typing import Any, cast
 from collections.abc import Iterable
+import pathlib
+import random
+
 from datasets import load_dataset, Dataset, concatenate_datasets
 from torch import nn
+from torch.utils.data import DataLoader
 import torch
 import math
 from toynlp.gpt.model import GPTModel
@@ -176,8 +180,10 @@ def text_to_token_ids(
 def get_sft_dataloaders(
     config: GPTConfig,
     gpt_tokenizer: Tokenizer,
+    dataset_names: list[str] | None = None,
 ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
-    sft_dataset = SftDataset().load_sft_dataset()
+    """Load SFT dataloaders for specified datasets."""
+    sft_dataset = SftDataset(dataset_names=dataset_names).load_sft_dataset()
     sft_token_dataset = sft_dataset.map(
         lambda batch: text_to_token_ids(batch["input_text"], gpt_tokenizer, config.max_seq_length),
         remove_columns=["input_text"],
@@ -191,17 +197,12 @@ def get_sft_dataloaders(
     val_size = int(0.1 * total_size)
     print(f"Total dataset size: {total_size}, train size: {train_size}, val size: {val_size}")
 
-    # train_size = 24
-    # val_size = 24
-    # total_size = train_size + val_size + 24
-
     train_dataset = sft_token_dataset.select(range(train_size))
     val_dataset = sft_token_dataset.select(range(train_size, train_size + val_size))
     test_dataset = sft_token_dataset.select(range(train_size + val_size, total_size))
 
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset.with_format("torch"),
-        # dataset=train_dataset,
         batch_size=config.batch_size,
         num_workers=4,
         prefetch_factor=4,
@@ -270,9 +271,116 @@ class LoRALayer(nn.Module):
         return self.dropout(x) @ self.lora_A.T @ self.lora_B.T * self.scaling
 
 
-class GPTSFTTrainer(GPTTrainer):
-    def save_model(self):
-        """Save the current model to the specified path."""
+class SFTTrainer(GPTTrainer):
+    """SFT trainer with batch-level train loss logging and configurable metric prefix."""
+
+    def __init__(
+        self,
+        config: GPTConfig,
+        pad_token_id: int,
+        model: GPTModel,
+        model_path: pathlib.Path,
+        metric_prefix: str = "sft",
+    ) -> None:
+        super().__init__(config, pad_token_id, model, model_path)
+        self.metric_prefix = metric_prefix
+
+    def train(
+        self,
+        train_dataloader: DataLoader[dict[str, torch.Tensor]],
+        val_dataloader: DataLoader[dict[str, torch.Tensor]],
+        test_dataloader: DataLoader[dict[str, torch.Tensor]],
+    ) -> None:
+        """Train with per-batch train loss logging."""
+        best_val_loss = float("inf")
+        for epoch in range(self.config.epochs):
+            self.model.train()
+            total_loss = 0.0
+            total_samples = 0
+
+            for batch in train_dataloader:
+                self.update_lr()
+                self.optimizer.zero_grad()
+
+                batch_input_ids = batch["input_ids"].to(self.device)
+                batch_target_ids = batch["labels"].to(self.device)
+
+                input_ids = batch_input_ids[:, :-1]
+                target_ids = batch_target_ids[:, 1:]
+
+                logits = self.model(input_ids)
+                loss = self.criterion(logits.reshape(-1, logits.size(-1)), target_ids.reshape(-1))
+
+                # Log train batch loss
+                if self.config.wandb_enabled:
+                    wandb.log({f"{self.metric_prefix}/train_batch_loss": loss.item()})
+
+                if random.random() < 0.01:
+                    self._print_sample_predictions(input_ids[0], target_ids[0], logits[0], "train")
+
+                loss.backward()
+                if self.clip_norm is not None:
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.clip_norm)
+                self.optimizer.step()
+
+                self.current_step += 1
+                batch_size = input_ids.size(0)
+                total_loss += loss.item() * batch_size
+                total_samples += batch_size
+
+            avg_train_loss = total_loss / total_samples
+            train_perplexity = torch.exp(torch.tensor(avg_train_loss)).item()
+
+            # Validate (epoch-level only)
+            self.model.eval()
+            with torch.no_grad():
+                val_loss_stats = self.calc_loss_loader(val_dataloader, "val")
+                test_loss_stats = self.calc_loss_loader(test_dataloader, "test")
+
+            current_lr = self.get_lr()
+            print(
+                f"Epoch {epoch + 1}/{self.config.epochs} - "
+                f"Train Loss: {avg_train_loss:.4f}, Train PPL: {train_perplexity:.4f}, "
+                f"Val Loss: {val_loss_stats['loss']:.4f}, Val PPL: {val_loss_stats['perplexity']:.4f}, "
+                f"Test Loss: {test_loss_stats['loss']:.4f}, Test PPL: {test_loss_stats['perplexity']:.4f}, "
+                f"LR: {current_lr:.6f}"
+            )
+
+            if val_loss_stats["loss"] < best_val_loss:
+                best_val_loss = val_loss_stats["loss"]
+                self.save_model()
+                print(f"Saved best model at epoch {epoch + 1}")
+
+            if self.config.wandb_enabled:
+                wandb.log(
+                    {
+                        f"{self.metric_prefix}/epoch": epoch + 1,
+                        f"{self.metric_prefix}/train_loss": avg_train_loss,
+                        f"{self.metric_prefix}/train_perplexity": train_perplexity,
+                        f"{self.metric_prefix}/val_loss": val_loss_stats["loss"],
+                        f"{self.metric_prefix}/val_perplexity": val_loss_stats["perplexity"],
+                        f"{self.metric_prefix}/test_loss": test_loss_stats["loss"],
+                        f"{self.metric_prefix}/test_perplexity": test_loss_stats["perplexity"],
+                        f"{self.metric_prefix}/learning_rate": current_lr,
+                    }
+                )
+
+
+class GPTSFTTrainer(SFTTrainer):
+    """SFT trainer with LoRA weight merging on save."""
+
+    def __init__(
+        self,
+        config: GPTConfig,
+        pad_token_id: int,
+        model: GPTModel,
+        model_path: pathlib.Path,
+        metric_prefix: str = "sft",
+    ) -> None:
+        super().__init__(config, pad_token_id, model, model_path, metric_prefix=metric_prefix)
+
+    def save_model(self) -> None:
+        """Save the current model with merged LoRA weights."""
         torch.save(self._merge_lora_state_dict(), self.model_path)
 
     def _merge_lora_state_dict(self) -> dict[str, torch.Tensor]:
@@ -295,7 +403,7 @@ class GPTSFTTrainer(GPTTrainer):
 
 
 def train_model(config: GPTConfig) -> None:
-    """Train the GPT model with the given configuration."""
+    """Train the GPT model with general SFT on diverse datasets."""
     if config.wandb_enabled:
         wandb.init(
             project=config.wandb_project,
@@ -303,28 +411,39 @@ def train_model(config: GPTConfig) -> None:
             config=config.to_dict(),
         )
 
-    tokenizer = GPTTokenizer().load()
+    print("\n" + "=" * 60)
+    print("General SFT Training")
+    print("=" * 60)
 
+    tokenizer = GPTTokenizer().load()
+    model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
+
+    # Load general datasets
+    general_datasets = [
+        "databricks/databricks-dolly-15k",
+        "teknium/GPT4-LLM-Cleaned",
+        "yahma/alpaca-cleaned",
+    ]
     train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
         config=config,
         gpt_tokenizer=tokenizer,
+        dataset_names=general_datasets,
     )
 
     padding_token_id = tokenizer.token_to_id("<pad>")
 
-    # model = GPTModel(config, padding_idx=padding_token_id)
-    # model.load_state_dict(torch.load(GPT_SFT_MODEL_PATH, map_location=model.device))
-
-    model = torch.load(GPT_MODEL_PATH, map_location=current_device, weights_only=False)
-
-    # apply lora
-    model = apply_lora(model, r=8, alpha=16, dropout=0.1)
+    # Apply LoRA
+    model = apply_lora(model, r=16, alpha=32, dropout=0.1)
     mark_only_lora_as_trainable(model)
 
     trainer = GPTSFTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_SFT_MODEL_PATH)
-    trainer.base_lr = 1e-4  # set a different base learning rate for SFT
-    trainer.config.epochs = 10  # set a smaller number of epochs for SFT
+    trainer.base_lr = 1e-4
+    trainer.config.epochs = 10
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
+
+    print("\n" + "=" * 60)
+    print("General SFT training completed!")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

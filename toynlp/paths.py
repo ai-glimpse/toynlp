@@ -38,6 +38,7 @@ TRANSFORMER_MODEL_PATH = _MODEL_PATH / "transformer" / "transformer_model.pt"
 GPT_TOKENIZER_PATH = _MODEL_PATH / "gpt" / "tokenizer.json"
 GPT_MODEL_PATH = _MODEL_PATH / "gpt" / "gpt_model.pt"
 GPT_SFT_MODEL_PATH = _MODEL_PATH / "gpt" / "gpt_sft_model.pt"
+GPT_ARC_MODEL_PATH = _MODEL_PATH / "gpt" / "gpt_arc_model.pt"
 SST2GPT_MODEL_PATH = _MODEL_PATH / "gpt" / "sst2_gpt_model.pt"
 
 
