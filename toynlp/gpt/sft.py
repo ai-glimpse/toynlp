@@ -150,6 +150,8 @@ def get_sft_dataloaders(
 ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     """Load SFT dataloaders for specified datasets."""
     sft_dataset = SftDataset(dataset_names=dataset_names).load_sft_dataset()
+    # Shuffle dataset before splitting to mix different sources
+    sft_dataset = sft_dataset.shuffle(seed=42)
     sft_token_dataset = sft_dataset.map(
         lambda batch: text_to_token_ids(batch["input_text"], gpt_tokenizer, config.max_seq_length),
         remove_columns=["input_text"],
@@ -170,6 +172,7 @@ def get_sft_dataloaders(
     train_dataloader = torch.utils.data.DataLoader(
         dataset=train_dataset.with_format("torch"),
         batch_size=config.batch_size,
+        shuffle=True,
         num_workers=4,
         prefetch_factor=4,
         drop_last=True,

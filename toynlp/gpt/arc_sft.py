@@ -72,6 +72,7 @@ def get_arc_dataloaders(
     train_dataloader = DataLoader(
         dataset=train_token_dataset.with_format("torch"),
         batch_size=config.batch_size,
+        shuffle=True,
         num_workers=4,
         prefetch_factor=4,
         drop_last=True,
