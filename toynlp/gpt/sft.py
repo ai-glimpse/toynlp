@@ -54,8 +54,6 @@ class SftDataset:
             return self._load_gpt4_llm_dataset(split)
         if dataset_name == "yahma/alpaca-cleaned":
             return self._load_alpaca_dataset(split)
-        if dataset_name == "allenai/ai2_arc":
-            return self._load_ai2_arc_dataset(split)
         # fallback to raw load for any additional datasets
         return load_dataset(dataset_name, split=split)
 
@@ -90,37 +88,6 @@ class SftDataset:
         column_names = list(dataset.column_names)
         standard_cols = [col for col in column_names if col not in {"instruction", "context", "response"}]
         return dataset.map(_transform, remove_columns=standard_cols)
-
-    def _load_ai2_arc_dataset(self, split: str) -> Dataset:
-        configs = ["ARC-Challenge", "ARC-Easy"]
-        datasets = [cast("Dataset", load_dataset("allenai/ai2_arc", config, split=split)) for config in configs]
-        dataset = concatenate_datasets(datasets)
-
-        def _transform(row: dict[str, Any]) -> dict[str, Any]:
-            question_text = str(row.get("question") or "").strip()
-            choices = row.get("choices") or {}
-            labels = choices.get("label") or []
-            texts = choices.get("text") or []
-            choice_pairs = [(label, text) for label, text in zip(labels, texts, strict=False) if label and text]
-            choice_lines = [f"{label}. {text}" for label, text in choice_pairs]
-            choice_block = "\n".join(choice_lines)
-            instruction_parts = [
-                "Answer the multiple-choice question with exactly one letter.",
-            ]
-            if question_text:
-                instruction_parts.append(f"Question: {question_text}")
-            if choice_block:
-                instruction_parts.append("Choices:\n" + choice_block)
-            instruction = "\n\n".join(instruction_parts)
-            answer_key = (row.get("answerKey") or "").strip().upper()
-            response = answer_key
-            return {
-                "instruction": instruction,
-                "context": "",
-                "response": response,
-            }
-
-        return dataset.map(_transform, remove_columns=list(dataset.column_names))
 
     def _dataset_transform(self, row: dict[str, Any]) -> dict[str, Any]:
         prompt_text = self._extract_prompt(row)
@@ -450,7 +417,7 @@ if __name__ == "__main__":
 
     config = GPTConfig(
         wandb_enabled=True,
-        wandb_name="gpt_sft_lora_ai2arc",
+        wandb_name="gpt_sft_lora_general",
     )
     tokenizer = GPTTokenizer().load()
 
