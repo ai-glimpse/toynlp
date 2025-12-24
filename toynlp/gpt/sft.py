@@ -30,7 +30,6 @@ class SftDataset:
                 "databricks/databricks-dolly-15k",
                 "teknium/GPT4-LLM-Cleaned",
                 "yahma/alpaca-cleaned",
-                "allenai/ai2_arc",
             ]
         if isinstance(dataset_names, str):
             dataset_names = [dataset_names]

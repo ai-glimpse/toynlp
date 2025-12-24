@@ -18,7 +18,8 @@ from toynlp.gpt.config import GPTConfig
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.sft import (
     GPTSFTTrainer,
-    get_sft_dataloaders,
+    SftDataset,
+    text_to_token_ids,
     apply_lora,
     mark_only_lora_as_trainable,
 )
@@ -32,6 +33,65 @@ class ARCEvalResult:
     accuracy: float
     total: int
     correct: int
+
+
+def get_arc_dataloaders(
+    config: GPTConfig,
+    gpt_tokenizer: "Tokenizer",
+) -> tuple[DataLoader, DataLoader, DataLoader]:
+    """Load ARC dataloaders using native train/validation/test splits."""
+
+    def load_arc_split(split: str) -> Dataset:
+        """Load ARC dataset for a specific split."""
+        sft_dataset = SftDataset(dataset_names=["allenai/ai2_arc"], split=split)
+        return sft_dataset.load_sft_dataset()
+
+    # Load each split separately using native splits
+    train_dataset = load_arc_split("train")
+    val_dataset = load_arc_split("validation")
+    test_dataset = load_arc_split("test")
+
+    # Tokenize each split
+    def tokenize_dataset(dataset: Dataset) -> Dataset:
+        return dataset.map(
+            lambda batch: text_to_token_ids(batch["input_text"], gpt_tokenizer, config.max_seq_length),
+            remove_columns=["input_text"],
+            batched=True,
+            num_proc=4,
+        )
+
+    train_token_dataset = tokenize_dataset(train_dataset)
+    val_token_dataset = tokenize_dataset(val_dataset)
+    test_token_dataset = tokenize_dataset(test_dataset)
+
+    print(
+        f"ARC dataset sizes - Train: {len(train_token_dataset)}, "
+        f"Val: {len(val_token_dataset)}, Test: {len(test_token_dataset)}"
+    )
+
+    train_dataloader = DataLoader(
+        dataset=train_token_dataset.with_format("torch"),
+        batch_size=config.batch_size,
+        num_workers=4,
+        prefetch_factor=4,
+        drop_last=True,
+    )
+    val_dataloader = DataLoader(
+        dataset=val_token_dataset.with_format("torch"),
+        batch_size=config.batch_size,
+        num_workers=4,
+        prefetch_factor=4,
+        drop_last=True,
+    )
+    test_dataloader = DataLoader(
+        dataset=test_token_dataset.with_format("torch"),
+        batch_size=config.batch_size,
+        num_workers=4,
+        prefetch_factor=4,
+        drop_last=True,
+    )
+
+    return train_dataloader, val_dataloader, test_dataloader
 
 
 class ARCEvaluator:
@@ -304,11 +364,10 @@ def train_arc_sft(
     model = apply_lora(model, r=8, alpha=16, dropout=0.2)
     mark_only_lora_as_trainable(model)
 
-    # Load ARC dataset
-    train_dataloader, val_dataloader, test_dataloader = get_sft_dataloaders(
+    # Load ARC dataset using native splits
+    train_dataloader, val_dataloader, test_dataloader = get_arc_dataloaders(
         config=config,
         gpt_tokenizer=tokenizer,
-        dataset_names=["allenai/ai2_arc"],
     )
 
     # Create ARC trainer with per-epoch evaluation
