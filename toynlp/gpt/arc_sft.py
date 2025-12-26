@@ -18,7 +18,6 @@ from toynlp.gpt.config import GPTConfig
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.sft import (
     GPTSFTTrainer,
-    SftDataset,
     text_to_token_ids,
     apply_lora,
     mark_only_lora_as_trainable,
@@ -26,6 +25,45 @@ from toynlp.gpt.sft import (
 from toynlp.gpt.tokenizer import GPTTokenizer
 from toynlp.paths import GPT_SFT_MODEL_PATH, GPT_ARC_MODEL_PATH
 from toynlp.util import current_device
+
+from datasets import concatenate_datasets
+
+
+EOS_TOKEN = "<eos>"  # noqa: S105
+
+
+def _format_arc_row(row: dict) -> dict:
+    """Transform ARC row to instruction format."""
+    question_text = str(row.get("question") or "").strip()
+    choices = row.get("choices") or {}
+    labels = choices.get("label") or []
+    texts = choices.get("text") or []
+    choice_lines = [f"{label}. {text}" for label, text in zip(labels, texts, strict=False) if label and text]
+    choice_block = "Choices:\n" + "\n".join(choice_lines) if choice_lines else ""
+
+    instruction_parts = ["Answer the multiple-choice question with exactly one letter."]
+    if question_text:
+        instruction_parts.append(f"Question: {question_text}")
+    if choice_block:
+        instruction_parts.append(choice_block)
+    instruction = "\n\n".join(instruction_parts)
+
+    answer_key = str(row.get("answerKey") or "").strip().upper()
+
+    input_text = f"Human: {instruction}\n\nAssistant: {answer_key}{EOS_TOKEN}"
+    return {"input_text": input_text}
+
+
+def _load_arc_split(split: str) -> Dataset:
+    """Load ARC dataset for a specific split, combining Challenge and Easy."""
+    configs = ["ARC-Challenge", "ARC-Easy"]
+    datasets = []
+    for config_name in configs:
+        ds = load_dataset("allenai/ai2_arc", config_name, split=split, trust_remote_code=False)
+        if isinstance(ds, Dataset):
+            datasets.append(ds)
+    combined = concatenate_datasets(datasets)
+    return combined.map(_format_arc_row, remove_columns=combined.column_names, num_proc=4)
 
 
 @dataclass
@@ -40,16 +78,10 @@ def get_arc_dataloaders(
     gpt_tokenizer: "Tokenizer",
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     """Load ARC dataloaders using native train/validation/test splits."""
-
-    def load_arc_split(split: str) -> Dataset:
-        """Load ARC dataset for a specific split."""
-        sft_dataset = SftDataset(dataset_names=["allenai/ai2_arc"], split=split)
-        return sft_dataset.load_sft_dataset()
-
     # Load each split separately using native splits
-    train_dataset = load_arc_split("train")
-    val_dataset = load_arc_split("validation")
-    test_dataset = load_arc_split("test")
+    train_dataset = _load_arc_split("train")
+    val_dataset = _load_arc_split("validation")
+    test_dataset = _load_arc_split("test")
 
     # Tokenize each split
     def tokenize_dataset(dataset: Dataset) -> Dataset:
@@ -155,13 +187,14 @@ class ARCEvaluator:
         matches = list(re.finditer(rf"({pattern})", completion, re.IGNORECASE))
         return matches[-1].group(1).upper() if matches else ""
 
-    def evaluate(self, max_samples: int | None = None) -> dict[str, ARCEvalResult]:
+    def evaluate(self, max_samples: int | None = None, debug_samples: int = 3) -> dict[str, ARCEvalResult]:
         """Run ARC evaluation and return results per split."""
         self.model.eval()
         datasets = self._load_eval_datasets()
         results: dict[str, ARCEvalResult] = {}
         overall_correct = 0
         overall_total = 0
+        debug_count = 0
 
         for config_name, dataset in datasets.items():
             ds = dataset
@@ -178,6 +211,13 @@ class ARCEvaluator:
                 generated = self._generate(prompt)
                 predicted = self._extract_choice(generated, prompt, list(labels))
                 answer = str(row.get("answerKey") or "").strip().upper()
+
+                # Debug: print a few samples to see what model generates
+                if debug_count < debug_samples:
+                    completion = generated[len(prompt) :].strip() if generated.startswith(prompt) else generated.strip()
+                    print(f"  [Debug] Expected: {answer}, Predicted: {predicted}, Generated: '{completion[:50]}...'")
+                    debug_count += 1
+
                 if predicted == answer:
                     correct += 1
 
@@ -214,6 +254,33 @@ class ARCTrainer(GPTSFTTrainer):
             self._evaluator = ARCEvaluator(self.model, self.tokenizer, self.config)
         return self._evaluator
 
+    def calc_dataloader_accuracy(self, dataloader: DataLoader[dict[str, torch.Tensor]]) -> float:
+        """Calculate accuracy on a dataloader by checking if predicted token matches target."""
+        self.model.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for batch in dataloader:
+                input_ids = batch["input_ids"][:, :-1].to(self.device)
+                target_ids = batch["labels"][:, 1:].to(self.device)
+
+                logits = self.model(input_ids)
+                # Get the last non-pad position for each sequence (the answer token)
+                # We only care about the answer position accuracy
+                preds = logits.argmax(dim=-1)
+
+                # Find answer position (first non-pad token in labels after prompt)
+                pad_id = self.pad_token_id
+                for i in range(target_ids.size(0)):
+                    # Find first non-pad position in target
+                    non_pad_mask = target_ids[i] != pad_id
+                    if non_pad_mask.any():
+                        first_non_pad = non_pad_mask.nonzero(as_tuple=True)[0][0].item()
+                        if preds[i, first_non_pad] == target_ids[i, first_non_pad]:
+                            correct += 1
+                    total += 1
+        return correct / total if total > 0 else 0.0
+
     def train(
         self,
         train_dataloader: DataLoader[dict[str, torch.Tensor]],
@@ -221,7 +288,7 @@ class ARCTrainer(GPTSFTTrainer):
         test_dataloader: DataLoader[dict[str, torch.Tensor]],
     ) -> None:
         """Train with per-batch loss logging and per-epoch ARC evaluation."""
-        best_val_loss = float("inf")
+        best_arc_accuracy = 0.0
         for epoch in range(self.config.epochs):
             self.model.train()
             total_loss = 0.0
@@ -265,6 +332,10 @@ class ARCTrainer(GPTSFTTrainer):
                 val_loss_stats = self.calc_loss_loader(val_dataloader, "val")
                 test_loss_stats = self.calc_loss_loader(test_dataloader, "test")
 
+                # Calculate training/validation accuracy
+                train_acc = self.calc_dataloader_accuracy(train_dataloader)
+                val_acc = self.calc_dataloader_accuracy(val_dataloader)
+
             # Run ARC evaluation
             arc_results = self.evaluator.evaluate(max_samples=self.eval_max_samples)
 
@@ -278,6 +349,7 @@ class ARCTrainer(GPTSFTTrainer):
             print(
                 f"Epoch {epoch + 1}/{self.config.epochs} - "
                 f"Train Loss: {avg_train_loss:.4f}, Train PPL: {train_perplexity:.4f}, "
+                f"Train Acc: {train_acc:.2%}, Val Acc: {val_acc:.2%}, "
                 f"Val Loss: {val_loss_stats['loss']:.4f}, "
                 f"Test Loss: {test_loss_stats['loss']:.4f}, "
                 f"LR: {current_lr:.6f}"
@@ -290,10 +362,11 @@ class ARCTrainer(GPTSFTTrainer):
                 f"Overall: {arc_overall.accuracy:.2%} ({arc_overall.correct}/{arc_overall.total})"
             )
 
-            if val_loss_stats["loss"] < best_val_loss:
-                best_val_loss = val_loss_stats["loss"]
+            # Save based on accuracy, not loss
+            if arc_overall.accuracy > best_arc_accuracy:
+                best_arc_accuracy = arc_overall.accuracy
                 self.save_model()
-                print(f"Saved best model at epoch {epoch + 1}")
+                print(f"Saved best model at epoch {epoch + 1} (accuracy: {arc_overall.accuracy:.2%})")
 
             if self.config.wandb_enabled:
                 wandb.log(
@@ -301,6 +374,8 @@ class ARCTrainer(GPTSFTTrainer):
                         f"{self.metric_prefix}/epoch": epoch + 1,
                         f"{self.metric_prefix}/train_loss": avg_train_loss,
                         f"{self.metric_prefix}/train_perplexity": train_perplexity,
+                        f"{self.metric_prefix}/train_acc": train_acc,
+                        f"{self.metric_prefix}/val_acc": val_acc,
                         f"{self.metric_prefix}/val_loss": val_loss_stats["loss"],
                         f"{self.metric_prefix}/val_perplexity": val_loss_stats["perplexity"],
                         f"{self.metric_prefix}/test_loss": test_loss_stats["loss"],
