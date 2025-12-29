@@ -81,5 +81,8 @@ gpt-tokenize:
 gpt-train *args:
     uv run python toynlp/gpt/train.py {{args}}
 
+gpt-sft *args:
+    uv run python toynlp/gpt/sft.py {{args}}
+
 gpt-eval:
     uv run python toynlp/gpt/evaluation.py

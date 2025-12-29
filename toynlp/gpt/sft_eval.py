@@ -1,10 +1,13 @@
+from pathlib import Path
+
+import torch
+from rich.console import Console
+from rich.panel import Panel
+
 from toynlp.gpt.config import GPTConfig
 from toynlp.gpt.model import GPTModel
 from toynlp.gpt.tokenizer import GPTTokenizer
-
-from toynlp.paths import GPT_MODEL_PATH
-import torch
-from pathlib import Path
+from toynlp.paths import GPT_MODEL_PATH, GPT_SFT_MODEL_PATH
 from toynlp.util import current_device
 
 
@@ -78,7 +81,7 @@ class GPTInference:
                 next_token_logits = outputs[:, -1, :]
                 next_token_id = torch.argmax(next_token_logits, dim=-1).unsqueeze(1)
                 generated_ids = torch.cat((generated_ids, next_token_id), dim=1)
-                if next_token_id.item() == self.gpt_tokenizer.token_to_id("."):
+                if next_token_id.item() == self.gpt_tokenizer.token_to_id("<eos>"):
                     break
                 length += 1
 
@@ -89,9 +92,33 @@ class GPTInference:
 if __name__ == "__main__":
     # Example usage of GPTInference
     config = GPTConfig()
-    gpt_inference = GPTInference(config)
+    gpt_inference = GPTInference(config, model_path=GPT_SFT_MODEL_PATH)
+    console = Console()
 
-    prompt = "This is"
-    print(f"Prompt: {prompt}")
-    generated_text = gpt_inference.generate_text(prompt, max_length=100)
-    print(f"Generated: {generated_text}")
+    prompts = [
+        "Human: Why is the sky blue?\n\nAssistant:",
+        "Human: What is the capital of France?\n\nAssistant:",
+        "Human: What are the three primary colors?\n\nAssistant:",
+        "Human: Tell me a joke about computers.\n\nAssistant:",
+        "Human: Write a three lines poem.\n\nAssistant:",
+    ]
+
+    for prompt in prompts:
+        generated_text = gpt_inference.generate_text(prompt, max_length=100)
+        response_only = generated_text[len(prompt) :].lstrip() if generated_text.startswith(prompt) else generated_text
+        response_lines = response_only.strip().splitlines()
+        if response_lines:
+            first_line = f"[bold green]{response_lines[0]}[/bold green]"
+            remaining = "\n".join(response_lines[1:])
+            rest_block = f"\n[bright_magenta]{remaining}[/bright_magenta]" if remaining else ""
+            colored_response = f"{first_line}{rest_block}"
+        else:
+            colored_response = ""
+        console.print(
+            Panel(
+                colored_response,
+                title="Conversation",
+                title_align="left",
+                style="bold green",
+            )
+        )

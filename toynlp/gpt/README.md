@@ -59,6 +59,41 @@ Epoch 758/1000 - Train Loss: 0.0003, Train Perplexity: 1.0003, LR: 0.000100,
 ====================================================================================================
 ```
 
+## Supervised Fine-Tuning(LoRA)
+
+### The results
+
+```
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: Why is the sky blue?                                                                                                                   │
+│                                                                                                                                               │
+│ Assistant: The sky blue is because it is a reflection of the sun's reflection.  The sky is a reflection of the sun's reflection.  The sun's   │
+│ reflection is the reflection of the sun's reflection.  The sky is a reflection of the sun's reflection.                                       │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: What is the capital of France?                                                                                                         │
+│                                                                                                                                               │
+│ Assistant: The capital of France is Paris.                                                                                                    │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: What are the three primary colors?                                                                                                     │
+│                                                                                                                                               │
+│ Assistant: The three primary colors are red, blue, and yellow.                                                                                │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: Tell me a joke about computers.                                                                                                        │
+│                                                                                                                                               │
+│ Assistant: Why don't computers use the same jokes on the world? Because they're too big!                                                      │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: Write a three lines poem.                                                                                                              │
+│                                                                                                                                               │
+│ Assistant: In the stillness of the night,                                                                                                     │
+│ A peace that never fades,                                                                                                                     │
+│ A peace that never fades.                                                                                                                     │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
 
 ## The mistakes that I made
 
@@ -132,3 +167,11 @@ Now the mask starts at `(batch, 1, 1, seq_len)` and broadcasting preserves the c
 Rows 2 and 3 still attend to the earlier valid tokens, so the logits stay finite and the model trains normally.
 
 **Lessons learned.** Masks are just tensors, so broadcast semantics matter. Printing the exact shapes before and after each operation (or writing a quick unit test) is a cheap way to catch mistakes that otherwise only show up hours into training.
+
+
+### We don't add a special token for end of sentence
+
+This makes the supervised fine-tuning task harder, because the model has to predict the end of sentence by itself.
+
+For continue the sft, we choose to use `___` as the end of sentence token temporarily.
+Now we have added `<eos>` token for the GPT tokenizer and model and retrained the model.

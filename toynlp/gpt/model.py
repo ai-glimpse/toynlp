@@ -193,3 +193,7 @@ if __name__ == "__main__":
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Total model parameters: {total_params}")
     print(model)
+
+    # named modules
+    for name, module in model.named_modules():
+        print(name, "->", module)

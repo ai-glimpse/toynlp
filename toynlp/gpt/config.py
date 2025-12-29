@@ -10,7 +10,7 @@ class GPTConfig:
     # dataset configs
     dataset_path: str = "lucadiliello/bookcorpusopen"
     dataset_name: str | None = None
-    batch_size: int = 24  # paper setting: 64
+    batch_size: int = 8  # paper setting: 64
     num_workers: int = 8
     shuffle: bool = True
     # tokenizer configs

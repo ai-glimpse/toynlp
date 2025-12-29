@@ -1,4 +1,5 @@
 import random
+import pathlib
 import torch
 from torch.utils.data import DataLoader
 
@@ -17,10 +18,10 @@ set_deterministic_mode()  # Set deterministic mode for reproducibility
 
 
 class GPTTrainer:
-    def __init__(self, config: GPTConfig, pad_token_id: int) -> None:
+    def __init__(self, config: GPTConfig, pad_token_id: int, model: GPTModel, model_path: pathlib.Path) -> None:
         self.config = config
-        self.model = GPTModel(self.config, pad_token_id)
-        self.model_path = GPT_MODEL_PATH
+        self.model = model
+        self.model_path = model_path
         self.device = current_device
         self.model.to(self.device)
         self.tokenizer = GPTTokenizer().load()
@@ -55,6 +56,10 @@ class GPTTrainer:
         for param_group in self.optimizer.param_groups:
             param_group["lr"] = lr
 
+    def save_model(self) -> None:
+        """Save the current model to the specified path."""
+        torch.save(self.model, self.model_path)
+
     def train(
         self,
         train_dataloader: DataLoader,
@@ -79,7 +84,8 @@ class GPTTrainer:
             )
             if val_loss_stats["loss"] < best_val_loss:
                 best_val_loss = val_loss_stats["loss"]
-                torch.save(self.model, self.model_path)
+                # torch.save(self.model, self.model_path)
+                self.save_model()
                 print(f"Saved best model({val_loss_stats['loss']:.4f}) from epoch {epoch + 1} to {self.model_path}")
             # log metrics to wandb
             if self.config.wandb_enabled:
@@ -107,12 +113,13 @@ class GPTTrainer:
 
             self.optimizer.zero_grad()
             batch_input_ids = batch["input_ids"].to(self.device)
+            batch_target_ids = batch["labels"].to(self.device)
 
             # For causal language modeling, input is shifted by 1 position
             # Input: [BOS, token1, token2, token3]
             # Target: [token1, token2, token3, EOS]
             input_ids = batch_input_ids[:, :-1]  # Remove last token
-            target_ids = batch_input_ids[:, 1:]  # Remove first token (BOS)
+            target_ids = batch_target_ids[:, 1:]  # Remove first token (BOS)
 
             # Forward pass
             logits = self.model(input_ids)
@@ -180,11 +187,13 @@ class GPTTrainer:
 
         for batch in data_loader:
             batch_input_ids = batch["input_ids"].to(self.device, non_blocking=True)
+            batch_target_ids = batch["labels"].to(self.device, non_blocking=True)
+
             batch_size = batch_input_ids.size(0)
 
             # For causal language modeling, input is shifted by 1 position
             input_ids = batch_input_ids[:, :-1]  # Remove last token
-            target_ids = batch_input_ids[:, 1:]  # Remove first token (BOS)
+            target_ids = batch_target_ids[:, 1:]  # Remove first token (BOS)
 
             # Forward pass
             logits = self.model(input_ids)
@@ -242,7 +251,9 @@ def train_model(config: GPTConfig) -> None:
         gpt_tokenizer=tokenizer,
     )
 
-    trainer = GPTTrainer(config=config, pad_token_id=tokenizer.token_to_id("<pad>"))
+    padding_token_id = tokenizer.token_to_id("<pad>")
+    model = GPTModel(config, padding_idx=padding_token_id)
+    trainer = GPTTrainer(config=config, pad_token_id=padding_token_id, model=model, model_path=GPT_MODEL_PATH)
     trainer.train(train_dataloader, val_dataloader, test_dataloader)
 
 
