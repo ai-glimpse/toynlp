@@ -216,13 +216,13 @@ def apply_lora(
             lora.to(device=model.device)
             module.add_module("lora_adapter", lora)
             if not hasattr(module, "_original_forward"):
-                module._original_forward = module.forward  # noqa: SLF001
+                module._original_forward = module.forward  # type: ignore[assignment]  # noqa: SLF001
 
             def lora_forward(x, orig_forward=module._original_forward, lora_layer=lora) -> torch.Tensor:  # noqa: SLF001
                 base_out = orig_forward(x)
                 return base_out + lora_layer(x)
 
-            module.forward = lora_forward
+            module.forward = lora_forward  # type: ignore[assignment]
     return model
 
 
