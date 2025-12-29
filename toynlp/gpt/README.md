@@ -63,11 +63,36 @@ Epoch 758/1000 - Train Loss: 0.0003, Train Perplexity: 1.0003, LR: 0.000100,
 
 ### The results
 
-> We can get better results sometimes...
-ARC-Challenge: 24.91% (292/1172)
-ARC-Easy: 25.59% (608/2376)
-Overall: 25.37% (900/3548)
-
+```
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: Why is the sky blue?                                                                                                                   │
+│                                                                                                                                               │
+│ Assistant: The sky blue is because it is a reflection of the sun's reflection.  The sky is a reflection of the sun's reflection.  The sun's   │
+│ reflection is the reflection of the sun's reflection.  The sky is a reflection of the sun's reflection.                                       │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: What is the capital of France?                                                                                                         │
+│                                                                                                                                               │
+│ Assistant: The capital of France is Paris.                                                                                                    │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: What are the three primary colors?                                                                                                     │
+│                                                                                                                                               │
+│ Assistant: The three primary colors are red, blue, and yellow.                                                                                │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: Tell me a joke about computers.                                                                                                        │
+│                                                                                                                                               │
+│ Assistant: Why don't computers use the same jokes on the world? Because they're too big!                                                      │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Conversation ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Human: Write a three lines poem.                                                                                                              │
+│                                                                                                                                               │
+│ Assistant: In the stillness of the night,                                                                                                     │
+│ A peace that never fades,                                                                                                                     │
+│ A peace that never fades.                                                                                                                     │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
 
 
 ## The mistakes that I made
