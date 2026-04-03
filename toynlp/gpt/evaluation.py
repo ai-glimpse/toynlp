@@ -1,16 +1,16 @@
-from datasets import load_dataset, Dataset
-import torch
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any
-from torch.utils.data import DataLoader
-from toynlp.gpt.config import GPTConfig
-from toynlp.gpt.tokenizer import GPTTokenizer
-from toynlp.gpt.model import GPTModel
-from toynlp.util import current_device
-from toynlp.paths import SST2GPT_MODEL_PATH, GPT_MODEL_PATH
-import wandb
-from toynlp.util import setup_seed, set_deterministic_mode
 
+import torch
+from datasets import Dataset, load_dataset
+from torch.utils.data import DataLoader
+
+import wandb
+from toynlp.gpt.config import GPTConfig
+from toynlp.gpt.model import GPTModel
+from toynlp.gpt.tokenizer import GPTTokenizer
+from toynlp.paths import GPT_MODEL_PATH, SST2GPT_MODEL_PATH
+from toynlp.util import current_device, set_deterministic_mode, setup_seed
 
 setup_seed(1234)  # Set a random seed for reproducibility
 set_deterministic_mode()  # Set deterministic mode for reproducibility
@@ -113,12 +113,13 @@ def get_split_dataloader(
     config: GPTConfig,
 ) -> DataLoader:
     raw_dataset = get_dataset(dataset_path, None, split)  # type: ignore[call-arg]
-    if split.split("[")[0] in {"train", "validation"}:
+    split_name = split.split("[", maxsplit=1)[0]
+    if split_name in {"train", "validation"}:
         # add column label_text: if label=0 -> negative, if label=1 -> positive
         raw_dataset = raw_dataset.map(
             lambda example: {"label_text": "positive" if example["label"] == 1 else "negative", **example},
         )
-    if split.split("[")[0] == "test":
+    if split_name == "test":
         raw_dataset = raw_dataset.rename_column("text", "sentence")
     dataloader = torch.utils.data.DataLoader(
         raw_dataset,
